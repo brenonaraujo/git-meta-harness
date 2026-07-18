@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.5] - 2026-07-18
+
+### Fixed — Critical bug in `gmh agents update` invocation
+
+**Bug**: `agentic.Invocation("hermes", ...)` retornava
+`hermes profile <name> --prompt "..."` — mas o CLI do Hermes
+NÃO aceita esse formato. O correto é `hermes chat -p <name> -q "..."`.
+
+Resultado: ao rodar `gmh doctor` ou `gmh agents update`, o
+comando sugerido para o user **não funcionava** — copiava,
+colava no terminal, e recebia erro de argumentos.
+
+**Fix**:
+- `cli/internal/agentic/agentic.go::Invocation` agora retorna
+  `hermes chat -p <name> -q "..."` (validado contra `hermes chat --help`).
+- Adicionado helper `shellQuote()` para escape correto de aspas
+  em prompts longos.
+- Outros agentics (claude, codex, opencode) marcados como TBD
+  (validação pendente — Hermes é o único end-to-end testado).
+
+### Fixed — `gmh agents sync` mensagem enganosa
+
+A mensagem "safe (only update if persona marker missing)" no
+summary era enganosa. O safe mode na verdade atualiza em 3 casos:
+marker ausente, version drift, hash drift. Corrigido para
+"safe (update on marker mismatch, version drift, or hash drift)".
+
+### Known issue — `gmh update --to` não atualiza VERSION
+
+`gmh update --to vX.Y.Z` reporta "no changes" quando o `harness/`
+local já bate com a versão target, mas **não atualiza o arquivo
+VERSION local**. Workaround: bumpar manualmente (`echo 1.6.4 > VERSION`).
+A ser corrigido em v1.6.6.
+
 ## [1.6.4] - 2026-07-18
 
 ### Added — `gmh agents update` (CI renewal via agentic delegation)

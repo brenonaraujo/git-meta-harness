@@ -165,22 +165,48 @@ func fileExists(p string) bool {
 // Invocation returns the shell command to invoke this agentic with
 // the given prompt. Used by `gmh doctor` to delegate the actual
 // harness health check to the agentic.
+//
+// All commands use the agentic's actual CLI (validated manually):
+//   - Hermes: `hermes chat -p <profile> -q "<prompt>"`
+//   - Claude Code: `claude -p "<prompt>"` (TBD — adjust when validated)
+//   - Codex: `codex -p "<prompt>"` (TBD)
+//   - OpenCode: `opencode -p "<prompt>"` (TBD)
+//
+// For long prompts (>2KB), prefer --query-file or stdin redirect.
 func Invocation(a Agentic, profile, prompt string) (string, error) {
 	switch a {
 	case Hermes:
 		if profile == "" {
 			profile = "team-manager"
 		}
-		// Hermes invocation (hypothetical — adjust to actual Hermes CLI)
-		return fmt.Sprintf("hermes profile %s --prompt %q", profile, prompt), nil
+		// Validated against hermes CLI: chat accepts -p/--profile and
+		// -q/--query. Long prompts work via shell-quoted single line.
+		return fmt.Sprintf("hermes chat -p %s -q %s", profile, shellQuote(prompt)), nil
 	case ClaudeCode:
-		// claude -p "<prompt>"
-		return fmt.Sprintf("claude -p %q", prompt), nil
+		// TBD — validate against actual `claude` CLI before shipping
+		return fmt.Sprintf("claude -p %s", shellQuote(prompt)), nil
 	case Codex:
-		return fmt.Sprintf("codex -p %q", prompt), nil
+		// TBD — validate against actual `codex` CLI
+		return fmt.Sprintf("codex -p %s", shellQuote(prompt)), nil
 	case OpenCode:
-		return fmt.Sprintf("opencode -p %q", prompt), nil
+		// TBD — validate against actual `opencode` CLI
+		return fmt.Sprintf("opencode -p %s", shellQuote(prompt)), nil
 	default:
 		return "", fmt.Errorf("agentic %q has no CLI invocation (write prompt to stdout instead)", a)
 	}
+}
+
+// shellQuote wraps s in single quotes for safe shell interpolation.
+// Embedded single quotes are escaped as '\”' (close-quote, escaped, reopen-quote).
+func shellQuote(s string) string {
+	// Replace each ' with '\''
+	escaped := ""
+	for _, r := range s {
+		if r == '\'' {
+			escaped += "'\\''"
+		} else {
+			escaped += string(r)
+		}
+	}
+	return "'" + escaped + "'"
 }

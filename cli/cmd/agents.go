@@ -556,7 +556,7 @@ func strategyName(aggressive bool) string {
 	if aggressive {
 		return "aggressive (overwrite including customizations)"
 	}
-	return "safe (only update if persona marker missing)"
+	return "safe (update on marker mismatch, version drift, or hash drift)"
 }
 
 // suppress unused import warnings for agentic (used in future iterations)
