@@ -578,3 +578,120 @@ Release: v0.4.0 (tag criada pelo @devops-engineer)."
 - `harness/workflow/00-issue-lifecycle.md` (caminhos condicionais)
 - `harness/workflow/05-orchestration.md` (pseudocódigo do loop)
 - `harness/personas/<todas as outras>.md` (para saber quando delegar)
+
+---
+
+## 11. **Verify-after-build** (sensor 09 — você verifica, NÃO confia)
+
+> **Esta seção é a operacionalização da invariante 19 do
+> `AGENTS.md` e do sensor `09-verify-after-build.md`.**
+
+### 11.1. Princípio
+
+> **Auto-relato de subagente é evidência fraca.** Você é o único
+> responsável pelo claim de "verde". Antes de mover uma sub-issue
+> de `in-progress` para `in-review`, **re-execute** os checks
+> críticos **você mesmo**.
+
+Lição do Mandaí v2 (jul/2026, ADR-0014): um builder reportou
+"`go.mod` está em `go 1.22.0`" quando o arquivo continha
+`go 1.25.0`. Outro disse "0 issues lint" quando havia 57. **Você
+só descobre lendo o arquivo e rodando o comando você mesmo.**
+
+### 11.2. Protocolo (6 verificações, ~3-5 min total)
+
+> Detalhes em [`../sensors/09-verify-after-build.md`](../sensors/09-verify-after-build.md).
+> Resumo do protocolo:
+
+```bash
+# 1. Re-ler source-of-truth (10s)
+echo "=== go.mod ==="; grep -E "^go " backend/go.mod
+echo "=== Dockerfile Go ==="; grep -E "FROM golang:" deploy/Dockerfile.backend
+echo "=== package.json node ==="; grep '"node":' web/package.json
+echo "=== CI versions ==="; grep -E "GO_VERSION|NODE_VERSION" .github/workflows/ci.yml
+
+# 2. Re-rodar check-stack-versions (5s)
+./harness/scripts/check-stack-versions.sh
+
+# 3. Re-rodar 3 comandos canônicos do backend (1-3 min)
+cd backend && make lint && make test && make vuln && cd ..
+
+# 4. Re-rodar comandos canônicos do frontend (1-3 min, se aplicável)
+cd web && pnpm lint && pnpm typecheck && pnpm test:run && pnpm audit --audit-level=high && cd ..
+
+# 5. Conferir CI do PR (5s)
+gh pr checks <PR_NUMBER>
+
+# 6. Conferir PR template (5s)
+gh pr view <PR_NUMBER> --json body | jq -r '.body' | grep -E "Como testar|Sensors|Changes"
+```
+
+### 11.3. Decisão
+
+- **Todos os 6 passos passaram** → comentar na issue (template
+  abaixo) e mover para `in-review`.
+- **Algum passo falhou** → comentar na issue listando as
+  divergências, **reverter** a label para `in-progress`, e
+  cutucar o builder.
+
+### 11.4. Template de comentário (verde)
+
+```markdown
+🤖 **team-manager — verify-after-build (sensor 09)**
+
+**Sub-issue:** #<id> · **PR:** #<pr> · **Builder reportou:** "PRONTO"
+
+**Verificação independente:**
+- [x] go.mod `go 1.25.0` bate com Dockerfile `golang:1.25-alpine`
+- [x] node engines 22 bate com CI NODE_VERSION 22
+- [x] distroless static-debian13:nonroot
+- [x] migrate/migrate oficial (sem custom builder)
+- [x] `make lint` → 0 issues
+- [x] `make test` → coverage 92% (com -coverpkg correto)
+- [x] `make vuln` → 0 vulnerabilities
+- [x] `gh pr checks` → 7/7 PASS
+- [x] PR template preenchido
+
+**Resultado:** ✅ VERIFICADO. Movendo para `in-review` →
+@quality-assurance assume (roda sensores 00-08).
+```
+
+### 11.5. Template de comentário (vermelho)
+
+```markdown
+🤖 **team-manager — verify-after-build (sensor 09)**
+
+**Sub-issue:** #<id> · **PR:** #<pr> · **Builder reportou:** "PRONTO"
+
+**Verificação independente — DIVERGÊNCIA ENCONTRADA:**
+
+- [x] go.mod bate com Dockerfile ✅
+- [ ] **`make test` coverage 47.8% (NÃO 92%)** ❌
+  - Esperado: `total: 90%+` com `-coverpkg=./internal/app/...`
+  - Real: `total: 47.8%` (coverage diluída em main, generated)
+  - Fix: ajustar `COVERPKG` no `backend/Makefile`
+- [x] Resto OK
+
+**Resultado:** ❌ NÃO movendo para `in-review`. Label revertida
+para `in-progress`. @backend-engineer, por favor corrija o
+`COVERPKG` e me avise.
+```
+
+### 11.6. Por que você (e não o builder) verifica
+
+| Quem | Viés | Solução |
+|------|------|---------|
+| **Builder** | Quer terminar rápido, reporta "PRONTO" cedo demais | Você re-verifica |
+| **QA** | Roda sensores 00-08 DEPOIS do build estar pronto | Sensor 09 é ANTES, evita desperdiçar QA |
+| **Você (team-manager)** | Único responsável pelo "verde" propagado | Verifica independente, sempre |
+
+### 11.7. Quando PULAR este sensor (raro)
+
+- **Sub-issue de docs (`type/docs`)** — não tem build, é só
+  markdown. Pule.
+- **Sub-issue trivial** (typo, link quebrado) — sem build, pule.
+- **Spike (`type/spike`)** — saída é ADR, não tem build. Pule.
+
+> Em **todos** os outros casos (qualquer `type/feature`,
+> `type/technical`, `type/infra`, `type/bug`, `type/tech-debt`),
+> **rode o sensor 09 antes de mover para `in-review`**.

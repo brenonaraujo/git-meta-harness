@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Meta-Harness — Stack Version Validator v3
+# Meta-Harness — Stack Version Validator v4
 #
 # Valida que as versões da stack estão **consistentes** entre:
 #   - go.mod (go directive + toolchain)
@@ -17,16 +17,22 @@
 #
 # Exit code: 0 = OK, 1 = inconsistências detectadas
 #
-# Detecta 9 bugs sutis que aconteceram no Mandaí v2 (jul/2026):
-# 1. go.mod `go 1.25.0` mas Dockerfile `golang:1.22-alpine` (incompatível)
-# 2. CI `GO_VERSION: "1.22"` mas Dockerfile `golang:1.25-alpine` (drift)
-# 3. Custom migrate builder quebrando (deps não estão no go.mod)
-# 4. .golangci.yml schema v1 (settings: no top level) + binary v2
-# 5. distroless sem sufixo -debianX (tag deprecated)
-# 6. Go 1.26+ com imagem < 1.24.6 (bootstrap incompatível)
-# 7. Trivy v0.69.4 (comprometido em supply-chain mar/2026)
-# 8. Nuxt 3 (EOL 31/jul/2026)
-# 9. Node 26 (Current, não-LTS até Out/2026)
+# Detecta 15 bugs sutis que aconteceram no Mandaí v2 (jul/2026):
+#  1. go.mod `go 1.25.0` mas Dockerfile `golang:1.22-alpine` (incompatível)
+#  2. CI `GO_VERSION: "1.22"` mas Dockerfile `golang:1.25-alpine` (drift)
+#  3. Custom migrate builder quebrando (deps não estão no go.mod)
+#  4. .golangci.yml schema v1 (settings: no top level) + binary v2
+#  5. distroless sem sufixo -debianX (tag deprecated)
+#  6. Go 1.26+ com imagem < 1.24.6 (bootstrap incompatível)
+#  7. Trivy v0.69.4 (comprometido em supply-chain mar/2026)
+#  8. Nuxt 3 (EOL 31/jul/2026)
+#  9. Node 26 (Current, não-LTS até Out/2026)
+# 10. Dockerfile não-canônico (Dockerfile na raiz / 2+ Dockerfiles/service)
+# 11. CI sem dorny/paths-filter + concurrency + scope cache
+# 12. Compose healthcheck CMD-SHELL em image distroless (sem shell)
+# 13. Compose command com ${VAR} sem $$ escape (host shell expande errado)
+# 14. Coverage sem -coverpkg (diluída em main, generated)
+# 15. govulncheck / pnpm audit AUSENTES do CI
 
 set -e
 
@@ -135,7 +141,7 @@ get_pinned() { # $1 = nome do componente (case-insensitive substring)
 # ============================================================================
 # Banner
 # ============================================================================
-echo "🔎 Meta-Harness — Stack Version Validator v3"
+echo "🔎 Meta-Harness — Stack Version Validator v4"
 echo "   Modo: ${MODE}"
 echo "   Repo: $(basename "$(pwd)")"
 echo
@@ -513,6 +519,146 @@ if [ -n "$CI_FILE" ]; then
 else
   warn "Nenhum .github/workflows/ci.yml encontrado"
 fi
+
+# ============================================================================
+# 11. Compose healthcheck: exec form (CMD) vs shell form (CMD-SHELL)
+# ============================================================================
+# Lição Mandaí v2 (D7, jul/2026): healthcheck `test: ["CMD-SHELL", "..."]`
+# em image distroless falha silenciosamente — distroless NÃO TEM SHELL.
+# O healthcheck do compose DEVE ser exec form (`CMD`) em distroless.
+hdr "11. Compose healthcheck syntax (CMD vs CMD-SHELL)"
+
+HC_FAIL=0
+for compose in docker-compose.yml docker-compose.yaml \
+               deploy/docker-compose.yml deploy/docker-compose.yaml; do
+  [ -f "$compose" ] || continue
+
+  # Detecta uso de distroless (Dockerfile ou image: no compose)
+  USES_DISTROLESS=0
+  if grep -qE "distroless/(static|base|nodejs)" "$compose"; then
+    USES_DISTROLESS=1
+  fi
+  for df in Dockerfile backend/Dockerfile deploy/Dockerfile* web/Dockerfile; do
+    [ -f "$df" ] || continue
+    if grep -qE "distroless/(static|base|nodejs)" "$df"; then
+      USES_DISTROLESS=1
+      break
+    fi
+  done
+
+  # Se distroless: proíbe CMD-SHELL em healthcheck
+  if [ "$USES_DISTROLESS" = "1" ]; then
+    if grep -nE "test:[[:space:]]*\[[\"']CMD-SHELL[\"']" "$compose" >/dev/null; then
+      fail "$compose: healthcheck usa CMD-SHELL — distroless NÃO tem shell"
+      grep -nE "test:[[:space:]]*\[[\"']CMD-SHELL[\"']" "$compose" | sed 's/^/         /'
+      echo "       Fix: usar exec form — test: [\"CMD\", \"/bin\", \"-flag\"]"
+      HC_FAIL=1
+    fi
+  fi
+done
+[ "$HC_FAIL" -eq 0 ] && ok "Healthchecks: nenhum CMD-SHELL em image distroless"
+
+# ============================================================================
+# 12. Compose command: shell expansion (\${VAR} sem escape)
+# ============================================================================
+# Lição Mandaí v2 (D3, jul/2026): command: "-database \${DATABASE_URL} up"
+# é interpretado pelo SHELL DO HOST (compose CLI), não pelo container.
+# Resultado: a URL fica vazia, o migrate não conecta.
+# Solução: usar \$\${DATABASE_URL} (escape duplo) OU passar literal
+# OU usar env: DATABASE_URL e o binário lê do env.
+hdr "12. Compose command: shell expansion (\${VAR} sem escape)"
+
+CMD_FAIL=0
+for compose in docker-compose.yml docker-compose.yaml \
+               deploy/docker-compose.yml deploy/docker-compose.yaml; do
+  [ -f "$compose" ] || continue
+  # Detecta command: (string shell form) que tenha ${VAR} SEM $$ escape
+  # Exemplo de bug: command: "-database ${DATABASE_URL} up"
+  # Certo:        command: "-database $${DATABASE_URL} up"
+  # ou            command: ["-database", "postgres://user:pass@host/db", "up"]
+  if grep -nE "command:[[:space:]]*[\"'][^\"']*\\\$\{?[A-Z_]+" "$compose" 2>/dev/null \
+     | grep -vE "\\\${?\\\$\\\$" >/dev/null; then
+    fail "$compose: command tem \${VAR} SEM escape de shell — não vai expandir"
+    grep -nE "command:[[:space:]]*[\"'][^\"']*\\\$\{?[A-Z_]+" "$compose" \
+      | grep -vE "\\\${?\\\$\\\$" | sed 's/^/         /'
+    echo "       Fix: usar \$\${VAR} (escape) ou command: [\"literal\", ...] ou env+binário lê do env"
+    CMD_FAIL=1
+  fi
+done
+[ "$CMD_FAIL" -eq 0 ] && ok "Compose commands: \${VAR} corretamente escapados (ou literal)"
+
+# ============================================================================
+# 13. Coverage gate: -coverprofile SEM -coverpkg dilui coverage
+# ============================================================================
+# Lição Mandaí v2 (D4, jul/2026): go test -coverprofile=coverage.out ./...
+# mede coverage INCLUINDO main, generated, e arquivos que não estão
+# sendo alterados. Resultado: coverage cai para 47% mesmo com 92% real
+# nos pacotes de aplicação.
+# Solução: usar -coverpkg=./internal/app/...,./internal/handler/...
+# para restringir a medição ao código de aplicação.
+hdr "13. Coverage gate (-coverpkg) — coverage não diluída em main/generated"
+
+COVER_FAIL=0
+for mk in Makefile backend/Makefile web/Makefile cmd/Makefile; do
+  [ -f "$mk" ] || continue
+  if grep -qE "go test.*-coverprofile" "$mk"; then
+    if ! grep -qE "\-coverpkg=" "$mk"; then
+      fail "$mk: usa -coverprofile SEM -coverpkg — coverage medida em TUDO (main, generated)"
+      echo "       Fix: COVERPKG=./internal/app/...,./internal/handler/...,./internal/i18n/..."
+      echo "            e usar -coverpkg=\$(COVERPKG) no go test"
+      COVER_FAIL=1
+    else
+      # Verifica que o COVERPKG não está vazio (ex.: =$(PKG) que é ./...)
+      if grep -qE "COVERPKG[[:space:]]*[:?]?=[[:space:]]*\\\./\\.\\.\\." "$mk"; then
+        fail "$mk: COVERPKG=./... (igual PKG) — dilui coverage em main/generated"
+        COVER_FAIL=1
+      else
+        ok "$mk: -coverpkg configurado (coverage não diluída)"
+      fi
+    fi
+  fi
+done
+[ "$COVER_FAIL" -eq 0 ] && [ -f "Makefile" ] && \
+  ! grep -qE "go test.*-coverprofile" Makefile && \
+  ok "Makefile raiz não tem go test direto (delega para subdir)"
+
+# ============================================================================
+# 14. govulncheck no CI (D6: dependências Go vulneráveis)
+# ============================================================================
+# Lição Mandaí v2 (D6, jul/2026): quic-go v0.54.0 e pgx v5.7.5 tinham
+# HIGH/CRITICAL vulns. Não estavam em CI — o bug só foi pego em scan
+# manual. Solução: govulncheck OBRIGATÓRIO no CI workflow.
+hdr "14. govulncheck presente no CI (Go dependency CVE scan)"
+
+GOVULNCHECK_CI=0
+for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
+  [ -f "$wf" ] || continue
+  if grep -qE "govulncheck" "$wf"; then
+    GOVULNCHECK_CI=1
+    break
+  fi
+done
+[ "$GOVULNCHECK_CI" -eq 1 ] && ok "govulncheck presente no CI workflow" || \
+  fail "govulncheck AUSENTE do CI — dependências Go sem proteção contra CVEs"
+
+# ============================================================================
+# 15. pnpm audit no CI (D10: dependências Node vulneráveis)
+# ============================================================================
+# Lição Mandaí v2 (D10, jul/2026): happy-dom 15.11.7 tinha CVE
+# em dev-deps. O CI só rodava `pnpm install` e testes, sem audit.
+# Solução: pnpm audit OBRIGATÓRIO no CI workflow.
+hdr "15. pnpm audit presente no CI (Node dependency CVE scan)"
+
+PNPM_AUDIT_CI=0
+for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
+  [ -f "$wf" ] || continue
+  if grep -qE "pnpm[[:space:]]+audit" "$wf"; then
+    PNPM_AUDIT_CI=1
+    break
+  fi
+done
+[ "$PNPM_AUDIT_CI" -eq 1 ] && ok "pnpm audit presente no CI workflow" || \
+  fail "pnpm audit AUSENTE do CI — dependências Node sem proteção contra CVEs"
 
 # ============================================================================
 # 10. ONLINE — latest estáveis (só com --check-latest)

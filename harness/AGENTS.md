@@ -4,7 +4,7 @@
 > layouts nativos de cada tool suportado. Cada seção é gerada a partir
 > das personas, sensors e workflow definidos em `bootstrap.md`.
 >
-> **Versão do meta-harness:** 1.0.0 (jul/2026) — primeira release pública.
+> **Versão do meta-harness:** 1.5.0 (jul/2026) — verify-after-build.
 > **Licença:** MIT. **Status:** stable.
 
 ## Para qual tool você está lendo isto?
@@ -310,6 +310,18 @@ make compose-down
     - 12-Factor audit roda **sempre** (gate de segurança não
       pode ser pulado por path filter).
     Ver `templates/.github-workflows-ci.yml` e ADR-0011.
+19. **Team-manager verifica, não confia.** Após um builder reportar
+    "PRONTO" / "VERDE", o `team-manager` **re-executa** os
+    checks críticos (re-lê `go.mod`/`Dockerfile`/`ci.yml`,
+    roda `make lint && make test && make vuln`) **antes** de
+    rotular como `in-review` ou pedir validação humana.
+    Lição do Mandaí v2 (jul/2026, ADR-0014): um builder reportou
+    `go.mod` com `go 1.22.0` quando o arquivo continha `go 1.25.0`
+    — incoerência só foi pega pelo humano que leu o arquivo
+    diretamente. **Auto-relato de subagente é evidência fraca.**
+    Sensor [`09-verify-after-build`](./sensors/09-verify-after-build.md)
+    codifica o protocolo. Ver §11 do
+    [`personas/team-manager.md`](./personas/team-manager.md).
 
 ---
 

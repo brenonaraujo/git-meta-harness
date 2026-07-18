@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] - 2026-07-18
+
+### Added — `verify-after-build` (sensor 09) + invariante 19
+
+The **Mandaí v2 pilot** (PR #5, jul/2026) exposed a class of
+defects that **auto-report from subagents** had been masking
+(D1, D3, D4, D6, D7, D10). The team-manager was trusting
+"PRONTO" reports without re-verifying. v1.5.0 closes that gap.
+
+**3 coordinated changes** (see ADR-0014):
+
+#### 1. `check-stack-versions.sh` v3 → v4 — 5 new sections (11-15)
+
+Catches **5 classes of defects automatically** that v3 didn't:
+
+- **§11** — Compose healthcheck `CMD-SHELL` in distroless
+  image (D7). Distroless has no shell; healthcheck dies
+  silently.
+- **§12** — Compose `command: "...${VAR}..."` without `$$`
+  escape (D3). Host shell expands `${VAR}` instead of passing
+  it to the container; the URL becomes empty.
+- **§13** — Makefile `go test -coverprofile=` without
+  `-coverpkg=` (D4). Coverage is diluted across `main`,
+  generated code, etc.; real numbers get masked (47% reported
+  as 92%).
+- **§14** — `govulncheck` absent from CI (D6). Go dependency
+  CVEs (`quic-go`, `pgx`, etc.) never caught.
+- **§15** — `pnpm audit` absent from CI (D10). Node dependency
+  CVEs (`happy-dom`, etc.) never caught.
+
+#### 2. Invariante 19 in `harness/AGENTS.md`
+
+> **Team-manager verifies, doesn't trust.** After a builder
+> reports "DONE" / "GREEN", the `team-manager` **re-runs**
+> critical checks (re-reads `go.mod`/`Dockerfile`/`ci.yml`,
+> runs `make lint && make test && make vuln`) **before**
+> labeling as `in-review` or requesting human validation.
+
+#### 3. Sensor 09 — `harness/sensors/09-verify-after-build.md`
+
+A 6-step protocol the `team-manager` runs **itself** between
+`in-progress` and `in-review`:
+
+1. Re-read source-of-truth files (`go.mod`, `Dockerfile`,
+   `ci.yml`, `package.json`).
+2. Re-run `check-stack-versions.sh`.
+3. Re-run the 3 canonical commands (`make lint && make test
+   && make vuln` for backend; `pnpm lint && pnpm typecheck
+   && pnpm test:run && pnpm audit` for frontend).
+4. Check `gh pr checks <id>` (don't trust "CI passed" from
+   the builder).
+5. Check PR template (Como testar, Sensors, Changes).
+6. Check coverage is in the correct scope (`-coverpkg=...`).
+
+Operationalized in **`harness/personas/team-manager.md` §11**
+with templates for green and red outcomes.
+
+### Why this is `1.5.0` (minor, not `1.4.1` patch)
+
+- Adds a **new public sensor** (sensor 09) → new public API.
+- Adds a **new public invariant** (invariante 19) → new
+  contract.
+- Adds **5 new sections** to a public script (v3 → v4) →
+  new behavior.
+- All additive — does NOT break any existing project.
+
+But is **backward compatible**: existing projects don't have
+to adopt the new sensor; they can keep their workflow. The
+new sensor is opt-in for the team-manager to run.
+
 ## [1.4.0] - 2026-07-18
 
 ### Added — `docs/HOWTO.md` and `harness/skills/code-graph/`

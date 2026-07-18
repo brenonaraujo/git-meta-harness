@@ -1509,3 +1509,146 @@ comportamento esperado do `team-manager` no seed prompt.
 
 - Voltar para v1.1.0 = reverter o commit (mas o problema
   ressurge).
+
+### ADR-0014 — Verify-after-build (sensor 09) + invariante 19 (v1.5.0)
+
+**Data:** 2026-07-18
+**Status:** Aceito
+**Decisor(es):** Brenon Araujo + team-manager
+**Contexto:** piloto Mandaí v2 PR #5 — auto-relato de subagente
+mascarou 5+ defeitos que passaram para a fase de validação humana.
+
+### Contexto
+
+Durante a construção do **PR #5 do Mandaí v2** (issue #1,
+bootstrap skeleton, jul/2026), a postura inicial do
+`team-manager` foi confiar no auto-relato de cada subagente
+(`backend-engineer`, `frontend-engineer`, `devops-engineer`).
+Resultado: **5+ defeitos passaram batido** e só foram pegos
+quando o humano (Brenon) leu os arquivos diretamente:
+
+| # | Defeito | Como o builder reportou | O que realmente estava |
+|---|---------|-------------------------|------------------------|
+| D1 | `go.mod` com `go 1.25.0` mas Dockerfile com `golang:1.22-alpine` | "go.mod está em 1.22.0" | `grep go.mod` mostrou 1.25.0 |
+| D3 | `command: "-database ${DATABASE_URL} up"` (não expandia) | "CMD expansion OK" | shell do host não expandia; URL ficava vazia |
+| D4 | Coverage 47.8% (em vez de 92%) | "92% coverage" | `go tool cover -func` mostrou 47.8% (sem `-coverpkg`) |
+| D6 | govulncheck 2 vulns (quic-go, pgx) | "0 vulnerabilities" | `govulncheck ./...` mostrou 2 HIGH |
+| D7 | Compose healthcheck `CMD-SHELL` em distroless | "healthcheck OK" | distroless não tem shell, healthcheck morria silencioso |
+| D10 | happy-dom 15.11.7 com CVE | "audit clean" | `pnpm audit` mostrou CVE HIGH em dev-dep |
+
+**Custo:** ~6 horas de debugging manual que poderiam ter sido
+pegas em ~5 minutos com um sensor de verificação independente
+rodado pelo `team-manager` **antes** de mover a sub-issue para
+`in-review` ou pedir validação humana.
+
+**Causa raiz:** o framework atual (até v1.4.0) **confia em
+auto-relato** de subagente. Não há uma etapa explícita em que o
+`team-manager` re-verifica a verdade dos claims. A invariante
+16 ("Nenhum PR é aberto com CI local vermelho") só obriga o
+**builder** a verificar; o `team-manager` recebe o "PRONTO" e
+propaga.
+
+### Decisão
+
+Adicionar 3 mudanças coordenadas para que o `team-manager`
+**verifique independentemente** antes de propagar "verde":
+
+**1. Invariante 19 do `AGENTS.md`:**
+
+> **Team-manager verifica, não confia.** Após um builder reportar
+> "PRONTO" / "VERDE", o `team-manager` **re-executa** os checks
+> críticos (re-lê `go.mod`/`Dockerfile`/`ci.yml`, roda
+> `make lint && make test && make vuln`) **antes** de rotular
+> como `in-review` ou pedir validação humana.
+
+**2. Sensor 09 — `verify-after-build` (novo, em
+`harness/sensors/09-verify-after-build.md`):**
+
+Protocolo de 6 verificações que o `team-manager` roda
+**ele mesmo**, entre `in-progress` e `in-review`:
+
+1. Re-ler source-of-truth (`go.mod`, `Dockerfile`, `ci.yml`,
+   `package.json`).
+2. Re-rodar `harness/scripts/check-stack-versions.sh` (15 checks
+   agora, com as seções 11-15 adicionadas nesta release).
+3. Re-rodar os 3 comandos canônicos: `make lint && make test &&
+   make vuln` (backend) e `pnpm lint && pnpm typecheck &&
+   pnpm test:run && pnpm audit` (frontend).
+4. Conferir `gh pr checks <id>` (não confiar no "CI passou"
+   do builder).
+5. Conferir o PR template (Como testar, Sensors, Changes).
+6. Conferir coverage no escopo correto (`-coverpkg=...`, não
+   diluída).
+
+**3. Novas seções 11-15 no `check-stack-versions.sh` (v3 → v4):**
+
+Para detectar automaticamente 5 classes de defeitos que o
+`D1-D10` do Mandaí v2 tinha:
+
+- **Seção 11:** Compose healthcheck `CMD-SHELL` em distroless
+  (D7). Detecta e falha antes do merge.
+- **Seção 12:** Compose `command:` com `${VAR}` sem `$$` escape
+  (D3). Detecta expansão de shell do host que não funciona em
+  exec form.
+- **Seção 13:** Makefile `go test -coverprofile=` SEM
+  `-coverpkg=` (D4). Detecta coverage diluída em main,
+  generated, etc.
+- **Seção 14:** `govulncheck` ausente do CI (D6). Obriga
+  presença.
+- **Seção 15:** `pnpm audit` ausente do CI (D10). Obriga
+  presença.
+
+Juntas, 11-15 pegam **5 classes de defeitos** que o
+`check-stack-versions.sh` v3 NÃO pegava, e que o auto-relato
+do builder tinha mascarado.
+
+### Alternativas consideradas
+
+- **A:** Confiar em auto-relato + pedir validação humana no
+  PR. — Pro: zero overhead. Contra: já vimos que falha (D1-D10
+  mostraram). Humana só vê no fim, depois de horas de debug.
+- **B:** Adicionar 5 novos sensores ao QA (rodados DEPOIS do
+  build). — Pro: separação clara de papéis. Contra: desperdiça
+  QA em builds que já têm defeito; o builder pode re-trabalhar
+  várias vezes até QA aprovar.
+- **C (escolhida):** Sensor 09 + invariante 19 + seções 11-15
+  no `check-stack-versions.sh`. — Pro: pega o defeito **antes**
+  do QA rodar, evita loop "build → QA reprova → build → QA
+  reprova"; team-manager fica responsável pela qualidade do
+  claim de verde. Contra: ~3-5 min extras por sub-issue.
+
+### Consequências
+
+- **+** 5 classes de defeitos (D3, D4, D6, D7, D10) pegas
+  automaticamente pelo `check-stack-versions.sh` (seções 11-15).
+- **+** Auto-relato mentiroso/errado de builder é pego em ≤ 5
+  min pelo sensor 09, em vez de ≥ 1 h de debugging manual.
+- **+** team-manager tem responsabilidade explícita pela
+  qualidade do claim de verde (não é mais "receber e repassar").
+- **+** PR que chega ao QA com defeito obvious vira exceção
+  (não mais norma).
+- **−** ~3-5 min extras por sub-issue (custo do sensor 09).
+- **−** Team-manager precisa de 1 nova skill: re-rodar
+  comandos e ler outputs sem confiar em resumo.
+
+### Reversibilidade
+
+- Remover o sensor 09 + invariante 19 = reverter este commit.
+  Mas os defeitos D1-D10 voltam.
+- Desabilitar seções 11-15 do `check-stack-versions.sh` =
+  comentar (mas perde detecção automática).
+- Nenhuma migração obrigatória: tudo é aditivo (não quebra
+  projetos existentes).
+
+### Anti-pattern que motivou (NÃO FAÇA)
+
+- ❌ "Builder disse PRONTO, vou repassar" → ✅ "Vou re-rodar
+  `make test` e `gh pr checks` antes de mover para `in-review`."
+- ❌ "Cobertura 92% é o que o builder disse" → ✅ `go tool
+  cover -func=coverage.out | tail -1` mostra o número real.
+- ❌ "CI passou, é isso" → ✅ `gh pr checks <id>` lista cada
+  job; alguns podem ter passado no commit anterior e estar
+  pendente.
+- ❌ "Compose tá OK, vi o YAML" → ✅
+  `check-stack-versions.sh --check-latest` valida 15
+  invariantes.

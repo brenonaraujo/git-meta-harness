@@ -46,6 +46,7 @@ for f in \
   harness/personas/quality-assurance.md \
   harness/personas/devops-engineer.md \
   harness/sensors/08-i18n-audit.md \
+  harness/sensors/09-verify-after-build.md \
   harness/templates/locales.template.json \
   harness/contrib/design-decisions.md \
   harness/smoke-test.md; do
@@ -123,15 +124,37 @@ else
   FAILS=$((FAILS+1))
 fi
 
-# 8. 15 invariantes no AGENTS.md
+# 8. 19 invariantes no AGENTS.md (v1.5.0)
 echo
-echo "8. Invariantes no AGENTS.md (esperado: ≥ 15)"
+echo "8. Invariantes no AGENTS.md (esperado: ≥ 19)"
 INV_COUNT=$(grep -cE '^[0-9]+\. \*\*' harness/AGENTS.md 2>/dev/null || echo 0)
-if [ "$INV_COUNT" -ge 15 ]; then
+if [ "$INV_COUNT" -ge 19 ]; then
   echo "  ✅ $INV_COUNT invariantes"
   PASSES=$((PASSES+1))
 else
-  echo "  ❌ $INV_COUNT (esperado ≥ 15)"
+  echo "  ❌ $INV_COUNT (esperado ≥ 19, v1.5.0)"
+  FAILS=$((FAILS+1))
+fi
+
+# 8b. Invariante 19 (verify-after-build) presente
+echo
+echo "8b. Invariante 19 — verify-after-build presente"
+if grep -qE '^19\. \*\*' harness/AGENTS.md 2>/dev/null; then
+  echo "  ✅ Invariante 19 (verify-after-build) presente"
+  PASSES=$((PASSES+1))
+else
+  echo "  ❌ Invariante 19 AUSENTE (verify-after-build)"
+  FAILS=$((FAILS+1))
+fi
+
+# 8c. ADR-0014 presente
+echo
+echo "8c. ADR-0014 (verify-after-build decision) presente"
+if grep -qiE 'ADR-0014.*verify-after-build' harness/contrib/design-decisions.md 2>/dev/null; then
+  echo "  ✅ ADR-0014 presente"
+  PASSES=$((PASSES+1))
+else
+  echo "  ❌ ADR-0014 AUSENTE (v1.5.0)"
   FAILS=$((FAILS+1))
 fi
 

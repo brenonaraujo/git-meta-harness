@@ -5,7 +5,7 @@
 > `AGENTS.md`, formatado para ser carregado automaticamente.
 >
 > **Spec canônica:** [`AGENTS.md`](./AGENTS.md) · **Spec completa:**
-> [`bootstrap.md`](./bootstrap.md) · **Versão do meta-harness:** 1.0.0
+> [`bootstrap.md`](./bootstrap.md) · **Versão do meta-harness:** 1.5.0
 
 ---
 
@@ -24,8 +24,9 @@
    in-review → qa → validação → done.
 6. **PR:** 1 issue = 1 PR; "Como testar localmente" obrigatório.
 7. **i18n:** en, pt-BR, es — paridade obrigatória.
-8. **Sensores (9):** 00 lint · 01 vuln · 02 unit · 03 contract ·
-   04 image · 05 smoke · 06 load · 07 12-factor · 08 i18n.
+8. **Sensores (10):** 00 lint · 01 vuln · 02 unit · 03 contract ·
+   04 image · 05 smoke · 06 load · 07 12-factor · 08 i18n ·
+   09 verify-after-build (team-manager re-checa antes de QA).
 
 ---
 
@@ -45,7 +46,7 @@ pnpm dev build lint typecheck test test:run audit docker:build
 
 ---
 
-## Invariantes (não-violáveis, 18)
+## Invariantes (não-violáveis, 19)
 
 1. Toda issue tem commits referenciando o número.
 2. Todo PR cita a issue e tem "Como testar localmente".
@@ -67,6 +68,9 @@ pnpm dev build lint typecheck test test:run audit docker:build
 17. **CI modular com path filters** (dorny/paths-filter + concurrency
     + scope cache + Trivy SHA-pinado + GOTOOLCHAIN=local).
 18. Toda decisão de versão passa por `check-stack-versions.sh --check-latest`.
+19. **Team-manager verifica, não confia.** Re-executa checks críticos
+    após o builder reportar verde, antes de mover para `in-review` ou
+    pedir validação humana. Auto-relato de subagente é evidência fraca.
 
 ---
 
