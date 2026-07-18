@@ -28,7 +28,9 @@ validation. **The user does not configure anything.** Full vision:
 [`docs/ORIGIN.md`](./docs/ORIGIN.md). GitHub integration:
 [`docs/PIPELINE.md`](./docs/PIPELINE.md). How this fits
 **loop engineering** (the dominant 2026 pattern for AI
-agents): [`docs/LOOP.md`](./docs/LOOP.md).
+agents): [`docs/LOOP.md`](./docs/LOOP.md). **How to start a
+project** (where the spec lives, spec discovery, code graph):
+[`docs/HOWTO.md`](./docs/HOWTO.md).
 
 ---
 
@@ -38,40 +40,58 @@ agents): [`docs/LOOP.md`](./docs/LOOP.md).
 
 ```mermaid
 flowchart LR
-    H[("👤 Human<br/>with a spec")]
+    H[("👤 Human")]
+    SPEC["📜 docs/SPEC.md<br/>(functional spec)"]
+    DISCOVER["🔍 Spec discovery?<br/>(if project exists,<br/>no spec)"]
+    REVERSA["🤖 5-phase pipeline<br/>(Scout→Archaeologist<br/>→Architect→Writer→Reviewer)"]
     TM["🤖 team-manager<br/>(orchestrator)"]
-    DE["🎯 domain-expert-&lt;x&gt;<br/>(specialized)"]
-    SA["📐 solutions-architect<br/>(DoD, 12-factor)"]
-    BE["⚙️ backend-engineer<br/>(Go)"]
-    FE["🎨 frontend-engineer<br/>(Nuxt)"]
-    DO["🚀 devops-engineer<br/>(CI/CD)"]
-    QA["🔍 quality-assurance<br/>(9 sensors)"]
-    PR["📬 Pull Request"]
+    EPIC["📋 Issue-mãe #1<br/>(épico)"]
+    SUB["📋 Sub-issues<br/>(type/*, domain/*)"]
     GH[("🗂️ GitHub<br/>Issues + PRs + Actions")]
-    REL["🏷️ Release<br/>(tagged, auditable)"]
+    P["👥 7 personas<br/>(smart routing<br/>by type/*)"]
+    CG["🔎 Code graph<br/>(optional)"]
+    PR["📬 Pull Request"]
+    QA["🔍 QA (9 sensors)"]
+    HVAL["👤 Human validation<br/>(branch protection)"]
+    REL["🏷️ Release<br/>(tagged)"]
 
-    H -->|"paste spec"| TM
-    TM -->|"decompose<br/>+ label"| GH
-    TM -->|"refine ACs"| DE
-    DE -->|"refined"| SA
-    SA -->|"DoD"| BE
-    SA -->|"DoD"| FE
-    SA -->|"DoD"| DO
-    BE -->|"code + tests"| PR
-    FE -->|"code + tests"| PR
-    DO -->|"CI workflow"| PR
+    H -->|"paste spec OR<br/>describe OR<br/>request discovery"| SPEC
+    SPEC -.->|"missing?"| DISCOVER
+    DISCOVER --> REVERSA
+    REVERSA -->|"writes spec"| SPEC
+    SPEC -->|"read + decompose"| TM
+    TM -->|"create"| EPIC
+    EPIC -->|"decompose"| SUB
+    SUB --> GH
+    GH -->|"smart routing"| P
+    P -.->|"optional"| CG
+    P -->|"code + tests"| PR
     PR -->|"sensors"| QA
-    QA -->|"approved"| H
-    H -->|"✅ validate"| TM
+    QA -->|"9 green"| HVAL
+    HVAL -->|"✅"| TM
     TM -->|"merge + tag"| REL
     REL --> GH
+
+    classDef user fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef tm fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef data fill:#f3e8ff,stroke:#9333ea,color:#581c87
+    classDef tools fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    class H,SPEC,HVAL user
+    class TM,EPIC,SUB,REL tm
+    class DISCOVER,REVERSA,P,PR,QA tools
+    class CG data
 ```
 
-**Reading the diagram:** the user pastes a spec; `team-manager`
-decomposes it into labeled issues on GitHub; the smart router
-dispatches each issue to the right persona chain; builders ship
-code; QA runs 9 sensors on the PR; the human validates; the
-release is tagged. **Zero configuration by the human.**
+**Reading the diagram:** the user provides a spec (4 paths
+in [`docs/HOWTO.md`](./docs/HOWTO.md)). The `team-manager`
+**creates the issue-mãe (#1)** itself from the spec (not
+the user), decomposes it into sub-issues, and dispatches
+each sub-issue to the right persona chain via smart routing.
+The personas ship code, optionally aided by a **code graph**
+for large codebases. QA runs 9 sensors on the PR. The
+human validates (enforced by branch protection). The
+release is tagged. **Zero configuration by the human** —
+they only provide the spec and validate.
 
 ### The team — 7 personas + smart routing
 

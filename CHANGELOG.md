@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-07-18
+
+### Added — `docs/HOWTO.md` and `harness/skills/code-graph/`
+
+Two new artifacts address the **spec discovery** gap and the
+**code graph** gap in the loop.
+
+#### `docs/HOWTO.md` (15K, 6 diagrams, 7 sections)
+
+The user asked: **where does the spec live, and what if
+there is no spec?** This doc answers that.
+
+- **§1** — the single input is a functional spec.
+- **§2** — **4 valid paths** to provide a spec (paste inline,
+  `docs/SPEC.md` in repo, describe in 3-5 sentences, or
+  spec discovery for existing projects).
+- **§3** — **spec discovery** for existing projects, inspired
+  by the [Reversa framework](https://github.com/sandeco/reversa)
+  (Macedo & da Costa, May 2026). 5-phase pipeline:
+  Reconnaissance → Excavation → Interpretation → Generation
+  → Review. Output: `docs/SPEC.md` with **confidence
+  markers** (🟢 CONFIRMED, 🟡 INFERRED, 🔴 GAP).
+- **§4** — the full loop, with spec discovery.
+- **§5** — the code graph: an optional accelerator (Sourcegraph,
+  CodeCompass, CodeGraph, Cursor, or agentic search).
+- **§6** — step-by-step instructions for greenfield, existing
+  project with spec, and existing project without spec.
+- **§7** — anti-patterns to avoid.
+
+#### `harness/skills/code-graph/SKILL.md` (6.3K)
+
+A new skill that teaches any persona to use a **code graph**
+(or semantic search) **instead of `grep` + `ls` + `read`**
+to navigate a codebase. Covers:
+
+- The 3 philosophies (index-first, agentic search, hybrid).
+- Compatible tools (Sourcegraph, CodeCompass, CodeGraph,
+  Cursor, agentic search fallback).
+- Setup per tool.
+- The rule of thumb: **code_search before grep**.
+- 3 metrics to track (TTFRF, Tokens-per-task, Staleness).
+
+#### `README.md` — full loop diagram updated
+
+The "Visual overview" diagram now shows:
+
+- The 4 spec paths converging on `docs/SPEC.md`.
+- The `team-manager` **creating the issue-mãe itself** (not
+  the user).
+- The optional code graph step.
+- The 9-sensor + human-validation gate.
+- The release tag.
+
+This is the diagram the user asked for: **what is
+actually implemented**, not the previous (incomplete)
+version.
+
+#### Total Mermaid diagrams in the project
+
+**32** (was 27): 6 in README, 2 in CONCEPT, 3 in ORIGIN,
+2 in COMPARISON, 2 in PIPELINE, 5 in LOOP, **6 new in
+HOWTO**, 1 in bootstrap, 6 in issue-lifecycle.
+
+#### Why v1.4.0 (minor)
+
+New doc + new skill + updated diagram. Conceptually
+significant. Warrants a minor bump.
+
+## [1.3.1] - 2026-07-18
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
 ## [1.3.1] - 2026-07-18
 
 ### Fixed — `docs/PIPELINE.md` Mermaid `stateDiagram-v2` was malformed
