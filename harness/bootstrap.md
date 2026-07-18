@@ -5,11 +5,11 @@
 > saber para entregar um projeto **greenfield → release** mora aqui ou é
 > referenciado daqui.
 >
-> **Versão:** 1.0.0
+> **Versão:** 1.5.0
 > **Status:** stable
 > **Owners:** time de plataforma
 > **Licença:** MIT
-> **Validado em produção:** ✅ [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)
+> **Validation and test case:** ✅ [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)
 
 ---
 
@@ -388,6 +388,7 @@ my-app/
 | 06 | Load tests              | QA agent (nightly/manual)           | reporta; não bloqueia merge, mas bloqueia release.|
 | 07 | 12-factor audit         | devops-engineer (no DoD)            | bloqueia merge se algum fator não satisfeito.     |
 | 08 | i18n audit              | CI (em PRs que tocam i18n)          | bloqueia merge se paridade < 100%.                |
+| 09 | verify-after-build      | team-manager (entre in-progress → in-review) | devolve ao builder se claim de "PRONTO" não bate com a realidade (auto-relato mentiroso). Ver [`sensors/09-verify-after-build.md`](./sensors/09-verify-after-build.md) + ADR-0014. |
 
 ## 9b. Smart routing por `type/*` (team-manager)
 
@@ -406,7 +407,6 @@ completa.
 | `type/tech-debt`   | ❌             | (revisão)            | ✅           | ✅             | (se deploy)     |
 | `type/docs`        | ❌             | ❌                   | ❌           | (revisão)     | ❌              |
 | `type/spike`       | ❌             | ✅ (entrega = ADR)   | ❌           | ❌             | ❌              |
-| 08 | **i18n audit**          | CI (todo PR)                        | bloqueia merge se string hardcoded ou paridade de chaves falhar entre `en`/`pt-BR`/`es`. Ver [`sensors/08-i18n-audit.md`](./sensors/08-i18n-audit.md). |
 
 ---
 
