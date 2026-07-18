@@ -11,6 +11,25 @@
 
 ---
 
+## The concept in one paragraph
+
+`git-meta-harness` is a **framework that materializes a reliable multi-agent
+team + project + pipeline from a functional specification, with zero
+configuration effort from the user**, using GitHub Issues + PRs + Actions as
+the native substrate. It is called "meta" because it is the harness of
+harnesses: the unit it delivers is not "one configured agent" but
+"one orchestrated team, with process, gates, and audit trail". The user
+pastes a spec into an agentic CLI; the `team-manager` decomposes the spec
+into routed issues, dispatches them to specialized personas, gates the
+work with 9 sensors + 18 invariants, and produces a PR ready for human
+validation. **The user does not configure anything.** Full vision:
+[`docs/CONCEPT.md`](./docs/CONCEPT.md). Comparison with SDD/SPDD:
+[`docs/COMPARISON.md`](./docs/COMPARISON.md). Origin story:
+[`docs/ORIGIN.md`](./docs/ORIGIN.md). GitHub integration:
+[`docs/PIPELINE.md`](./docs/PIPELINE.md).
+
+---
+
 ## What is this
 
 `git-meta-harness` is **a framework, not a product**. It defines a complete

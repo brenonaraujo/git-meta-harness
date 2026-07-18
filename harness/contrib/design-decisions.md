@@ -1264,3 +1264,138 @@ de PRs e runner minutes).
 - Adicionar Turborepo no futuro = instalar `turbo` no
   projeto + criar `turbo.json`; CI continua igual
   (Turborepo só afetaria build local).
+
+---
+
+### ADR-0012 — O que é (e o que não é) o meta-harness (v1.1.0)
+
+**Data:** 2026-07-18
+**Status:** Aceito
+**Decisor(es):** time de plataforma
+**Contexto:** a v1.0.0 do `git-meta-harness` foi publicada com
+o framework completo, mas sem uma **articulação explícita do
+conceito** que o sustenta. O README descrevia o *quê* (personas,
+sensores, templates) mas não o *porquê* da palavra "meta", nem a
+diferenciação contra SDD/SPDD, nem a história da origem no
+Hermes Agent, nem como o GitHub entra como substrate. Sem essa
+articulação, o framework parecia "mais um scaffold"; com ela,
+fica claro que é **um framework-versionado-no-GitHub que
+materializa, a partir de uma especificação funcional, um time
+de agentes de IA com papéis especializados, processo governado
+por invariantes e sensores, e pipeline CI modular**.
+
+### Contexto
+
+- Em conversas pós-publicação da v1.0.0, ficou claro que
+  adopters em potencial confundem o meta-harness com:
+  - **Scaffold** (que gera projeto vazio, sem time nem
+    processo).
+  - **Single-agent system** (que põe 1 LLM pra fazer tudo,
+    sem role separation).
+  - **SDD / SPDD** (que usam spec mas ainda com 1 agente).
+- Sem uma **definição canônica** do conceito, cada adopter
+  reinterpreta, e a comunidade diverge sobre o que é "in scope"
+  vs "out of scope" para o framework.
+- A história de origem (exploração com Hermes Agent, perfis
+  com modelos diferentes, descoberta de que a "pattern" era o
+  asset, não o Hermes em si) era conhecida pelo mantenedor mas
+  não estava documentada. Risco de **perda de contexto** quando
+  o mantenedor original não estiver disponível.
+- O framework **não rejeita** SDD/SPDD; ele **constrói em cima**
+  deles. Mas isso precisa ser explícito.
+
+### Decisão
+
+- **Criar 4 documentos canônicos** em `git-meta-harness/docs/`:
+  - `CONCEPT.md` (11K) — a visão completa: o que é, o que
+    não é, princípios, output, "meta", conexão com GitHub.
+  - `ORIGIN.md` (8.4K) — a história: single-agent loop →
+    pivot com Hermes → descoberta do pattern → extração para
+    meta-harness → validação no Mandaí v2 → lição "pattern >
+    tool".
+  - `COMPARISON.md` (9.6K) — tabela comparativa com single-agent,
+    SDD, SPDD, meta-harness; quando usar qual; como se
+    conectam.
+  - `PIPELINE.md` (10K) — a integração com GitHub: 5 primitivas
+    (Issues, PRs, Labels, Actions, Branch Protection) +
+    issue lifecycle + PR convention + smart routing + CI
+    workflow com path filters.
+- **Adicionar uma seção "The concept in one paragraph"** no
+  topo do `README.md` raiz, antes de qualquer outra seção.
+  Resumo de 1 parágrafo + links para os 4 docs.
+- **Versionar como v1.1.0** (minor bump — adição de
+  documentação, sem breaking change no spec ou templates).
+- **Não renomear nem refatorar nada** que estava na v1.0.0.
+  Os docs são puramente aditivos.
+
+### Por que esses 4 documentos (e não 1)
+
+Cada documento tem um **público diferente**:
+
+- `CONCEPT.md` — para **adopters** que precisam decidir "isto
+  resolve meu problema?" antes de gastar 1 hora lendo o
+  framework.
+- `ORIGIN.md` — para **mantenedores** e **novos contribuidores**
+  que precisam entender "por que é assim?" antes de propor
+  mudanças.
+- `COMPARISON.md` — para **engenheiros seniores** que já
+  conhecem SDD/SPDD e querem ver a diferenciação concreta.
+- `PIPELINE.md` — para **DevOps** que vão operar o CI/CD e
+  precisam entender as primitivas do GitHub em jogo.
+
+Juntar tudo num único `VISION.md` longo penalizaria quem
+precisa de 1 dos 4 recortes.
+
+### O que a v1.1.0 **NÃO** é
+
+- **Não é uma breaking change.** Toda persona, sensor, ADR,
+  invariante, template e skill da v1.0.0 permanece idêntico.
+  Os 4 docs são aditivos.
+- **Não é uma promessa de roadmap.** Os docs descrevem o
+  estado atual; o roadmap está no `README.md` (seção
+  "Roadmap").
+- **Não é um post de blog.** Os docs são canônicos e
+  versionados; um post (LinkedIn, dev.to, etc.) é trabalho
+  separado.
+
+### Alternativas consideradas
+
+- **A:** Não escrever docs de conceito; deixar a comunidade
+  inferir pelo README — falha por alto custo de onboarding e
+  confusão com SDD/SPDD/scaffolds.
+- **B:** Escrever 1 doc gigante `VISION.md` (~40K) cobrindo
+  tudo — falha por penalizar quem precisa de 1 recorte
+  específico; leitura única longa.
+- **C (escolhida):** 4 docs focados (concept, origin,
+  comparison, pipeline), cada um com 1 público claro.
+
+### Consequências
+
+- **+** Onboarding de novos adopters: ~5 min de leitura do
+  CONCEPT.md dá o suficiente para decidir "isto resolve meu
+  problema?".
+- **+** Manutenção: novos contribuidores leem ORIGIN.md antes
+  de propor mudanças radicais, evitando "vamos refazer do
+  zero" repetido.
+- **+** Diferenciação: a tabela em COMPARISON.md é referência
+  canônica para "isto é ou não é SDD?".
+- **+** Operação: PIPELINE.md é a doc de referência para
+  DevOps que operam o CI.
+- **+** v1.1.0 marca uma release menor com adição de
+  documentação, deixando claro que a v1.0.0 era estável e
+  esta é uma evolução additive.
+- **−** 4 docs a mais para manter sincronizados quando o
+  framework evoluir.
+- **−** Risco de os docs "envelhecerem" se a v1.2.0+ mudar
+  o conceito sem atualizar os docs. Mitigação: ADR-0013
+  (futuro) pode impor "atualizar docs/* em qualquer ADR
+  que mude o conceito".
+
+### Reversibilidade
+
+- Remover 1 doc específico = deletar o arquivo `.md`
+  correspondente em `docs/`.
+- Remover a seção "The concept" do README = reverter o
+  commit que adicionou.
+- Mudar a articulação do conceito = atualizar os 4 docs +
+  ADR-0012 (com changelog).

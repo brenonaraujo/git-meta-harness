@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-07-18
+
+### Added — Concept documentation
+
+The framework is now articulated explicitly. v1.1.0 is purely
+additive: no breaking changes to personas, sensors, ADRs,
+invariants, templates, or skills from v1.0.0.
+
+#### New `docs/` directory
+
+- **`docs/CONCEPT.md`** (11K) — The full vision. What the
+  meta-harness is, what it is NOT, the "meta" in meta-harness,
+  the input (functional spec), the output (a system, not a
+  project), the connection with GitHub. For adopters asking
+  "does this solve my problem?".
+- **`docs/ORIGIN.md`** (8.4K) — The story. Single-agent loop →
+  pivot with Hermes Agent → discovery of the "one model, one
+  role" pattern → extraction to a tool-agnostic framework →
+  validation on Mandaí v2 → the lesson "pattern > tool". For
+  maintainers and new contributors.
+- **`docs/COMPARISON.md`** (9.6K) — Side-by-side comparison
+  with single-agent, SDD, SPDD, and the meta-harness. When to
+  use which. How they connect. The meta-harness builds on
+  SDD/SPDD, it does not reject them.
+- **`docs/PIPELINE.md`** (10K) — How the meta-harness rides on
+  GitHub as its native substrate. The 5 primitives
+  (Issues, PRs, Labels, Actions, Branch Protection), issue
+  lifecycle, PR convention, smart routing, CI workflow with
+  path filters. For DevOps operating the pipeline.
+
+#### README updated
+
+- **New top section: "The concept in one paragraph"** —
+  one-paragraph summary of the framework + links to the 4
+  docs. Above any other section.
+
+#### New ADR
+
+- **ADR-0012** — "O que é (e o que não é) o meta-harness"
+  (conceptual decision; documents the rationale for the 4
+  docs + the section in the README).
+
+### Why v1.1.0 and not v1.0.1
+
+This is documentation-only, but it is **conceptual** documentation,
+not just typo fixes. Bumping the minor signals that the project
+has matured its public articulation, while keeping the v1.0.0
+contract stable. Per [Keep a Changelog](https://keepachangelog.com/),
+documentation can be a minor bump.
+
 ## [1.0.0] - 2026-07-18
 
 ### Added — First Public Release
