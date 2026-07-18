@@ -111,7 +111,7 @@ mkdir -p "$GMH_INSTALL"
 DOWNLOAD_URL="https://github.com/$GMH_REPO/releases/download/$GMH_VERSION/$BIN_NAME"
 info "Downloading: $DOWNLOAD_URL"
 
-if ! curl -fsSL --max-time 60 -o "$GMH_INSTALL/gmh.tmp" "$DOWNLOAD_URL"; then
+if ! curl -fsSL --max-time 300 -o "$GMH_INSTALL/gmh.tmp" "$DOWNLOAD_URL"; then
   fail "Download failed. Check:"
   fail "  - URL: $DOWNLOAD_URL"
   fail "  - Network connectivity"

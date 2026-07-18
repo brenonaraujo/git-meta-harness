@@ -64,7 +64,7 @@ Info "Downloading: $DownloadUrl"
 $BinPath = Join-Path $env:GMH_INSTALL "gmh.exe"
 
 try {
-  Invoke-WebRequest -Uri $DownloadUrl -OutFile $BinPath -UseBasicParsing -TimeoutSec 60
+  Invoke-WebRequest -Uri $DownloadUrl -OutFile $BinPath -UseBasicParsing -TimeoutSec 300
 } catch {
   Fail "Download failed. Check: $DownloadUrl"
 }
