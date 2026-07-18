@@ -238,33 +238,141 @@ cp /tmp/mh/.golangci.yml ./.golangci.yml
 
 ## Architecture overview
 
+### The team (7 personas) and the 9 sensors
+
+```mermaid
+flowchart TB
+    TM["🤖 team-manager<br/><i>orchestrator</i>"]
+
+    subgraph PERSONAS["7 personas"]
+        DE["🎯 domain-expert-&lt;x&gt;<br/><i>specialized per project</i>"]
+        SA["📐 solutions-architect<br/><i>DoD, 12-factor, ADRs</i>"]
+        BE["⚙️ backend-engineer<br/><i>Go · tests · local pre-flight</i>"]
+        FE["🎨 frontend-engineer<br/><i>Nuxt · tests · local pre-flight</i>"]
+        QA["🔍 quality-assurance<br/><i>runs the 9 sensors</i>"]
+        DO["🚀 devops-engineer<br/><i>CI/CD · Docker · observability</i>"]
+    end
+
+    subgraph SENSORS["9 sensors (automated gates)"]
+        S1["00 lint"]
+        S2["01 vuln"]
+        S3["02 unit"]
+        S4["03 contract"]
+        S5["04 image"]
+        S6["05 smoke"]
+        S7["06 load"]
+        S8["07 12-factor"]
+        S9["08 i18n"]
+    end
+
+    TM --> PERSONAS
+    QA --> SENSORS
+    TM -->|"smart routing by type/*"| PERSONAS
+
+    classDef orchestrator fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef persona fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef sensor fill:#f3e8ff,stroke:#9333ea,color:#581c87
+    class TM orchestrator
+    class DE,SA,BE,FE,QA,DO persona
+    class S1,S2,S3,S4,S5,S6,S7,S8,S9 sensor
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                     team-manager (orchestrator)                  │
-│                                                                  │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐     │
-│  │  domain  │   │ solutions│   │  backend │   │ frontend │     │
-│  │  expert  │   │ architect│   │ engineer │   │ engineer │     │
-│  │  <x>     │   │          │   │          │   │          │     │
-│  └──────────┘   └──────────┘   └──────────┘   └──────────┘     │
-│                                                                  │
-│  ┌──────────┐   ┌──────────┐                                      │
-│  │   QA     │   │  devops  │                                      │
-│  │          │   │ engineer │                                      │
-│  └──────────┘   └──────────┘                                      │
-│                                                                  │
-│  Sensors: 00 lint · 01 vuln · 02 unit · 03 contract · 04 image   │
-│           05 smoke · 06 load · 07 12-factor · 08 i18n            │
-│                                                                  │
-│  CI workflow: 1 changes job + 12 conditional jobs (path filter)  │
-└──────────────────────────────────────────────────────────────────┘
-                │
-                ▼
-       ┌────────────────┐
-       │  GitHub Issues  │  ← single source of truth
-       │  + PR + Release │
-       └────────────────┘
+
+**Reading the diagram:** `team-manager` is the orchestrator. The
+7 personas do the work. The QA persona runs the 9 sensors as
+automated gates. Smart routing (shown above in "The team"
+section) decides which personas run for which `type/*` issue.
+
+### Sensors (when each runs, what happens on fail)
+
+```mermaid
+flowchart LR
+    subgraph S["Sensors (00-08)"]
+        S00["00<br/>lint"]
+        S01["01<br/>vuln"]
+        S02["02<br/>unit"]
+        S03["03<br/>contract"]
+        S04["04<br/>image"]
+        S05["05<br/>smoke"]
+        S06["06<br/>load"]
+        S07["07<br/>12-factor"]
+        S08["08<br/>i18n"]
+    end
+
+    S00 -->|"fails → blocks merge"| MERGE["❌ blocks merge"]
+    S01 -->|"HIGH/CRITICAL → blocks merge<br/>(waiver possible)"| MERGE
+    S02 -->|"< 80% coverage<br/>or test fail → blocks merge"| MERGE
+    S03 -->|"OpenAPI diff breaks<br/>→ blocks merge"| MERGE
+    S04 -->|"CRITICAL vuln<br/>→ blocks deploy"| MERGE
+    S05 -->|"returns to builder<br/>with log"| MERGE
+    S06 -->|"reports; blocks release"| MERGE
+    S07 -->|"any factor missing<br/>→ blocks merge"| MERGE
+    S08 -->|"i18n parity < 100%<br/>→ blocks merge"| MERGE
+
+    classDef blocking fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef sensor fill:#f3e8ff,stroke:#9333ea,color:#581c87
+    class MERGE blocking
+    class S00,S01,S02,S03,S04,S05,S06,S07,S08 sensor
 ```
+
+**Reading the diagram:** every sensor has a clear **fail action**.
+8 of the 9 block the merge; sensor 06 (load) blocks the release
+but not the merge. Sensor 04 (image) blocks the deploy.
+
+### CI workflow (modular with path filters)
+
+```mermaid
+flowchart TB
+    PR[("📥 Pull Request<br/>or push to main")]
+    CHANGES["🔍 changes<br/><i>dorny/paths-filter</i><br/>detects: backend, frontend,<br/>infra, docs, workflow, contracts"]
+    TWELVE["🛡️ 12-factor<br/><i>always runs (security gate)</i>"]
+    SUMMARY["📊 summary<br/><i>always runs (status report)</i>"]
+
+    subgraph BE["Backend jobs (if backend changed)"]
+        BEL["backend-lint"]
+        BET["backend-test"]
+        BEV["backend-vuln"]
+        BEC["backend-contract"]
+    end
+
+    subgraph FE["Frontend jobs (if frontend changed)"]
+        FEL["frontend-lint"]
+        FET["frontend-test"]
+        FEV["frontend-vuln"]
+    end
+
+    subgraph BUILD["Build + scan (if backend or frontend or infra changed)"]
+        BB["build-backend<br/><i>cache scope=backend</i>"]
+        FB["build-frontend<br/><i>cache scope=frontend</i>"]
+    end
+
+    I18N["🌐 i18n<br/><i>if backend or frontend or workflow changed</i>"]
+
+    PR --> CHANGES
+    CHANGES --> TWELVE
+    CHANGES --> BE
+    CHANGES --> FE
+    CHANGES --> I18N
+    CHANGES --> BUILD
+    TWELVE --> SUMMARY
+    BE --> SUMMARY
+    FE --> SUMMARY
+    I18N --> SUMMARY
+    BUILD --> SUMMARY
+
+    classDef gate fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef jobs fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef build fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    class TWELVE,SUMMARY gate
+    class CHANGES,BEL,BET,BEV,BEC,FEL,FET,FEV,I18N jobs
+    class BB,FB build
+```
+
+**Reading the diagram:** the `changes` job runs first and uses
+`dorny/paths-filter` to detect which components changed. Then
+only the relevant jobs run. 12-Factor and summary **always run**
+(security gates). Backend/Frontend cache uses `scope=backend` /
+`scope=frontend` so they don't invalidate each other. See
+`docs/PIPELINE.md` and ADR-0011 for the full design.
 
 ## Multi-tool portability
 

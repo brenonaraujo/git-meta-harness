@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] - 2026-07-18
+
+### Fixed — Replace remaining ASCII diagram in README
+
+The v1.2.0 Mermaid pass missed the "Architecture overview" section
+in the README, which still contained a 25-line ASCII art box. This
+patch replaces it with 3 proper Mermaid diagrams.
+
+#### Changes
+
+- **`README.md`** — the "Architecture overview" section now has
+  3 Mermaid diagrams instead of the ASCII box:
+  - **The team (7 personas) and the 9 sensors** — single diagram
+    showing the team-manager + 7 personas + 9 sensors as nested
+    subgraphs.
+  - **Sensors (when each runs, what happens on fail)** — 9
+    sensors each with their fail action (`blocks merge` vs
+    `blocks deploy` vs `blocks release`).
+  - **CI workflow (modular with path filters)** — the 1 `changes`
+    job at the top + 12 conditional jobs, with the 12-Factor and
+    summary jobs marked as always-running (security gates).
+
+#### Why v1.2.1 (patch)
+
+Purely a fix to a missed diagram. No content change, no breaking
+change.
+
 ## [1.2.0] - 2026-07-18
 
 ### Added — Mermaid diagrams across all docs
