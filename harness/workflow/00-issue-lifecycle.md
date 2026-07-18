@@ -28,67 +28,91 @@
 
 ## Visão geral do fluxo completo (para `type/feature`)
 
-```
-┌─────────┐    ┌─────────┐    ┌──────────┐    ┌──────────┐
-│ triage   │───▶│ refined │───▶│  ready   │───▶│ in-prog  │
-│ (new)    │    │(domain) │    │(archit.) │    │(builder) │
-└─────────┘    └──────────┘    └──────────┘    └─────┬────┘
-                                                     │
-                                                     ▼
-┌─────────┐    ┌─────────┐    ┌──────────┐    ┌──────────┐
-│  done   │◀───│   qa    │◀───│  in-rev  │◀───│(PR open) │
-│(closed) │    │(QA)     │    │(QA)      │    │          │
-└─────────┘    └────┬────┘    └──────────┘    └──────────┘
-                    │
-                    ▼
-                user valida
-                    │
-                    ▼
-              (release merge)
+```mermaid
+stateDiagram-v2
+    [*] --> triage
+    triage --> refined : domain-expert
+    refined --> ready : solutions-architect
+    ready --> in_progress : builder
+    in_progress --> in_review : PR opened
+    in_review --> qa : sensors run
+    qa --> awaiting_human : all sensors green
+    qa --> in_progress : sensor failed (return to builder)
+    awaiting_human --> done : user ✅
+    awaiting_human --> in_progress : user rejected
+    done --> [*] : tag + release
 ```
 
 ## Variações por tipo
 
 ### `type/technical` (issue puramente técnica)
 
+```mermaid
+stateDiagram-v2
+    [*] --> triage
+    triage --> ready : skip refined
+    ready --> in_progress : solutions-architect → builder
+    in_progress --> in_review : PR opened
+    in_review --> qa
+    qa --> awaiting_human
+    awaiting_human --> done : user ✅
+    done --> [*]
 ```
-triage ─▶ ready ─▶ in-prog ─▶ in-rev ─▶ qa ─▶ user ─▶ done
-                  (sol-arch) (builder)   (QA)
-       ▲
-       └─ PULA `refined` (sem domain-expert)
-```
+
+> **Skip:** `refined` (sem domain-expert).
 
 ### `type/infra` (infraestrutura)
 
+```mermaid
+stateDiagram-v2
+    [*] --> triage
+    triage --> ready : skip refined
+    ready --> in_progress : solutions-architect → devops-engineer
+    in_progress --> qa
+    qa --> awaiting_human
+    awaiting_human --> done : user ✅
+    done --> [*]
 ```
-triage ─▶ ready ─▶ in-prog ─▶ qa ─▶ user ─▶ done
-                  (sol-arch)  (devops) (QA)
-       ▲
-       └─ PULA `refined` E builder (devops executa direto)
-```
+
+> **Skip:** `refined` E builder (devops executa direto).
 
 ### `type/tech-debt`
 
+```mermaid
+stateDiagram-v2
+    [*] --> triage
+    triage --> ready : skip refined
+    ready --> in_progress : solutions-architect → builder
+    in_progress --> in_review : PR opened
+    in_review --> qa
+    qa --> awaiting_human
+    awaiting_human --> done : user ✅
+    done --> [*]
 ```
-triage ─▶ ready ─▶ in-prog ─▶ in-rev ─▶ qa ─▶ user ─▶ done
-                  (sol-arch) (builder)   (QA)
-       ▲
-       └─ PULA `refined` (sem domain-expert)
-```
+
+> **Skip:** `refined` (sem domain-expert).
 
 ### `type/docs`
 
+```mermaid
+stateDiagram-v2
+    [*] --> triage
+    triage --> done : editorial review
+    done --> [*]
 ```
-triage ─▶ (revisão editorial) ─▶ done
-       └─ Sem DoD, sem QA formal, sem release
-```
+
+> **Sem** DoD, sem QA formal, sem release.
 
 ### `type/spike` (investigação)
 
+```mermaid
+stateDiagram-v2
+    [*] --> triage
+    triage --> done : research → ADR/report
+    done --> [*]
 ```
-triage ─▶ (research) ─▶ ADR/relatório ─▶ done
-       └─ Sem código de produção, sem QA
-```
+
+> **Sem** código de produção, sem QA.
 
 ---
 

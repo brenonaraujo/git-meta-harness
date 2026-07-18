@@ -86,61 +86,36 @@ funcional do projeto (ver §3).
 
 ## 3. Fluxo geral ponta-a-ponta
 
-```
-                          ┌────────────────────────────────┐
-                          │   Usuário / outro agente       │
-                          │   abre uma ISSUE no GitHub     │
-                          └──────────────┬─────────────────┘
-                                         │
-                                         ▼
-                          ┌────────────────────────────────┐
-                          │  TEAM-MANAGER (orquestrador)   │
-                          │  • lê a issue                  │
-                          │  • quebra em sub-tasks         │
-                          │  • atribui labels + assignees  │
-                          │  • cria branch feature/…       │
-                          └──────────────┬─────────────────┘
-                                         │
-                ┌────────────────────────┼─────────────────────────┐
-                ▼                        ▼                         ▼
-       ┌──────────────┐         ┌──────────────┐          ┌──────────────┐
-       │ DOMAIN-EXPERT│         │ SOLUTIONS-   │          │  (loop até   │
-       │ • refina     │ ──────▶ │ ARCHITECT    │ ────────▶│  DOD assinado)│
-       │   história   │         │ • DOD + check│          │              │
-       │ • critérios  │         │   12-factor  │          │              │
-       └──────────────┘         │ • decisões   │          └──────────────┘
-                                │   arquitet.  │
-                                └──────┬───────┘
-                                       ▼
-                ┌──────────────────────┴──────────────────────┐
-                ▼                                             ▼
-       ┌─────────────────┐                          ┌─────────────────┐
-       │ BACKEND-ENGINEER│                          │FRONTEND-ENGINEER│
-       │ • implementa    │                          │ • implementa    │
-       │   Go/Gin/GORM   │                          │   Nuxt/Pinia    │
-       │ • testes (TDD)  │                          │ • testes (Vitest)│
-       │ • commit feature/issue-…                    │ • commit feature/issue-…
-       └────────┬────────┘                          └────────┬────────┘
-                │                                            │
-                └─────────────────────┬──────────────────────┘
-                                      ▼
-                          ┌────────────────────────────────┐
-                          │  QUALITY-ASSURANCE              │
-                          │  • roda TODOS os sensores       │
-                          │  • build + push imagem          │
-                          │  • sobe docker-compose          │
-                          │  • smoke + load (gatling)       │
-                          │  • aprova ou devolve com bugs   │
-                          └──────────────┬─────────────────┘
-                                         │ ✅ Aprovado
-                                         ▼
-                          ┌────────────────────────────────┐
-                          │  DEVOPS-ENGINEER                │
-                          │  • revisa pipeline (Actions)    │
-                          │  • se skill disponível: deploy  │
-                          │  • prepara release+tag (merge)  │
-                          │  • fecha a issue                │
-                          └────────────────────────────────┘
+```mermaid
+flowchart TB
+    H[("👤 Usuário /<br/>outro agente<br/>abre ISSUE no GitHub")]
+    TM["🤖 TEAM-MANAGER<br/>(orquestrador)<br/>lê issue · quebra em sub-tasks<br/>atribui labels + assignees<br/>cria branch feature/..."]
+
+    DE["🎯 DOMAIN-EXPERT<br/>• refina história<br/>• critérios"]
+    SA["📐 SOLUTIONS-ARCHITECT<br/>• DoD + check 12-factor<br/>• decisões arquitet."]
+
+    BE["⚙️ BACKEND-ENGINEER<br/>Go/Gin/GORM · TDD<br/>commit feature/issue-..."]
+    FE["🎨 FRONTEND-ENGINEER<br/>Nuxt/Pinia · Vitest<br/>commit feature/issue-..."]
+
+    QA["🔍 QUALITY-ASSURANCE<br/>roda TODOS os sensores<br/>build + push imagem<br/>sobe docker-compose<br/>smoke + load<br/>aprova ou devolve"]
+
+    DO["🚀 DEVOPS-ENGINEER<br/>revisa pipeline<br/>deploy (se skill)<br/>prepara release+tag<br/>fecha a issue"]
+
+    H --> TM
+    TM --> DE
+    DE --> SA
+    SA --> BE
+    SA --> FE
+    BE --> QA
+    FE --> QA
+    QA -->|✅ Aprovado| DO
+
+    classDef user fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef tm fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef persona fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    class H user
+    class TM tm
+    class DE,SA,BE,FE,QA,DO persona
 ```
 
 **Detalhamento** em [`workflow/`](./workflow/).

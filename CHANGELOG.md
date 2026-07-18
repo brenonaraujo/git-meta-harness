@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.3] - 2026-07-18
+
+### Fixed — Replace remaining ASCII diagrams across the repo
+
+The v1.2.1 and v1.2.2 patches caught the README and the
+PIPELINE.md issue lifecycle, but several other docs in the
+**`harness/` tree** still had ASCII art:
+
+- `harness/workflow/00-issue-lifecycle.md` — 6 ASCII boxes
+  (main flow + 5 type/* variations).
+- `harness/bootstrap.md` — 1 large ASCII art in §3 (fluxo geral
+  ponta-a-ponta).
+- `docs/PIPELINE.md` §5 — 1 ASCII CI workflow diagram.
+
+This patch replaces them all with proper Mermaid diagrams.
+
+#### Changes
+
+- **`harness/workflow/00-issue-lifecycle.md`** — replaced 6 ASCII
+  art boxes with Mermaid `stateDiagram-v2` (1 for the main
+  `type/feature` flow + 5 for the `type/technical|infra|tech-debt|
+  docs|spike` variations).
+- **`harness/bootstrap.md`** §3 — replaced the 50-line ASCII art
+  with a single Mermaid `flowchart TB` showing the full pipeline
+  from user → team-manager → domain-expert → solutions-architect
+  → backend+frontend → QA → devops.
+- **`docs/PIPELINE.md`** §5 — replaced the ASCII CI workflow
+  diagram with a Mermaid `flowchart TB` showing the
+  `dorny/paths-filter` changes job + 12 conditional jobs +
+  always-on 12-factor and summary.
+
+#### Final Mermaid count
+
+| File | Count |
+|---|---|
+| `README.md` | 6 |
+| `docs/CONCEPT.md` | 2 |
+| `docs/ORIGIN.md` | 3 |
+| `docs/COMPARISON.md` | 2 |
+| `docs/PIPELINE.md` | 2 |
+| `harness/bootstrap.md` | 1 |
+| `harness/workflow/00-issue-lifecycle.md` | 6 |
+| **Total** | **22** |
+
+#### Note on tree-style characters
+
+The `├──` `└──` `│` characters that remain in `docs/CONCEPT.md`
+§10.4 are **tree-style directory structure** (a standard markdown
+convention for showing filesystem layout, not flow diagrams) and
+are intentionally kept.
+
+#### Why v1.2.3 (patch)
+
+Purely a fix to missed diagrams. No content change, no breaking
+change.
+
 ## [1.2.2] - 2026-07-18
 
 ### Fixed — Replace remaining ASCII diagram in `docs/PIPELINE.md`

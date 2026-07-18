@@ -145,20 +145,46 @@ file with 12+ jobs orchestrated by a `changes` job at the top
 that uses `dorny/paths-filter` to detect which components
 changed.
 
-```
-                    changes (dorny/paths-filter)
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-  backend-* jobs         frontend-* jobs       infra/12-factor
-  (lint, test,           (lint, typecheck,     (always-on gate)
-   vuln, contract)        test, vuln)              │
-                                                    ▼
-                                            build-backend / build-frontend
-                                            (cache scope per service)
-                                                    │
-                                                    ▼
-                                            summary (always-on)
+```mermaid
+flowchart TB
+    CHANGES["🔍 changes<br/><i>dorny/paths-filter</i><br/>detects: backend, frontend,<br/>infra, docs, workflow, contracts"]
+
+    subgraph BE["Backend jobs"]
+        BEL["backend-lint"]
+        BET["backend-test"]
+        BEV["backend-vuln"]
+        BEC["backend-contract"]
+    end
+
+    subgraph FE["Frontend jobs"]
+        FEL["frontend-lint"]
+        FET["frontend-test"]
+        FEV["frontend-vuln"]
+    end
+
+    TWELVE["🛡️ 12-factor<br/><i>always-on</i>"]
+    I18N["🌐 i18n<br/><i>if backend/frontend/workflow changed</i>"]
+
+    subgraph BUILD["Build + scan"]
+        BB["build-backend<br/><i>cache scope=backend</i>"]
+        FB["build-frontend<br/><i>cache scope=frontend</i>"]
+    end
+
+    SUMMARY["📊 summary<br/><i>always-on</i>"]
+
+    CHANGES --> BE
+    CHANGES --> FE
+    CHANGES --> TWELVE
+    CHANGES --> I18N
+    CHANGES --> BUILD
+    BE --> SUMMARY
+    FE --> SUMMARY
+    TWELVE --> SUMMARY
+    I18N --> SUMMARY
+    BUILD --> SUMMARY
+
+    classDef gate fill:#dcfce7,stroke:#16a34a,color:#14532d
+    class TWELVE,SUMMARY gate
 ```
 
 Speed comparison (from `harness/contrib/design-decisions.md`
