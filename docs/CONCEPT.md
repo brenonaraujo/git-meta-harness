@@ -278,6 +278,28 @@ new project, the `team-manager` reads the project's context
 (spec, detected stack, domain) and **generates specialized
 personas** with content specific to that project.
 
+### 10.0 The two problems solved by this distinction
+
+```mermaid
+flowchart TB
+    P1["❌ Problem 1:<br/>Static personas"]
+    P2["❌ Problem 2:<br/>Generic domain-expert"]
+
+    P1 -->|"agent uses<br/>banking-template<br/>for a logistics project"| E1["😵<br/>Shallow work,<br/>wrong context"]
+
+    P2 -->|"renamed only,<br/>no content generated"| E2["😵<br/>Same content<br/>for all domains"]
+
+    M["✅ Solution:<br/>team-manager materializes<br/>from spec + stack + domain"]
+    E1 --> M
+    E2 --> M
+    M --> R["🎉<br/>Persona with project-specific<br/>stack, skills, and domain knowledge"]
+```
+
+**Reading the diagram:** the meta-harness solves two failure
+modes by **forcing materialization** in the seed. The result
+is a persona that knows the project's stack, skills, and
+domain — without the user writing it.
+
 ### 10.1 Two layers, one source of truth
 
 There are two layers in play, and confusing them is the most
@@ -298,6 +320,21 @@ materialization step was skipped.
 
 When the `team-manager` runs the seed, the materialization step
 performs the following:
+
+```mermaid
+flowchart TB
+    S1["1. 📖 Read the spec<br/>(functional requirements,<br/>user personas, constraints)"]
+    S2["2. 🔍 Detect the stack<br/>(go.mod, package.json,<br/>requirements.txt)"]
+    S3["3. 🎯 Detect the domain<br/>(banking, retail, logistics,<br/>healthcare, community, ...)"]
+    S4["4. 🏗️ Generate each persona<br/>(stack + skills + domain)"]
+    S5["5. 🔌 Generate runtime adapter<br/>(Hermes / Claude / Codex /<br/>Copilot / Cursor)"]
+
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+    S5 --> OUT["✅ Materialized personas<br/>live in the project"]
+```
 
 1. **Reads the spec** (functional requirements, user personas,
    domain context, constraints).

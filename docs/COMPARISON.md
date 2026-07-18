@@ -32,6 +32,25 @@
 
 ## 2. Why each step upward matters
 
+The evolution from single-agent to meta-harness is driven by
+**concrete pain points** at each step. Each level solves the
+previous level's biggest failure mode and surfaces a new one.
+
+```mermaid
+flowchart LR
+    SA["🤖<br/>Single-agent"]
+    SDD["📜 SDD<br/>(Spec-Driven)"]
+    SPDD["📐 SPDD<br/>(Spec+Plan-Driven)"]
+    META["🏭 meta-harness"]
+
+    SA -->|"agent hallucinates<br/>+ drifts from spec"| SDD
+    SDD -->|"plan is invisible,<br/>+ single-agent limits"| SPDD
+    SPDD -->|"loses context,<br/>+ no audit,<br/>+ no role sep"| META
+
+    classDef stage fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    class SA,SDD,SPDD,META stage
+```
+
 ### Single-agent → SDD
 
 The first pain point is **the agent making things up**. The
@@ -175,6 +194,29 @@ Use **meta-harness** when:
 
 The meta-harness **does not reject SDD or SPDD**. It builds on
 them:
+
+```mermaid
+flowchart TB
+    SPEC["📜 Functional spec<br/>(the common input)"]
+
+    SDD["SDD<br/>spec → code<br/>(human-driven)"]
+    SPDD["SPDD<br/>spec + plan → code<br/>(single-agent)"]
+    META["meta-harness<br/>spec → team → system<br/>(multi-agent)"]
+
+    SPEC --> SDD
+    SPEC --> SPDD
+    SPEC --> META
+
+    META -->|"uses spec as<br/>per-issue briefing"| BRIEF["📋 Per-issue briefing<br/>(decomposed, auditable)"]
+    META -->|"replaces plan with"| BRIEF
+    META -->|"augments review with"| SENS["🔍 9 sensors + 18 invariants"]
+    META -->|"augments history with"| ADR["📋 ADRs + per-issue comments"]
+
+    classDef meta fill:#dcfce7,stroke:#16a34a
+    class META,BRIEF,SENS,ADR meta
+    classDef base fill:#dbeafe,stroke:#2563eb
+    class SDD,SPDD,SPEC base
+```
 
 - The **functional specification** is the same input SDD
   requires.

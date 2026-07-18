@@ -14,6 +14,20 @@
 In late 2025, like most developers experimenting with agentic
 tools, the work pattern was:
 
+```mermaid
+flowchart LR
+    H[("👤 Human")]
+    A["🤖 1 Agent<br/>(does everything)"]
+    R["💻 Half-baked code<br/>(hallucinations,<br/>missing spec,<br/>no tests)"]
+
+    H -->|"paste spec"| A
+    A -->|"5 rounds of 'fix this'"| R
+    R -->|"manual review,<br/>manual test,<br/>manual commit"| H
+
+    classDef bad fill:#fee2e2,stroke:#dc2626
+    class R bad
+```
+
 1. Open a chat with the agent.
 2. Paste a spec, paste the codebase, ask for a feature.
 3. Watch the agent hallucinate an architecture, write code that
@@ -123,6 +137,43 @@ were the asset, not the runtime.
 
 The next step was to **separate the patterns from the runtime**.
 
+```mermaid
+flowchart TB
+    subgraph BEFORE["❌ Before — patterns locked in Hermes"]
+        H1["Hermes profile 1<br/>(team-manager)"]
+        H2["Hermes profile 2<br/>(domain-expert)"]
+        H3["Hermes profile 3<br/>(backend-engineer)"]
+        H4["Hermes profile 4<br/>(frontend-engineer)"]
+        H5["..."]
+    end
+
+    subgraph EXTRACT["✂️ Extraction"]
+        P["Patterns surfaced:<br/>- 7 personas<br/>- 9 sensors<br/>- 6 workflow docs<br/>- 5 stack files<br/>- 18 invariants<br/>- 10 ADRs"]
+    end
+
+    subgraph AFTER["✅ After — patterns are framework-agnostic"]
+        F["harness/ directory<br/>(versioned in git-meta-harness)"]
+        A1["Adapter: Hermes"]
+        A2["Adapter: Claude Code"]
+        A3["Adapter: Codex / OpenCode"]
+        A4["Adapter: Copilot / Cursor"]
+        A5["Adapter: Devin"]
+    end
+
+    BEFORE -->|"discover"| EXTRACT
+    EXTRACT -->|"publish as framework"| F
+    F -->|"thin adapter"| A1
+    F -->|"thin adapter"| A2
+    F -->|"thin adapter"| A3
+    F -->|"thin adapter"| A4
+    F -->|"thin adapter"| A5
+
+    classDef good fill:#dcfce7,stroke:#16a34a
+    class F,A1,A2,A3,A4,A5 good
+    classDef bad fill:#fee2e2,stroke:#dc2626
+    class H1,H2,H3,H4,H5 bad
+```
+
 The patterns became:
 
 - `harness/personas/*.md` — the SOUL of each role, written in
@@ -195,6 +246,42 @@ Hermes Agent is one tool. Claude Code is another. Codex CLI,
 OpenCode, Devin, Cursor — they are all tools, with different
 lifecycles, different pricing models, different APIs. Every one
 of them will be replaced in 18 months.
+
+```mermaid
+flowchart LR
+    subgraph TOOLS["🔧 Tools (cycled every ~18 months)"]
+        T1["Hermes<br/>(2025-2026)"]
+        T2["Claude Code<br/>(2025-2027)"]
+        T3["Codex / OpenCode<br/>(2025-2027)"]
+        T4["???<br/>(2027+)"]
+    end
+
+    subgraph PATTERN["🌱 Pattern (durable)"]
+        P1["decompose by role"]
+        P2["route by type"]
+        P3["gate by sensor"]
+        P4["document by ADR"]
+        P5["validate by human"]
+        P6["ship by PR"]
+    end
+
+    subgraph META["📦 The deliverable"]
+        M["git-meta-harness<br/>(versioned pattern,<br/>framework-agnostic)"]
+    end
+
+    TOOLS -.->|"each tool<br/>hosts the pattern"| M
+    M -->|"encodes"| PATTERN
+
+    classDef durable fill:#dcfce7,stroke:#16a34a
+    class PATTERN,META durable
+    classDef ephemeral fill:#fef3c7,stroke:#f59e0b
+    class TOOLS ephemeral
+```
+
+**Reading the diagram:** the tools are ephemeral (cycled every
+~18 months); the pattern is durable. The meta-harness is the
+package that delivers the pattern **independent of which tool
+hosts it**.
 
 But the pattern — "decompose the work by role, route by type,
 gate by sensor, document by ADR, validate by human, ship by PR"

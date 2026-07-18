@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-07-18
+
+### Added — Mermaid diagrams across all docs
+
+Documentation is now enriched with **Mermaid diagrams** (rendered
+natively by GitHub) that explain the concepts visually. Adds clarity
+for adopters and contributors who learn better with diagrams.
+
+#### Diagrams added
+
+- **`README.md`** — 3 new diagrams in a "Visual overview" section:
+  - The full loop: spec → team-manager → personas → PR → human → release.
+  - The team: 7 personas + smart routing by `type/*` (4 paths).
+  - GitHub as native substrate: 5 primitives mapped to project artifacts.
+- **`docs/CONCEPT.md`** — 2 new diagrams:
+  - §10.0: The two problems solved by the template-vs-materialized
+    distinction.
+  - §10.2: The 5-step materialization algorithm.
+- **`docs/ORIGIN.md`** — 3 new diagrams:
+  - §1: The single-agent loop (with `bad` color marking the failure).
+  - §4: The extraction from Hermes profiles to the meta-harness.
+  - §6: Pattern > tool (tools are ephemeral, pattern is durable).
+- **`docs/COMPARISON.md`** — 2 new diagrams:
+  - §2: The evolution single-agent → SDD → SPDD → meta-harness.
+  - §5: How SDD/SPDD connect to the meta-harness.
+- **`docs/PIPELINE.md`** — already has good structure; minor
+  improvements in this release.
+
+#### Why v1.2.0
+
+Visual aids make the concepts significantly easier to grasp.
+Diagrams are non-breaking (purely additive) but the change is large
+enough across 4 docs to warrant a minor bump, not a patch.
+
 ## [1.1.1] - 2026-07-18
 
 ### Fixed — "Personas are built on demand, not copied" (clarification)

@@ -30,6 +30,122 @@ validation. **The user does not configure anything.** Full vision:
 
 ---
 
+## Visual overview
+
+### The full loop — from spec to release
+
+```mermaid
+flowchart LR
+    H[("👤 Human<br/>with a spec")]
+    TM["🤖 team-manager<br/>(orchestrator)"]
+    DE["🎯 domain-expert-&lt;x&gt;<br/>(specialized)"]
+    SA["📐 solutions-architect<br/>(DoD, 12-factor)"]
+    BE["⚙️ backend-engineer<br/>(Go)"]
+    FE["🎨 frontend-engineer<br/>(Nuxt)"]
+    DO["🚀 devops-engineer<br/>(CI/CD)"]
+    QA["🔍 quality-assurance<br/>(9 sensors)"]
+    PR["📬 Pull Request"]
+    GH[("🗂️ GitHub<br/>Issues + PRs + Actions")]
+    REL["🏷️ Release<br/>(tagged, auditable)"]
+
+    H -->|"paste spec"| TM
+    TM -->|"decompose<br/>+ label"| GH
+    TM -->|"refine ACs"| DE
+    DE -->|"refined"| SA
+    SA -->|"DoD"| BE
+    SA -->|"DoD"| FE
+    SA -->|"DoD"| DO
+    BE -->|"code + tests"| PR
+    FE -->|"code + tests"| PR
+    DO -->|"CI workflow"| PR
+    PR -->|"sensors"| QA
+    QA -->|"approved"| H
+    H -->|"✅ validate"| TM
+    TM -->|"merge + tag"| REL
+    REL --> GH
+```
+
+**Reading the diagram:** the user pastes a spec; `team-manager`
+decomposes it into labeled issues on GitHub; the smart router
+dispatches each issue to the right persona chain; builders ship
+code; QA runs 9 sensors on the PR; the human validates; the
+release is tagged. **Zero configuration by the human.**
+
+### The team — 7 personas + smart routing
+
+```mermaid
+flowchart TB
+    TM["🤖 team-manager<br/>= orchestrator<br/>(always)"]
+
+    subgraph FEAT["type/feature (full chain)"]
+        F1[domain-expert-&lt;x&gt;] --> F2[solutions-architect]
+        F2 --> F3[builder] --> F4[qa]
+    end
+
+    subgraph TECH["type/technical (no domain-expert)"]
+        T1[solutions-architect] --> T2[builder] --> T3[qa]
+    end
+
+    subgraph INFRA["type/infra (no domain-expert, no builder)"]
+        I1[solutions-architect] --> I2[devops-engineer] --> I3[qa]
+    end
+
+    subgraph BUG["type/bug (no domain-expert)"]
+        B1[solutions-architect] --> B2[builder] --> B3[qa]
+    end
+
+    TM --> FEAT
+    TM --> TECH
+    TM --> INFRA
+    TM --> BUG
+
+    classDef always fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    class TM always
+```
+
+**Reading the diagram:** `team-manager` is always present. The
+`type/*` label on each issue picks one of the four paths. The
+personas inside each path run **in sequence**, never all at once.
+
+### GitHub as native substrate
+
+```mermaid
+flowchart LR
+    subgraph META["git-meta-harness framework"]
+        SPEC["📜 Functional spec"]
+        SEED["🌱 Seed prompt"]
+    end
+
+    subgraph PROJ["Your project repo"]
+        ISSUES["📋 Issues<br/>(type/*, domain/*)"]
+        PRS["🔀 Pull Requests<br/>(1 issue = 1 PR)"]
+        CI["⚙️ GitHub Actions<br/>(path-filtered CI)"]
+        RELS["🏷️ Releases<br/>(tagged)"]
+    end
+
+    subgraph RUNTIMES["Agentic runtime (portable)"]
+        H[Hermes profiles]
+        C[Claude Code agents]
+        X[Codex / OpenCode]
+        CP[Copilot / Cursor]
+    end
+
+    SPEC --> SEED
+    SEED -->|"materialize"| RUNTIMES
+    RUNTIMES -->|"create + route"| ISSUES
+    ISSUES -->|"produce"| PRS
+    PRS -->|"gate by"| CI
+    PRS -->|"human validates"| PRS
+    CI -->|"on merge"| RELS
+```
+
+**Reading the diagram:** the spec is the input; the seed
+materializes the runtimes; the runtimes drive GitHub Issues;
+Issues produce PRs; PRs are gated by modular CI; merges become
+tagged Releases. **No new platform** is introduced.
+
+---
+
 ## What is this
 
 `git-meta-harness` is **a framework, not a product**. It defines a complete
