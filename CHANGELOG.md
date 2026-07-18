@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.4] - 2026-07-18
+
+### Added — `gmh agents update` (CI renewal via agentic delegation)
+
+Fechando o último gap do ciclo de atualização: **`gmh sync`
+atualiza `harness/`, `gmh agents sync` atualiza `~/.hermes/profiles/`,
+mas faltava atualizar `.github/`** (CI, codeql, labeler, etc.) — que
+requer **contexto do agentic** para fazer merge inteligente
+(preservar customizações do projeto + aplicar mudanças do framework
+novo).
+
+`gmh agents update` resolve isso delegando ao agentic (Hermes por
+default) com um **prompt estruturado** que inclui:
+
+- Contexto do projeto (cwd, framework version, agentic)
+- Lista de arquivos em `.github/`
+- Detecção heurística de customizações locais (env vars, secrets, custom jobs)
+- Diff naive entre CI local e template novo
+- Mudanças recentes do framework (extraídas do CHANGELOG)
+- Task estruturada (5 passos: re-read, run sensors, apply, open PR, update VERSION)
+- Critical: NÃO quebrar CI, PRESERVAR secrets, pin actions
+
+#### Comandos
+
+| Comando | O que faz |
+|---------|-----------|
+| `gmh agents update --dry-run` | Mostra diff + summary (sem invocar) |
+| `gmh agents update` | Sugere comando `hermes -p team-manager --prompt "..."` |
+| `gmh agents update --no-prompt` | Imprime só o prompt (sem invocation helper) |
+| `gmh agents update --agent <x>` | Use outro agentic (default: hermes) |
+
+#### Novos internals
+
+- `internal/prompt/ci_renewal.go` — `CIRenewalPrompt()` template +
+  `RecentChangesFromChangelog()` extractor
+
+#### Novos checks no `gmh doctor`
+
+- `CI: aligned with template (drift: +N lines from template)` —
+  detecta drift antes do `gmh agents update`
+
+#### Validação
+
+Testado contra mandai-v2 (jul/2026):
+
+```
+$ gmh agents update --dry-run
+==> Local:    1.6.0
+==> Latest:   v1.6.3
+==> Agentic:  hermes
+==> Files in .github/:
+  • .github/CODEOWNERS, ISSUE_TEMPLATE, labeler.yml, ...
+==> Naive diff: +291 lines, -98 lines (read both files for real merge)
+```
+
 ## [1.6.3] - 2026-07-18
 
 ### Fixed — `gmh agents sync` heuristic + skills + doctor checks

@@ -11,8 +11,10 @@ import (
 
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/agentic"
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/hermes"
+	"github.com/brenonaraujo/git-meta-harness/cli/internal/prompt"
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/skills"
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/soul"
+	"github.com/brenonaraujo/git-meta-harness/cli/internal/source"
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/ui"
 )
 
@@ -59,6 +61,7 @@ Examples:
 	cmd.AddCommand(agentsListCmd())
 	cmd.AddCommand(agentsInspectCmd())
 	cmd.AddCommand(agentsSyncCmd())
+	cmd.AddCommand(agentsUpdateCmd())
 	cmd.AddCommand(agentsInstallCmd())
 
 	return cmd
@@ -578,4 +581,231 @@ func frameworkVersion(cwd string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(data))
+}
+
+// agentsUpdateCmd creates the `gmh agents update` command.
+//
+// `gmh agents update` detects drift between the project's
+// `.github/workflows/ci.yml` (and other `.github/*` files) and the
+// framework's new template, then delegates the update to the
+// agentic (e.g., Hermes) with a structured prompt.
+//
+// This is the counterpart to `gmh sync` and `gmh agents sync`:
+//   - `gmh sync` updates harness/ in the project
+//   - `gmh agents sync` updates ~/.hermes/profiles + skills
+//   - `gmh agents update` updates .github/ in the project
+//
+// Examples:
+//
+//	gmh agents update --dry-run            # Show diff + prompt only
+//	gmh agents update                      # Print invocation command
+//	gmh agents update --no-prompt          # Just print the prompt
+//	gmh agents update --agent hermes       # Use Hermes (default)
+//	gmh agents update --open-pr            # Open a PR with the agentic's work
+func agentsUpdateCmd() *cobra.Command {
+	var (
+		dryRun     bool
+		noPrompt   bool
+		openPR     bool
+		base       string
+		agentName  string
+	)
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "Update .github/ files using the agentic",
+		Long: `Detect drift between harness/templates/.github-workflows-ci.yml
+and .github/workflows/ci.yml, then delegate the update to the agentic
+(e.g., Hermes) with a structured prompt.
+
+The agentic has access to the project's full context, the framework's
+new sensors/scripts, and can produce a PR with all needed CI updates.
+
+Examples:
+  gmh agents update --dry-run            # Show the diff + prompt only
+  gmh agents update                      # Print invocation command
+  gmh agents update --no-prompt          # Just print the prompt
+  gmh agents update --agent hermes       # Use Hermes (default)
+  gmh agents update --open-pr            # Open a PR with the agentic's work`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd := getCwd(cmd)
+
+			// 1. Resolve versions
+			src := source.NewClient("")
+			latest, err := src.ResolveVersion("latest")
+			if err != nil {
+				ui.Warn("Could not resolve latest version: %v", err)
+			}
+			localVersion := frameworkVersion(cwd)
+			if localVersion == "" {
+				localVersion = "unknown"
+			}
+
+			// 2. Read local CI + template CI
+			localCI, _ := os.ReadFile(filepath.Join(cwd, ".github", "workflows", "ci.yml"))
+			templateCI, _ := os.ReadFile(filepath.Join(cwd, "harness", "templates", ".github-workflows-ci.yml"))
+
+			// 3. Find files in .github/ that exist locally
+			githubDir := filepath.Join(cwd, ".github")
+			var filesToUpdate []string
+			if entries, err := os.ReadDir(githubDir); err == nil {
+				for _, e := range entries {
+					filesToUpdate = append(filesToUpdate, ".github/"+e.Name())
+				}
+			}
+
+			// 4. Extract recent framework changes from CHANGELOG
+			var frameworkChanges []string
+			if latest != "" {
+				frameworkChanges = prompt.RecentChangesFromChangelog(
+					filepath.Join(cwd, "harness", "CHANGELOG.md"),
+					strings.TrimPrefix(localVersion, "v"),
+					strings.TrimPrefix(latest, "v"),
+					10,
+				)
+			}
+
+			// 5. Detect local customizations (simple heuristics)
+			localCustomizations := detectCICustomizations(string(localCI))
+
+			// 6. Build the prompt
+			ciIn := prompt.CIRenewalInput{
+				Cwd:                 cwd,
+				LocalVersion:        localVersion,
+				LatestVersion:       latest,
+				LocalCI:             string(localCI),
+				TemplateCI:          string(templateCI),
+				FilesToUpdate:       filesToUpdate,
+				FrameworkChanges:    frameworkChanges,
+				LocalCustomizations: localCustomizations,
+				AgenticName:         agentName,
+			}
+			p := prompt.CIRenewalPrompt(ciIn)
+
+			// 7. Header / status
+			ui.Header("CI renewal — agentic delegation")
+			ui.Info("Local:    %s", orNA(localVersion))
+			ui.Info("Latest:   %s", orNA(latest))
+			ui.Info("Agentic:  %s", agentName)
+			if len(filesToUpdate) > 0 {
+				ui.Info("Files in .github/:")
+				for _, f := range filesToUpdate {
+					ui.Step("  • %s", f)
+				}
+			}
+			ui.Info("")
+
+			// 8. Naive diff summary
+			if len(localCI) > 0 && len(templateCI) > 0 {
+				localLines := strings.Split(string(localCI), "\n")
+				templateLines := strings.Split(string(templateCI), "\n")
+				localSet := make(map[string]bool)
+				for _, l := range localLines {
+					localSet[l] = true
+				}
+				templateSet := make(map[string]bool)
+				for _, l := range templateLines {
+					templateSet[l] = true
+				}
+				added := 0
+				removed := 0
+				for _, l := range templateLines {
+					if !localSet[l] && strings.TrimSpace(l) != "" {
+						added++
+					}
+				}
+				for _, l := range localLines {
+					if !templateSet[l] && strings.TrimSpace(l) != "" {
+						removed++
+					}
+				}
+				ui.Info("Naive diff: +%d lines, -%d lines (read both files for real merge)", added, removed)
+				ui.Info("")
+			}
+
+			// 9. --dry-run: stop here
+			if dryRun {
+				ui.Warn("DRY RUN — no invocation printed")
+				ui.Info("Run without --dry-run to get the invocation command.")
+				return nil
+			}
+
+			// 10. --no-prompt: just print the prompt
+			if noPrompt {
+				fmt.Println(p)
+				return nil
+			}
+
+			// 11. Default: print invocation command
+			invocation, err := agentic.Invocation(agentic.Agentic(agentName), "team-manager", p)
+			if err != nil || invocation == "" {
+				ui.Info("Agentic %q has no CLI invocation. Prompt to delegate:", agentName)
+				ui.Info("")
+				fmt.Println(p)
+				return nil
+			}
+
+			ui.Info("Run the following to delegate the CI renewal to %s:", agentName)
+			ui.Info("")
+			ui.Info("  %s", invocation)
+			ui.Info("")
+			ui.Info("After the agentic finishes:")
+			ui.Info("  1. Review the PR it opened")
+			ui.Info("  2. Run gmh doctor --strict to verify")
+			ui.Info("  3. Merge if CI is green")
+			ui.Info("")
+			if openPR {
+				ui.Warn("--open-pr not yet implemented (requires the agentic to do the work)")
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false,
+		"Show diff + summary only (no invocation)")
+	cmd.Flags().BoolVar(&noPrompt, "no-prompt", false,
+		"Just print the prompt (don't suggest how to invoke)")
+	cmd.Flags().BoolVar(&openPR, "open-pr", false,
+		"Open a PR with the agentic's work (not yet implemented)")
+	cmd.Flags().StringVar(&base, "base", "main",
+		"Base branch for the PR (default: main)")
+	cmd.Flags().StringVar(&agentName, "agent", "hermes",
+		"Agentic to delegate to (default: hermes)")
+	return cmd
+}
+
+// detectCICustomizations is a simple heuristic that scans the local
+// ci.yml for patterns indicating project-specific customizations
+// that should be preserved when the agentic renews CI.
+func detectCICustomizations(ciContent string) []string {
+	var out []string
+	if ciContent == "" {
+		return out
+	}
+	// Look for env vars and secrets
+	lines := strings.Split(ciContent, "\n")
+	envCount := 0
+	secretCount := 0
+	hasCustomJobs := 0
+	for _, l := range lines {
+		t := strings.TrimSpace(l)
+		if strings.HasPrefix(t, "env:") || strings.Contains(t, "env:") {
+			envCount++
+		}
+		if strings.Contains(t, "secrets.") {
+			secretCount++
+		}
+		if strings.HasPrefix(t, "- name:") || strings.HasPrefix(t, "- job:") {
+			hasCustomJobs++
+		}
+	}
+	if envCount > 0 {
+		out = append(out, fmt.Sprintf("Uses %d env var declarations (preserve)", envCount))
+	}
+	if secretCount > 0 {
+		out = append(out, fmt.Sprintf("References %d secrets (preserve)", secretCount))
+	}
+	if hasCustomJobs > 3 {
+		out = append(out, fmt.Sprintf("Has %d+ custom jobs (preserve names/structure)", hasCustomJobs))
+	}
+	return out
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -300,6 +301,26 @@ func runLocalChecks(cwd, harnessDir string, verbose bool) *doctorReport {
 		check("CI: dorny/paths-filter presente", contains(ciContent, "dorny/paths-filter"))
 	} else {
 		check("CI workflow present", false)
+	}
+
+	// 13. CI vs template: detect drift (run gmh agents update to fix)
+	templateYml := filepath.Join(cwd, "harness", "templates", ".github-workflows-ci.yml")
+	if fileExists(ciYml) && fileExists(templateYml) {
+		localCI, _ := os.ReadFile(ciYml)
+		tplCI, _ := os.ReadFile(templateYml)
+		localLines := strings.Split(string(localCI), "\n")
+		tplLines := strings.Split(string(tplCI), "\n")
+		localSet := make(map[string]bool)
+		for _, l := range localLines {
+			localSet[l] = true
+		}
+		added := 0
+		for _, l := range tplLines {
+			if !localSet[l] && strings.TrimSpace(l) != "" {
+				added++
+			}
+		}
+		check(fmt.Sprintf("CI: aligned with template (drift: +%d lines from template)", added), added < 5)
 	}
 
 	return rep
