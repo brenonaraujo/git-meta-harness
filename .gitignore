@@ -28,6 +28,9 @@ build/
 out/
 node_modules/
 coverage/
+
+# gmh CLI build artifacts (built locally via `make -C cli all`)
+cli/bin/
 coverage.*out
 
 # Test / cache
