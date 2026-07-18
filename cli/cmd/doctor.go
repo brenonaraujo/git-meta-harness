@@ -51,7 +51,7 @@ Examples:
   gmh doctor --fix                   # Auto-fix common issues`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, _ := os.Getwd()
+			cwd := getCwd(cmd)
 			harnessDir := filepath.Join(cwd, "harness")
 
 			// Quick local checks
@@ -288,6 +288,19 @@ func runLocalChecks(cwd, harnessDir string, verbose bool) *doctorReport {
 
 	// 11. README and docs
 	check("README.md at project root", fileExists(filepath.Join(cwd, "..", "README.md")) || fileExists(filepath.Join(cwd, "README.md")))
+
+	// 12. CI: detect bad patterns (unpinned, unverified)
+	ciYml := filepath.Join(cwd, ".github", "workflows", "ci.yml")
+	if fileExists(ciYml) {
+		data, _ := os.ReadFile(ciYml)
+		ciContent := string(data)
+		check("CI: no @latest actions", !contains(ciContent, "@latest"))
+		check("CI: no oasdiff/oasdiff:latest (tag invalid)", !contains(ciContent, "oasdiff/oasdiff:latest"))
+		check("CI: Trivy pinado (não @master)", !contains(ciContent, "aquasecurity/trivy-action@master"))
+		check("CI: dorny/paths-filter presente", contains(ciContent, "dorny/paths-filter"))
+	} else {
+		check("CI workflow present", false)
+	}
 
 	return rep
 }

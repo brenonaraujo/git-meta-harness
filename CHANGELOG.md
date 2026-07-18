@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.3] - 2026-07-18
+
+### Fixed — `gmh agents sync` heuristic + skills + doctor checks
+
+3 correções pontuais identificadas durante uso real no mandai-v2
+piloto (jul/2026):
+
+#### 1. `gmh agents sync` em safe mode era fraco (D-AGENTS-1)
+
+**Antes:** heurística era "só atualiza se persona path não está no SOUL".
+Depois de um `--aggressive`, o persona path ficava no SOUL, então safe
+nunca mais atualizava. Profiles outdated ficavam stale pra sempre.
+
+**Fix:** injeta um **version marker** no início do SOUL gerado:
+```
+<!-- gmh:soul version=1.6.2 hash=ba7ba5166c5034b2 -->
+```
+
+O safe mode agora detecta 3 tipos de drift:
+- sem marker (SOUL antigo)
+- framework version mudou (`currentVer != newVer`)
+- persona hash mudou (`currentHash != newHash`)
+
+Em qualquer um desses casos, **safe mode atualiza** (preserva custom
+sections via `## Custom sections (preserved)` block). Só preserva sem
+atualizar quando markers match + diff existe (= custom sections
+legítimas do user).
+
+#### 2. Skill `code-graph` warning (D-AGENTS-2)
+
+**Antes:** `gmh agents sync` mostrava `⚠ code-graph: open ...: no such
+file or directory` e **não instalava** a skill. Skills ausentes ficavam
+ausentes.
+
+**Fix:** `ReadSkill` agora retorna `("", nil)` para skills não
+instaladas (em vez de erro). `agents sync` então trata "vazio" como
+"não instalado" e **instala automaticamente** (`+ not installed in
+Hermes` → `installed`).
+
+#### 3. `gmh doctor` agora detecta `oasdiff/oasdiff:latest` (D-CI-1)
+
+**Antes:** `oasdiff/oasdiff:latest` no `ci.yml` quebrava a pipeline
+quando o user abria um PR (tag `@latest` não existe mais). O
+`gmh doctor` não detectava.
+
+**Fix:** novos checks locais:
+- `CI: no @latest actions`
+- `CI: no oasdiff/oasdiff:latest (tag invalid)`
+- `CI: Trivy pinado (não @master)`
+- `CI: dorny/paths-filter presente`
+
+Se algum desses falhar, o doctor avisa — o user sabe antes de abrir PR.
+
+#### Bonus: bug de cwd
+
+`gmh doctor` e `gmh agents` agora respeitam o flag `-C/--cwd` (antes
+usavam só `os.Getwd()`). Se o user rodar `gmh -C /path doctor`, o
+cwd usado pelos checks é o `/path`.
+
 ## [1.6.2] - 2026-07-18
 
 ### Added — `gmh agents` (sync profiles + skills com framework)

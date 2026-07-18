@@ -133,16 +133,26 @@ func (c *Client) ListSkills() ([]Skill, error) {
 }
 
 // ReadSkill reads a skill's content (SKILL.md or main file).
+//
+// Returns ("", nil) if the skill is not installed (no directory).
+// Returns an error only if the directory exists but has no readable
+// .md file.
 func (c *Client) ReadSkill(name string) (string, error) {
 	// Try SKILL.md first
 	p := filepath.Join(c.Home, "skills", name, "SKILL.md")
 	if data, err := os.ReadFile(p); err == nil {
 		return string(data), nil
+	} else if !os.IsNotExist(err) {
+		return "", err
 	}
 	// Fall back to first .md in dir
 	dir := filepath.Join(c.Home, "skills", name)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			// Skill not installed — return empty (not an error)
+			return "", nil
+		}
 		return "", err
 	}
 	for _, e := range entries {

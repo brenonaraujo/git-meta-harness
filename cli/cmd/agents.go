@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/agentic"
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/hermes"
@@ -128,7 +129,7 @@ func agentsInspectCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			profileName := args[0]
 
-			cwd, _ := os.Getwd()
+			cwd := getCwd(cmd)
 			personaPath := filepath.Join(cwd, "harness", "personas", profileName+".md")
 			if _, err := os.Stat(personaPath); err != nil {
 				ui.Fail("Persona not found: %s", personaPath)
@@ -140,7 +141,7 @@ func agentsInspectCmd() *cobra.Command {
 			ui.Header("Inspect: " + profileName)
 
 			// Generate new SOUL.md from persona
-			newSoul, err := soul.Generate(personaPath)
+			newSoul, err := soul.Generate(personaPath, frameworkVersion(cwd))
 			if err != nil {
 				return err
 			}
@@ -220,7 +221,7 @@ Examples:
   gmh agents sync --open-pr              # Open a PR (Hermes-side; rare)`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, _ := os.Getwd()
+			cwd := getCwd(cmd)
 
 			hermesClient, err := hermes.NewClient("")
 			if err != nil {
@@ -278,6 +279,9 @@ Examples:
 			if manifest != nil {
 				ui.Info("")
 				ui.Info("Skills sync:")
+				skillsInstalled := 0
+				skillsUpdated := 0
+				skillsUnchanged := 0
 				for _, s := range manifest.Skills {
 					if onlyProfile != "" {
 						continue
@@ -288,13 +292,16 @@ Examples:
 						continue
 					}
 					if installed == "" {
-						ui.Step("  + %s (not installed)", s.Name)
+						ui.Step("  + %s (not installed in Hermes)", s.Name)
 						if !dryRun {
 							if err := hermesClient.WriteSkill(s.Name, s.Content); err != nil {
 								ui.Warn("    failed: %v", err)
 							} else {
 								ui.OK("    installed")
+								skillsInstalled++
 							}
+						} else {
+							skillsInstalled++
 						}
 					} else if installed != s.Content {
 						d := soul.ComputeDiff(installed, s.Content)
@@ -304,12 +311,18 @@ Examples:
 								ui.Warn("    failed: %v", err)
 							} else {
 								ui.OK("    updated")
+								skillsUpdated++
 							}
+						} else if !aggressive {
+							ui.Step("    (safe mode: not updated; use --aggressive)")
 						}
 					} else {
 						ui.Step("  = %s (unchanged)", s.Name)
+						skillsUnchanged++
 					}
 				}
+				ui.Info("")
+				ui.Info("Skills: %d installed, %d updated, %d unchanged", skillsInstalled, skillsUpdated, skillsUnchanged)
 			}
 
 			// Summary
@@ -363,7 +376,7 @@ func syncProfile(p hermes.Profile, cwd string, aggressive, dryRun bool) profileS
 		return profileSyncResult{name: p.Name, action: "preserved"}
 	}
 
-	newSoul, err := soul.Generate(personaPath)
+	newSoul, err := soul.Generate(personaPath, frameworkVersion(cwd))
 	if err != nil {
 		ui.Warn("  ⚠ %s: failed to generate SOUL: %v", p.Name, err)
 		return profileSyncResult{name: p.Name, action: "skipped"}
@@ -390,16 +403,46 @@ func syncProfile(p hermes.Profile, cwd string, aggressive, dryRun bool) profileS
 	}
 
 	if !aggressive {
-		// Safe mode: only update if the persona's "framework marker" is
-		// missing from the current SOUL. A simple heuristic: check if
-		// the persona path is mentioned in the current SOUL.
-		if !strings.Contains(string(currentSoul), personaPath) {
-			// Doesn't reference this persona file — likely old
-			ui.Step("  ~ %s (outdated — would update, but --safe)", p.Name)
+		// Safe mode: update if the persona hash OR framework version
+		// in the current SOUL is stale (marker mismatch). Otherwise,
+		// preserve the user's customizations.
+		currentVer, currentHash := soul.ExtractVersionMarker(string(currentSoul))
+		newVer := frameworkVersion(cwd)
+		newHash, _ := soul.PersonaHash(personaPath)
+
+		stale := false
+		reason := ""
+		if currentVer == "" {
+			stale = true
+			reason = "no version marker"
+		} else if currentVer != newVer {
+			stale = true
+			reason = fmt.Sprintf("framework version %s → %s", currentVer, newVer)
+		} else if currentHash != newHash {
+			stale = true
+			reason = "persona hash changed"
+		}
+
+		if !stale {
+			// Markers match → user has the current version. If there's
+			// no diff, skip. If there's a diff, it's from customizations
+			// the user made — preserve.
+			if len(d.Added) == 0 && len(d.Removed) == 0 {
+				return profileSyncResult{name: p.Name, action: "skipped"}
+			}
+			ui.Step("  ~ %s (markers match; customizations preserved)", p.Name)
 			return profileSyncResult{name: p.Name, action: "preserved"}
 		}
-		ui.Step("  ~ %s (has custom marker; preserving)", p.Name)
-		return profileSyncResult{name: p.Name, action: "preserved"}
+
+		// Outdated → update in safe mode
+		ui.Step("  ↻ %s (outdated: %s)", p.Name, reason)
+		if !dryRun {
+			if err := writeFile(p.SoulPath, newSoul); err != nil {
+				ui.Warn("    failed: %v", err)
+				return profileSyncResult{name: p.Name, action: "skipped"}
+			}
+		}
+		return profileSyncResult{name: p.Name, action: "updated"}
 	}
 
 	// Aggressive: write the new SOUL (custom sections preserved inside
@@ -422,7 +465,7 @@ func agentsInstallCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			profileName := args[0]
-			cwd, _ := os.Getwd()
+			cwd := getCwd(cmd)
 			personaPath := filepath.Join(cwd, "harness", "personas", profileName+".md")
 			if _, err := os.Stat(personaPath); err != nil {
 				ui.Fail("Persona not found: %s", personaPath)
@@ -431,7 +474,7 @@ func agentsInstallCmd() *cobra.Command {
 				return fmt.Errorf("persona not found")
 			}
 
-			newSoul, err := soul.Generate(personaPath)
+			newSoul, err := soul.Generate(personaPath, frameworkVersion(cwd))
 			if err != nil {
 				return err
 			}
@@ -515,3 +558,24 @@ func strategyName(aggressive bool) string {
 
 // suppress unused import warnings for agentic (used in future iterations)
 var _ = agentic.None
+
+// getCwd returns the working directory, honoring the --cwd/-C flag
+// via viper. Falls back to os.Getwd() if the flag is empty.
+func getCwd(cmd *cobra.Command) string {
+	if v := viper.GetString("cwd"); v != "" && v != "." {
+		return v
+	}
+	cwd, _ := os.Getwd()
+	return cwd
+}
+
+// frameworkVersion reads the meta-harness version from the project's
+// VERSION file (set by `gmh sync` / `gmh install`).
+// Returns "" if not found.
+func frameworkVersion(cwd string) string {
+	data, err := os.ReadFile(filepath.Join(cwd, "VERSION"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
