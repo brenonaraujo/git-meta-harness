@@ -1,0 +1,65 @@
+# OS / editor
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.iml
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts (when this repo is consumed as a dependency)
+dist/
+build/
+out/
+node_modules/
+coverage/
+coverage.*out
+
+# Test / cache
+.cache/
+.turbo/
+.nx/cache/
+.next/
+.nuxt/
+.output/
+
+# Secrets / env
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# Local stack
+local/
+.stack-work/
+
+# Generated
+*.gen.go
+*.gen.ts
+*.generated.*
+
+# Python (for tooling)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS scripts
+.scripts-cache/

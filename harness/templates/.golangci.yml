@@ -1,0 +1,155 @@
+version: "2"
+
+# IMPORTANTE: schema v2 NÃO aceita `settings:`, `issues:`, `exclude-rules:`
+# no TOP LEVEL. Esses campos vão dentro de `linters.settings`,
+# `linters.exclusions.rules` ou `formatters.settings`.
+#
+# v2 separa LINTERS de FORMATTERS:
+#   - linters: análise estática (govet, errcheck, gocritic, gosec, etc.)
+#   - formatters: formatação (gofmt, goimports, gofumpt)
+#
+# Bug visto no piloto Mandaí v2 (jul/2026): template antigo tinha
+# `version: "2"` no top + `settings:` no top (v1) + `formatters:`
+# ausente. Linter v2 rejeitava com "additional properties 'issues'
+# not allowed" e "formatters.enable not found" → lint quebrava.
+#
+# Migração de v1: rode `golangci-lint migrate` (recurso nativo v2)
+# e revise o resultado. Comments não são migrados.
+
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  default: none
+  enable:
+    # core
+    - govet
+    - errcheck
+    - ineffassign
+    - unused
+    # style
+    - gocritic
+    - revive
+    - misspell
+    - whitespace
+    - wsl
+    # complexity (exigidos pelo DoD — harness/stack/code-style.md)
+    - gocyclo
+    - funlen
+    - cyclop
+    - dupl
+    - goconst
+    - mnd
+    # bug-prevention
+    - bodyclose
+    - contextcheck
+    - copyloopvar
+    - errorlint
+    - nilerr
+    - nilnil
+    - rowserrcheck
+    - sqlclosecheck
+    - unparam
+    # security (exigido pelo DoD — AGENTS.md §8 F8)
+    - gosec
+    # test quality
+    - testifylint
+    - thelper
+    - paralleltest
+  settings:
+    funlen:
+      lines: 25
+      statements: 20
+      ignore-comments: true
+    gocyclo:
+      min-complexity: 15
+    cyclop:
+      max-complexity: 15
+    gosec:
+      severity: medium
+      confidence: medium
+    govet:
+      enable-all: true
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          severity: warning
+        - name: argument-limit
+          arguments: [5]
+        - name: max-control-nesting
+          arguments: [4]
+        - name: max-public-structs
+          arguments: [10]
+    mnd:
+      checks:
+        - argument
+        - case
+        - condition
+        - return
+      ignored-numbers:
+        - "0"
+        - "1"
+        - "2"
+        - "100"
+        - "200"
+        - "201"
+        - "204"
+        - "400"
+        - "401"
+        - "403"
+        - "404"
+        - "500"
+        - "503"
+        - "1000"
+        - "1024"
+        - "8080"
+    dupl:
+      threshold: 50
+  exclusions:
+    warn-unused: true
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+          - mnd
+          - funlen
+          - dupl
+      - path: migrations/
+        linters:
+          - mnd
+          - goconst
+      - path: docs/
+        linters:
+          - all
+      # generated: ignorar
+      - path: internal/api/openapi\.gen\.go
+        linters:
+          - all
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    warn-unused: true
+    rules:
+      - path: internal/api/openapi\.gen\.go
+        linters:
+          - gofmt
+          - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  fix: false
+
+severity:
+  default: warning
+  rules:
+    - linters:
+        - gosec
+      severity: high

@@ -1,0 +1,44 @@
+# CODEOWNERS — git-meta-harness
+#
+# Each line is a file pattern followed by one or more owners.
+# When someone opens a PR that touches files matched by a pattern,
+# the listed owners are auto-requested for review.
+
+# Default owner for everything not matched below
+*                    @brenonaraujo
+
+# Core spec changes (bootstrap, AGENTS, seed) need explicit review
+/harness/AGENTS.md             @brenonaraujo
+/harness/bootstrap.md          @brenonaraujo
+/harness/seed/                 @brenonaraujo
+/harness/CLAUDE.md             @brenonaraujo
+
+# Personas (any change to a persona is a behavioral change)
+/harness/personas/             @brenonaraujo
+/harness/personas/examples/    @brenonaraujo
+
+# Sensors (any change to a sensor is a quality-gate change)
+/harness/sensors/              @brenonaraujo
+
+# Workflow docs
+/harness/workflow/             @brenonaraujo
+
+# Stack (versions, code-style, etc.) — these are policy
+/harness/stack/                @brenonaraujo
+
+# Templates (used by consumers)
+/harness/templates/            @brenonaraujo
+
+# Skills (consumed by Hermes Agent and other CLIs)
+/harness/skills/               @brenonaraujo
+
+# ADRs (architectural decisions)
+/harness/contrib/              @brenonaraujo
+
+# Scripts (smoke-test, check-stack-versions) — these are gates
+/harness/scripts/              @brenonaraujo
+
+# Versioning
+/VERSION                       @brenonaraujo
+/CHANGELOG.md                  @brenonaraujo
+/package.json                  @brenonaraujo

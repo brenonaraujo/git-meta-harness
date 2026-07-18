@@ -1,0 +1,68 @@
+{
+  "_comment": "es — Español (neutro, compatível com es-AR, es-MX, es-ES, etc.). Use 'usted' se o produto for formal; 'tú' se for informal.",
+  "common": {
+    "app_name":        "Mi Servicio",
+    "loading":         "Cargando…",
+    "retry":           "Reintentar",
+    "cancel":          "Cancelar",
+    "confirm":         "Confirmar",
+    "save":            "Guardar",
+    "delete":          "Eliminar",
+    "edit":            "Editar",
+    "search":          "Buscar",
+    "back":            "Volver",
+    "yes":             "Sí",
+    "no":              "No"
+  },
+  "validation": {
+    "required_field":  "El campo {{.field}} es obligatorio",
+    "invalid_email":   "Dirección de correo electrónico inválida",
+    "invalid_payload": "Carga útil inválida: {{.error}}",
+    "min_length":      "El campo {{.field}} debe tener al menos {{.min}} caracteres",
+    "max_length":      "El campo {{.field}} debe tener como máximo {{.max}} caracteres",
+    "out_of_range":    "El campo {{.field}} debe estar entre {{.min}} y {{.max}}"
+  },
+  "auth": {
+    "login":                "Iniciar sesión",
+    "logout":               "Cerrar sesión",
+    "register":             "Registrarse",
+    "email":                "Correo electrónico",
+    "password":             "Contraseña",
+    "forgot_password":      "¿Olvidó su contraseña?",
+    "invalid_credentials":  "Correo electrónico o contraseña inválidos",
+    "account_locked":       "Su cuenta ha sido bloqueada. Contacte al soporte.",
+    "account_not_verified": "Verifique su correo electrónico antes de iniciar sesión.",
+    "token_expired":        "Su sesión ha expirado. Inicie sesión de nuevo.",
+    "login_success":        "¡Bienvenido de nuevo, {{.name}}!",
+    "register_success":     "Cuenta creada. ¡Bienvenido, {{.name}}!",
+    "password_changed":     "Su contraseña fue cambiada con éxito"
+  },
+  "user": {
+    "not_found":        "Usuario no encontrado",
+    "created":          "Usuario {{.name}} creado con éxito",
+    "updated":          "Usuario actualizado con éxito",
+    "deleted":          "Usuario eliminado con éxito",
+    "delete_blocked":   "No se puede eliminar un usuario con sesiones activas",
+    "email_taken":      "Este correo electrónico ya está registrado",
+    "profile_updated":  "Perfil actualizado con éxito"
+  },
+  "error": {
+    "internal":      "Error interno del servidor. Intente nuevamente más tarde.",
+    "not_found":     "Recurso no encontrado",
+    "forbidden":     "No tiene permiso para acceder a este recurso",
+    "unauthorized":  "Autenticación requerida",
+    "rate_limited":  "Demasiadas solicitudes. Espere unos minutos.",
+    "maintenance":   "Servicio en mantenimiento. Intente nuevamente más tarde.",
+    "network":       "Error de red. Verifique su conexión e intente de nuevo."
+  },
+  "success": {
+    "created":   "{{.resource}} creado(a) con éxito",
+    "updated":   "{{.resource}} actualizado(a) con éxito",
+    "deleted":   "{{.resource}} eliminado(a) con éxito"
+  },
+  "home": {
+    "welcome":   "Bienvenido a nuestra plataforma",
+    "subtitle":  "Administre su cuenta en un solo lugar",
+    "get_started": "Comenzar"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "_comment": "Template de locales i18n para o meta-harness. Idiomas: en, pt-BR, es. Copie para internal/i18n/locales/<lang>.json (backend) ou i18n/locales/<lang>.json (frontend) e ajuste as mensagens. Convenção de chaves: <domínio>.<ação>.<contexto>. Interpolação Go: {{.var}} | Interpolação Nuxt: {{ var }}",
+  "common": {
+    "app_name":        "My Service",
+    "loading":         "Loading…",
+    "retry":           "Retry",
+    "cancel":          "Cancel",
+    "confirm":         "Confirm",
+    "save":            "Save",
+    "delete":          "Delete",
+    "edit":            "Edit",
+    "search":          "Search",
+    "back":            "Back",
+    "yes":             "Yes",
+    "no":              "No"
+  },
+  "validation": {
+    "required_field":  "Field {{.field}} is required",
+    "invalid_email":   "Invalid email address",
+    "invalid_payload": "Invalid request payload: {{.error}}",
+    "min_length":      "Field {{.field}} must be at least {{.min}} characters",
+    "max_length":      "Field {{.field}} must be at most {{.max}} characters",
+    "out_of_range":    "Field {{.field}} must be between {{.min}} and {{.max}}"
+  },
+  "auth": {
+    "login":                "Sign in",
+    "logout":               "Sign out",
+    "register":             "Sign up",
+    "email":                "Email",
+    "password":             "Password",
+    "forgot_password":      "Forgot your password?",
+    "invalid_credentials":  "Invalid email or password",
+    "account_locked":       "Your account has been locked. Contact support.",
+    "account_not_verified": "Please verify your email before signing in.",
+    "token_expired":        "Your session has expired. Please sign in again.",
+    "login_success":        "Welcome back, {{.name}}!",
+    "register_success":     "Account created. Welcome, {{.name}}!",
+    "password_changed":     "Your password was changed successfully"
+  },
+  "user": {
+    "not_found":        "User not found",
+    "created":          "User {{.name}} created successfully",
+    "updated":          "User updated successfully",
+    "deleted":          "User deleted successfully",
+    "delete_blocked":   "Cannot delete user with active sessions",
+    "email_taken":      "This email is already registered",
+    "profile_updated":  "Profile updated successfully"
+  },
+  "error": {
+    "internal":      "Internal server error. Please try again later.",
+    "not_found":     "Resource not found",
+    "forbidden":     "You don't have permission to access this resource",
+    "unauthorized":  "Authentication required",
+    "rate_limited":  "Too many requests. Please wait a few minutes.",
+    "maintenance":   "Service is under maintenance. Please try again later.",
+    "network":       "Network error. Check your connection and try again."
+  },
+  "success": {
+    "created":   "{{.resource}} created successfully",
+    "updated":   "{{.resource}} updated successfully",
+    "deleted":   "{{.resource}} deleted successfully"
+  },
+  "home": {
+    "welcome":   "Welcome to our platform",
+    "subtitle":  "Manage your account in one place",
+    "get_started": "Get started"
+  }
+}

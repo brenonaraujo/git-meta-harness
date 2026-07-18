@@ -1,0 +1,99 @@
+# docker-compose — snapshot local do microsserviço
+# Uso: docker compose -f deploy/docker-compose.yml up -d --build
+#
+# Este compose é o "snapshot" que o PR sobe para validação local.
+# Em produção, este serviço roda em K8s/Cloud Run/etc. — não via compose.
+
+services:
+  postgres:
+    image: postgres:18.4-alpine
+    container_name: my-service-postgres
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # IMPORTANTE: `pg_isready` requer shell. Em postgres:alpine
+      # há shell, então `CMD-SHELL` funciona. NÃO use `pg_isready`
+      # em images que não têm shell.
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.migrate
+    container_name: my-service-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # IMPORTANTE: passar DATABASE_URL via `command:` (não env), em
+    # exec form. Default CMD do Dockerfile fica VAZIO (placeholder).
+    environment:
+      DATABASE_URL: postgres://app:app@postgres:5432/app?sslmode=disable
+    # Sobrescreve o CMD default (que tem placeholder). Em exec form
+    # (sem shell), não há expansão de $VAR — o env var é lido pela
+    # lib do migrate diretamente.
+    command: ["-path", "/migrations", "-database", "postgres://app:app@postgres:5432/app?sslmode=disable", "up"]
+    restart: "no"
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: my-service-backend
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://app:app@postgres:5432/app?sslmode=disable
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIN_MODE: ${GIN_MODE:-debug}
+      METRICS_PATH: /metrics
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # IMPORTANTE: em distroless NÃO HÁ SHELL. O healthcheck
+    # precisa ser em exec form (CMD, não CMD-SHELL), e o binário
+    # do server deve implementar uma flag -healthcheck que retorna
+    # exit 0 quando /healthz retorna 200.
+    healthcheck:
+      test: ["CMD", "/server", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # Descomente se houver frontend (Nuxt)
+  # IMPORTANTE: em distroless base-debian12 (Node precisa libc),
+  # NÃO use `wget` ou `CMD-SHELL`. Healthcheck em exec form
+  # chamando `node -e "fetch(...)"` ou similar.
+  # frontend:
+  #   build:
+  #     context: ../web
+  #     dockerfile: deploy/Dockerfile
+  #   container_name: my-service-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     NUXT_PUBLIC_API_BASE: http://localhost:8080/api/v1
+  #   healthcheck:
+  #     test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1))"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5
+  #   depends_on:
+  #     - backend
+
+volumes:
+  postgres_data:
+    name: my-service-postgres-data

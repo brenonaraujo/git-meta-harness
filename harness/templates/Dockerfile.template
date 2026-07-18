@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1
+#
+# Dockerfile — my-service (Go)
+# Padrão meta-harness: multi-stage, distroless, non-root, healthcheck.
+#
+# Versões pinadas (atualizar conforme harness/stack/versions.md):
+#   - Go build:   golang:1.26.5-alpine3.22
+#   - Runtime:    gcr.io/distroless/static-debian13:nonroot
+#   - User:       65532:65532 (não "nonroot:nonroot" — k8s runAsNonRoot)
+#
+# IMPORTANTE: alinhe a versão do Go com o `go.mod` do seu projeto.
+# Se seu go.mod diz `go 1.26.5`, a base image deve ser `golang:1.26.5-alpine3.22`.
+#
+# BOOTSTRAP Go (jul/2026): Go 1.26+ exige Go ≥ 1.24.6 como bootstrap
+# para compilar a si mesmo. Se seu go.mod tem deps que exigem go 1.25+,
+# a base image DEVE ser ≥ 1.25 (idealmente 1.26.5) — NUNCA < 1.24.6.
+# Ver: https://go.dev/doc/go1.26
+
+# ============ Stage 1: deps ============
+FROM golang:1.26.5-alpine3.22 AS deps
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download && go mod verify
+
+# ============ Stage 2: build ============
+FROM golang:1.26.5-alpine3.22 AS builder
+WORKDIR /src
+
+# Copy cached modules
+COPY --from=deps /go/pkg/mod /go/pkg/mod
+
+# Copy source
+COPY . .
+
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
+
+# Build
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build \
+      -trimpath \
+      -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildDate=${BUILD_DATE}" \
+      -o /out/server ./cmd/server
+
+# ============ Stage 3: runtime ============
+FROM gcr.io/distroless/static-debian13:nonroot
+
+COPY --from=builder /out/server /server
+
+# IMPORTANTE: usar UID numérico (65532), NÃO "nonroot:nonroot".
+# Kubernetes runAsNonRoot: true não valida string username.
+USER 65532:65532
+EXPOSE 8080
+
+# Healthcheck via flag (não tem shell em distroless).
+# O binário do server deve implementar a flag -healthcheck que
+# faz GET /healthz e sai 0/1.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/server", "-healthcheck"]
+
+ENTRYPOINT ["/server"]

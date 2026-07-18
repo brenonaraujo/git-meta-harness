@@ -1,0 +1,68 @@
+{
+  "_comment": "pt-BR — Português brasileiro. Use como base; adapte ao tom do produto (formal vs informal).",
+  "common": {
+    "app_name":        "Meu Serviço",
+    "loading":         "Carregando…",
+    "retry":           "Tentar novamente",
+    "cancel":          "Cancelar",
+    "confirm":         "Confirmar",
+    "save":            "Salvar",
+    "delete":          "Excluir",
+    "edit":            "Editar",
+    "search":          "Buscar",
+    "back":            "Voltar",
+    "yes":             "Sim",
+    "no":              "Não"
+  },
+  "validation": {
+    "required_field":  "Campo {{.field}} é obrigatório",
+    "invalid_email":   "Endereço de e-mail inválido",
+    "invalid_payload": "Payload inválido: {{.error}}",
+    "min_length":      "Campo {{.field}} deve ter no mínimo {{.min}} caracteres",
+    "max_length":      "Campo {{.field}} deve ter no máximo {{.max}} caracteres",
+    "out_of_range":    "Campo {{.field}} deve estar entre {{.min}} e {{.max}}"
+  },
+  "auth": {
+    "login":                "Entrar",
+    "logout":               "Sair",
+    "register":             "Cadastrar",
+    "email":                "E-mail",
+    "password":             "Senha",
+    "forgot_password":      "Esqueceu sua senha?",
+    "invalid_credentials":  "E-mail ou senha inválidos",
+    "account_locked":       "Sua conta foi bloqueada. Contate o suporte.",
+    "account_not_verified": "Verifique seu e-mail antes de entrar.",
+    "token_expired":        "Sua sessão expirou. Faça login novamente.",
+    "login_success":        "Bem-vindo de volta, {{.name}}!",
+    "register_success":     "Conta criada. Bem-vindo, {{.name}}!",
+    "password_changed":     "Sua senha foi alterada com sucesso"
+  },
+  "user": {
+    "not_found":        "Usuário não encontrado",
+    "created":          "Usuário {{.name}} criado com sucesso",
+    "updated":          "Usuário atualizado com sucesso",
+    "deleted":          "Usuário excluído com sucesso",
+    "delete_blocked":   "Não é possível excluir usuário com sessões ativas",
+    "email_taken":      "Este e-mail já está cadastrado",
+    "profile_updated":  "Perfil atualizado com sucesso"
+  },
+  "error": {
+    "internal":      "Erro interno do servidor. Tente novamente mais tarde.",
+    "not_found":     "Recurso não encontrado",
+    "forbidden":     "Você não tem permissão para acessar este recurso",
+    "unauthorized":  "Autenticação necessária",
+    "rate_limited":  "Muitas requisições. Aguarde alguns minutos.",
+    "maintenance":   "Serviço em manutenção. Tente novamente mais tarde.",
+    "network":       "Erro de rede. Verifique sua conexão e tente novamente."
+  },
+  "success": {
+    "created":   "{{.resource}} criado(a) com sucesso",
+    "updated":   "{{.resource}} atualizado(a) com sucesso",
+    "deleted":   "{{.resource}} excluído(a) com sucesso"
+  },
+  "home": {
+    "welcome":   "Bem-vindo à nossa plataforma",
+    "subtitle":  "Gerencie sua conta em um só lugar",
+    "get_started": "Começar"
+  }
+}
