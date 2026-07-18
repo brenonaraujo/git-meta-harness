@@ -161,7 +161,7 @@ with the framework's new template.
 
 4. **Open a PR:**
    - Branch: `+"`ci/renew-framework-" + strings.TrimPrefix(in.LatestVersion, "v") + "`" + `
-   - Title: `+"`ci: renew to framework v" + in.LatestVersion + "`" + `
+   - Title: `+"`ci: renew to framework " + in.LatestVersion + "`" + `
    - Body: list the new sensors/gates added, the customizations
      preserved, and the verification commands.
 
