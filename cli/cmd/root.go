@@ -88,6 +88,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(SyncCmd())
 	rootCmd.AddCommand(UpdateCmd())
 	rootCmd.AddCommand(DoctorCmd())
+	rootCmd.AddCommand(AgentsCmd())
 	rootCmd.AddCommand(SkillsCmd())
 	rootCmd.AddCommand(PersonasCmd())
 	rootCmd.AddCommand(PluginsCmd())

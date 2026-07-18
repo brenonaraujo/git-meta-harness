@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.2] - 2026-07-18
+
+### Added — `gmh agents` (sync profiles + skills com framework)
+
+Fechando o **gargalo do "harness desatualizado no user-side"**:
+o `gmh sync` atualiza `harness/` no projeto, mas não toca os
+**profiles do Hermes em `~/.hermes/profiles/`** nem as
+**skills em `~/.hermes/skills/`**.
+
+Resultado: profiles ficam com SOUL.md desatualizado (sabem de
+18 invariantes quando o framework já tem 19), skills ficam
+antigas, e domain-experts especializados perdem sync com o
+framework.
+
+**`gmh agents`** resolve isso com merge agentico.
+
+#### Comandos
+
+| Comando | O que faz |
+|---------|-----------|
+| `gmh agents list` | Lista profiles + skills instalados em `~/.hermes/` |
+| `gmh agents inspect <profile>` | Mostra o diff entre SOUL.md atual e o gerado do persona |
+| `gmh agents sync` | Sincroniza profiles + skills com a versão do framework |
+| `gmh agents install <profile>` | Instala um profile a partir do `harness/personas/<name>.md` |
+
+#### Sync strategies
+
+- **Safe (default)**: só atualiza profiles cujo SOUL.md não
+  referencia o persona path. Customizações locais são
+  preservadas.
+- **Aggressive (`--aggressive`)**: regenera todos os profiles
+  matching os personas. Custom sections do SOUL.md antigo
+  são preservadas em um bloco `## Custom sections (preserved)`.
+
+#### Como funciona
+
+1. Lê o persona file (ex: `harness/personas/team-manager.md`)
+2. Extrai as seções `Identidade`, `Responsabilidades`, `Limites`,
+   `Referências` (canônico SOUL.md)
+3. Lê o SOUL.md atual em `~/.hermes/profiles/<name>/SOUL.md`
+4. Faz diff linha-a-linha
+5. Aplica merge (safe ou aggressive)
+6. Reporta o que mudou (Updated/Preserved/Unchanged)
+
+#### Skills sync
+
+`gmh agents sync` também sincroniza as skills em
+`~/.hermes/skills/`:
+
+- Skill não instalada → instala
+- Skill igual → skip
+- Skill divergente → atualiza (em aggressive) ou avisa (em safe)
+
+#### Internals
+
+3 novos packages em `cli/internal/`:
+
+- `hermes/` — filesystem client para `~/.hermes/`
+  (ListProfiles, ReadSoul, WriteSoul, ListSkills, ReadSkill,
+  WriteSkill)
+- `soul/` — `Generate(personaPath)` extrai as seções
+  canônicas de um persona file; `ComputeDiff(current, generated)`
+  faz diff linha-a-linha
+- `skills/` — `BuildManifest(dir)` lê `harness/skills/`
+  e retorna manifest
+
+#### Validação
+
+- 6 profiles detectados no Hermes do user (team-manager,
+  backend-engineer, frontend-engineer, devops-engineer,
+  quality-assurance, solutions-architect)
+- 41 skills detectados
+- `gmh agents sync --dry-run` mostra 6 outdated (em safe)
+- `gmh agents sync --aggressive` regenera os 6 + atualiza
+  7 skills built-in
+- SOUL.md do team-manager cresceu de ~200 → 824 linhas
+  (com todo o conteúdo do persona, antes só tinha resumo)
+- Cross-build 5 plataformas OK
+- Backward compatible: nada quebra se você não usar
+  `gmh agents`
+
 ## [1.6.0] - 2026-07-18
 
 ### Added — Release pipeline (GHCR) + `gmh` CLI
