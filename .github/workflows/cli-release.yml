@@ -1,18 +1,16 @@
 # ============================================================================
 # GitHub Actions — gmh CLI Release
 # ============================================================================
-# Builds the gmh CLI binary for 5 platforms and publishes to a
-# `cli-vX.Y.Z` GitHub Release.
+# Builds the gmh CLI binary for 5 platforms.
 #
 # Triggers:
-#   - push de tag `cli-vX.Y.Z` na main
+#   - push de tag `vX.Y.Z` (release do framework) → upload na release existente
+#   - push de tag `cli-vX.Y.Z` (CLI-only release) → cria release separada
 #   - workflow_dispatch manual
 #
 # Output:
-#   - gmh-linux-amd64
-#   - gmh-linux-arm64
-#   - gmh-darwin-amd64
-#   - gmh-darwin-arm64
+#   - gmh-linux-amd64, gmh-linux-arm64
+#   - gmh-darwin-amd64, gmh-darwin-arm64
 #   - gmh-windows-amd64.exe
 #   - checksums.txt
 # ============================================================================
@@ -22,11 +20,12 @@ name: cli-release
 on:
   push:
     tags:
-      - "cli-v*.*.*"
+      - "v*.*.*"        # framework release → upload na release existente
+      - "cli-v*.*.*"    # CLI-only release → cria release separada
   workflow_dispatch:
     inputs:
       version:
-        description: "Version (e.g., v1.6.0)"
+        description: "Version (e.g., v1.6.0). Use 'vX.Y.Z' to upload to existing framework release."
         required: true
         type: string
 
@@ -73,11 +72,21 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then
             VERSION="${{ github.ref_name }}"
           else
-            VERSION="cli-${{ inputs.version }}"
+            VERSION="${{ inputs.version }}"
           fi
+          # Strip optional 'cli-' prefix to get the bare version
           VERSION_NO_PREFIX="${VERSION#cli-}"
+          # Tag for the release (e.g., 'v1.6.0' or 'cli-v1.6.0')
+          RELEASE_TAG="$VERSION"
+          # Whether this is a standalone CLI release or attached to framework
+          IS_CLI_ONLY="false"
+          if [[ "$VERSION" == cli-v* ]]; then
+            IS_CLI_ONLY="true"
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "version_no_prefix=$VERSION_NO_PREFIX" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "is_cli_only=$IS_CLI_ONLY" >> "$GITHUB_OUTPUT"
 
       - name: Build binary
         working-directory: cli
@@ -95,8 +104,9 @@ jobs:
             -o "$OUTPUT" .
           ls -la bin/
 
-      - name: Smoke test the binary
+      - name: Smoke test the binary (only on native runner)
         working-directory: cli
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
         run: |
           chmod +x bin/gmh-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
           ./bin/gmh-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} version
@@ -143,7 +153,23 @@ jobs:
       - name: List artifacts
         run: ls -la dist/
 
-      - name: Create release
+      - name: Attach to existing framework release (when tag is vX.Y.Z)
+        if: startsWith(github.ref, 'refs/tags/v') && !startsWith(github.ref, 'refs/tags/cli-v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "==> Attaching CLI binaries to existing framework release: $TAG"
+          gh release upload "$TAG" dist/gmh-* dist/checksums.txt \
+            --repo ${{ github.repository }} \
+            --clobber
+          echo "✅ Binaries attached to $TAG release"
+          echo ""
+          echo "Users can now install with:"
+          echo "  curl -sSL https://raw.githubusercontent.com/${{ github.repository }}/main/cli/installer/install.sh | bash"
+
+      - name: Create standalone CLI release (when tag is cli-vX.Y.Z)
+        if: startsWith(github.ref, 'refs/tags/cli-v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -151,7 +177,7 @@ jobs:
           body: |
             ## gmh ${{ github.ref_name }}
 
-            Static binary release of the gmh (git-meta-harness) CLI.
+            Standalone CLI release (no framework changes).
 
             ### Install
 
@@ -165,8 +191,6 @@ jobs:
 
             ### Manual download
 
-            Download the binary for your platform, `chmod +x`, and put in `$PATH`.
-
             | OS      | Arch    | File                          |
             |---------|---------|-------------------------------|
             | Linux   | amd64   | `gmh-linux-amd64`             |
@@ -175,8 +199,7 @@ jobs:
             | macOS   | arm64   | `gmh-darwin-arm64`            |
             | Windows | amd64   | `gmh-windows-amd64.exe`       |
 
-            ### Verify
-
+            Verify:
             ```bash
             sha256sum -c checksums.txt
             ```
