@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.2] - 2026-07-18
+
+### Fixed — Replace remaining ASCII diagram in `docs/PIPELINE.md`
+
+The v1.2.1 patch missed the issue lifecycle ASCII art in
+`docs/PIPELINE.md` §2. This patch replaces it with a proper
+Mermaid `stateDiagram-v2`.
+
+#### Changes
+
+- **`docs/PIPELINE.md`** — the issue lifecycle section now uses
+  a Mermaid `stateDiagram-v2` instead of the ASCII art box. The
+  diagram captures all 7 states (triage, refined, ready,
+  in_progress, in_review, qa, awaiting_human, done) with the
+  smart-routing skips annotated as transition labels
+  (e.g., `triage → refined: type/feature (skip if
+  type/technical|...)`).
+
+#### Note on tree-style characters
+
+`docs/CONCEPT.md` still contains `├──` `└──` `│` characters in
+its §10.4 "Where the materialized personas live" diagram. These
+are **tree-style directory structure** (a standard markdown
+convention for showing filesystem layout, not flow diagrams),
+so they are intentionally kept.
+
+#### Why v1.2.2 (patch)
+
+Purely a fix to a missed diagram. No content change, no breaking
+change.
+
 ## [1.2.1] - 2026-07-18
 
 ### Fixed — Replace remaining ASCII diagram in README

@@ -33,16 +33,22 @@ Optional but recommended:
 The full lifecycle is defined in `harness/workflow/00-issue-lifecycle.md`.
 Summary:
 
-```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│  triage  │ →  │ refined  │ →  │  ready   │ →  │ in-progress
-└──────────┘    └──────────┘    └──────────┘    └──────────┘
-                                                       │
-┌──────────┐    ┌──────────┐    ┌──────────┐          ▼
-│   done   │ ←  │  qa      │ ←  │ in-review│    ┌──────────┐
-└──────────┘    └──────────┘    └──────────┘    │ awaiting │
-                                               │ human val│
-                                               └──────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> triage
+    triage --> refined : type/feature
+                      (skip if type/technical|infra|bug|tech-debt|spike)
+    refined --> ready : solutions-architect
+                      (skip if type/docs|spike)
+    ready --> in_progress : builder
+                      (skip if type/infra)
+    in_progress --> in_review : PR opened
+    in_review --> qa : sensors run
+    qa --> awaiting_human : 9 sensors green
+    qa --> in_progress : sensor failed (return to builder)
+    awaiting_human --> done : user ✅
+    awaiting_human --> in_progress : user rejected
+    done --> [*] : tag + release
 ```
 
 | State         | Owner               | What happens                                                            |
