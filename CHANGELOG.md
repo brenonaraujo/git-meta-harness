@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-07-18
+
+### Added — `docs/LOOP.md`: how git-meta-harness fits loop engineering
+
+Loop engineering became the dominant AI agent pattern in
+mid-2026 (Addy Osmani, IBM Think, AI Builder Club). The
+meta-harness is a **concrete, ship-now implementation** of
+loop engineering for greenfield software delivery.
+
+This release adds a 9-section, 6-diagram canonical document
+articulating the relationship:
+
+- **§1** — what loop engineering is (the 4 loop types, the 5
+  building blocks, the verifier-is-the-bottleneck insight).
+- **§2** — direct mapping from loop engineering concepts to
+  meta-harness artifacts (automations → GitHub Actions,
+  sub-agents → 7 personas, memory → issues + ADRs + 18
+  invariants, etc.).
+- **§3** — where the meta-harness goes beyond generic loop
+  engineering: 9 verifiers (sensors) with explicit fail
+  actions, 18 invariants, testable stop conditions, durable
+  auditable memory.
+- **§4** — all 4 loop types (heartbeat, cron, hook, goal)
+  implemented in the meta-harness, with concrete locations.
+- **§5** — the verifier bottleneck, resolved (9 sensors
+  + human validation as the loop's stop condition).
+- **§6** — the relationship summarized: loop engineering is
+  the discipline, meta-harness is the concrete instance,
+  your project is the output.
+- **§7** — anti-patterns the meta-harness prevents (with
+  explicit defenses).
+- **§8** — when to use the meta-harness vs custom loop
+  engineering.
+- **§9** — the takeaway.
+
+#### Diagrams added (6 in `docs/LOOP.md`)
+
+1. The loop: discover → plan → execute → verify.
+2. Mapping loop engineering concepts to meta-harness.
+3. The 4 loop types in the meta-harness.
+4. The verifier bottleneck, resolved.
+5. The relationship: discipline → instance → project.
+6. (1 more — see file.)
+
+#### Why v1.3.0 (minor)
+
+The new document is **conceptually significant** (articulates
+the framework's relationship to the most important AI agent
+pattern of 2026) and warrants a minor bump, not a patch.
+
 ## [1.2.4] - 2026-07-18
 
 ### Changed — Rename "Validated in production" to "Validation and test case"

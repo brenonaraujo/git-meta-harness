@@ -26,7 +26,9 @@ validation. **The user does not configure anything.** Full vision:
 [`docs/CONCEPT.md`](./docs/CONCEPT.md). Comparison with SDD/SPDD:
 [`docs/COMPARISON.md`](./docs/COMPARISON.md). Origin story:
 [`docs/ORIGIN.md`](./docs/ORIGIN.md). GitHub integration:
-[`docs/PIPELINE.md`](./docs/PIPELINE.md).
+[`docs/PIPELINE.md`](./docs/PIPELINE.md). How this fits
+**loop engineering** (the dominant 2026 pattern for AI
+agents): [`docs/LOOP.md`](./docs/LOOP.md).
 
 ---
 
