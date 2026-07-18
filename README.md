@@ -382,22 +382,31 @@ The same `harness/` directory works in any agentic tool. The
 [`AGENTS.md`](./harness/AGENTS.md) file is the universal contract; each
 tool has a small adapter in §9:
 
-| Tool         | Adapter path                  | Notes                          |
-|--------------|-------------------------------|--------------------------------|
-| Claude Code  | `CLAUDE.md` + `.claude/agents/`| Persona files → `.claude/agents/<name>.md` |
-| GitHub Copilot | `.github/agents/` + `copilot-instructions.md` | |
-| Codex CLI    | `AGENTS.md` (root)            | Direct, no adapter needed      |
-| OpenCode     | `AGENTS.md` (root)            | Direct, no adapter needed      |
-| Devin        | `AGENTS.md` + `.devin/`       |                                |
-| Hermes Agent | `~/.hermes/profiles/<name>/SOUL.md` | Per-persona profile     |
-| Cursor       | `.cursorrules`                | Generated from `AGENTS.md`     |
+| Tool         | Adapter path                  | Validated?         | Notes                          |
+|--------------|-------------------------------|--------------------|--------------------------------|
+| **Hermes Agent** | `~/.hermes/profiles/<name>/SOUL.md` | ✅ **Yes** (mandai-v2) | Per-persona profile, **the only tool tested with the framework** |
+| Claude Code  | `CLAUDE.md` + `.claude/agents/`| ⏳ Adapter-only   | Persona files → `.claude/agents/<name>.md` |
+| GitHub Copilot | `.github/agents/` + `copilot-instructions.md` | ⏳ Adapter-only   | |
+| Codex CLI    | `AGENTS.md` (root)            | ⏳ Adapter-only    | Direct, no adapter needed      |
+| OpenCode     | `AGENTS.md` (root)            | ⏳ Adapter-only    | Direct, no adapter needed      |
+| Devin        | `AGENTS.md` + `.devin/`       | ⏳ Adapter-only    |                                |
+| Cursor       | `.cursorrules`                | ⏳ Adapter-only    | Generated from `AGENTS.md`     |
+
+> **Important:** as of v1.3.0, **Hermes Agent is the only
+> agentic tool that has been validated end-to-end with the
+> framework** (via the mandai-v2 validation case). The other
+> tools have **adapters only** — the meta-harness is designed
+> to be tool-agnostic, but full validation is pending for
+> them. Adopters who use a different tool are encouraged to
+> contribute their validation back to the project.
 
 ## Validation and test case: mandai-v2
 
 The framework was first validated end-to-end in
 [**brenonaraujo/mandai-v2**](https://github.com/brenonaraujo/mandai-v2)
 — a B2B2C community group buying marketplace (modeled on Meituan
-Select / Duoduo Maicai), built with Hermes Agent.
+Select / Duoduo Maicai), built **with Hermes Agent** (the
+only tool tested with the framework so far).
 
 **Project profile:**
 - 4 issues, 5 commits, 1 PR (single-PR-per-feature).

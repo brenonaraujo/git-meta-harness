@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-07-18
+
+### Fixed — `docs/PIPELINE.md` Mermaid `stateDiagram-v2` was malformed
+
+The stateDiagram had multi-line transition labels with parens
+(`(skip if ...)`) that Mermaid does not parse. The diagram
+would render with broken/unexpected text on `triage → refined`,
+`refined → ready`, and `ready → in_progress` transitions. This
+patch rewrites the diagram with `note` blocks for the
+smart-routing skips (which is the correct Mermaid syntax) and
+simplifies the transitions to single-line labels.
+
+### Added — `docs/PIPELINE.md` §6: the `gh` CLI trick
+
+New section explaining **why the meta-harness uses the `gh`
+CLI instead of MCP servers** (or heavy SDKs) to talk to GitHub.
+Covers:
+- The actual `gh` commands used by the personas.
+- A side-by-side comparison of `gh` vs MCPs (token cost,
+  round-trips, setup, composability, etc.).
+- Why `gh` is dramatically better for the meta-harness use
+  case (one question, one answer, one decision at a time).
+- When MCPs would make sense (stateful investigations, custom
+  tools, multi-agent coordination) — and why the meta-harness
+  doesn't need any of those.
+
+The takeaway: **5-10x less token overhead per interaction**
+vs MCP-based equivalents, with no server to run.
+
+### Added — README "Multi-tool portability" table now shows validation status
+
+The table now has a **Validated?** column. Status as of
+v1.3.1:
+
+- **Hermes Agent** — ✅ **Yes** (the only tool validated
+  end-to-end via the mandai-v2 case).
+- All other tools — ⏳ **Adapter-only** (adapters exist;
+  full validation is pending).
+
+This makes it explicit that the framework is **designed** to
+be tool-agnostic, but the **practical validation** so far
+covers only Hermes Agent. Adopters using other tools are
+encouraged to contribute their validation back.
+
+### Added — README "Validation and test case" section clarified
+
+Now explicitly states that **mandai-v2 was built with Hermes
+Agent** (the only tool tested with the framework so far).
+
+### Why v1.3.1 (patch)
+
+A diagram fix + a clarifying section + a README clarification.
+No breaking change, no new features (the framework itself is
+unchanged).
+
+## [1.3.0] - 2026-07-18
+
+### Added — `docs/LOOP.md`: how git-meta-harness fits loop engineering
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
 ## [1.3.0] - 2026-07-18
 
 ### Added — `docs/LOOP.md`: how git-meta-harness fits loop engineering

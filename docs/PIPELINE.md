@@ -35,32 +35,48 @@ Summary:
 
 ```mermaid
 stateDiagram-v2
+    direction LR
     [*] --> triage
-    triage --> refined : type/feature
-                      (skip if type/technical|infra|bug|tech-debt|spike)
-    refined --> ready : solutions-architect
-                      (skip if type/docs|spike)
-    ready --> in_progress : builder
-                      (skip if type/infra)
-    in_progress --> in_review : PR opened
-    in_review --> qa : sensors run
-    qa --> awaiting_human : 9 sensors green
-    qa --> in_progress : sensor failed (return to builder)
-    awaiting_human --> done : user ✅
+    triage --> refined
+    refined --> ready
+    ready --> in_progress
+    in_progress --> in_review
+    in_review --> qa
+    qa --> awaiting_human
+    qa --> in_progress : sensor failed
+    awaiting_human --> done
     awaiting_human --> in_progress : user rejected
     done --> [*] : tag + release
+
+    note right of triage
+      Smart routing by type/*:
+      type/feature goes through
+      every state.
+    end note
+    note right of refined
+      Skipped for type/technical,
+      type/infra, type/bug,
+      type/tech-debt
+    end note
+    note right of ready
+      Skipped for type/docs,
+      type/spike
+    end note
+    note left of in_progress
+      Skipped for type/infra
+    end note
 ```
 
-| State         | Owner               | What happens                                                            |
-|---------------|---------------------|-------------------------------------------------------------------------|
-| `triage`      | `team-manager`      | Detect type, domain, decompose into sub-issues, add labels.             |
-| `refined`     | `domain-expert-<x>` (or skip if `type/technical|infra`) | Refine ACs from the spec. |
-| `ready`       | `solutions-architect` (or skip if `type/docs|spike`)  | Produce DoD, identify open questions, propose ADRs. |
-| `in-progress` | `backend-engineer` / `frontend-engineer` / `devops-engineer` | Code, tests, local pre-flight. Branch created by team-manager. |
-| `in-review`   | `team-manager`      | Open PR, post the briefing as a comment.                                |
-| `qa`          | `quality-assurance` | Run all 9 sensors. Approve or return.                                  |
-| `awaiting human` | `team-manager`   | Block on the human. Branch protection enforces.                         |
-| `done`        | `team-manager`      | Merge, tag, release, close issue.                                       |
+| State            | Owner                                                   | What happens                                                              |
+|------------------|---------------------------------------------------------|---------------------------------------------------------------------------|
+| `triage`         | `team-manager`                                          | Detect type, domain, decompose into sub-issues, add labels.               |
+| `refined`        | `domain-expert-<x>` (skipped for `type/technical|infra|bug|tech-debt`) | Refine ACs from the spec.                            |
+| `ready`          | `solutions-architect` (skipped for `type/docs|spike`)   | Produce DoD, identify open questions, propose ADRs.                      |
+| `in-progress`    | `backend-engineer` / `frontend-engineer` / `devops-engineer` (skipped for `type/infra`) | Code, tests, local pre-flight. Branch created by team-manager. |
+| `in-review`      | `team-manager`                                          | Open PR, post the briefing as a comment.                                  |
+| `qa`             | `quality-assurance`                                     | Run all 9 sensors. Approve or return.                                     |
+| `awaiting_human` | `team-manager`                                          | Block on the human. Branch protection enforces.                           |
+| `done`           | `team-manager`                                          | Merge, tag, release, close issue.                                         |
 
 The `team-manager` is the **only** persona that moves an issue
 between states. Sub-personas do not self-advance; they
@@ -202,7 +218,101 @@ a CI that scales and a CI that costs more as the team grows.
 
 ---
 
-## 6. Why GitHub specifically (and not GitLab, Bitbucket, etc.)
+## 6. The `gh` CLI trick: how the meta-harness saves tokens
+
+One of the most impactful design choices in the meta-harness is
+to use the **`gh` CLI** (GitHub's official command-line tool)
+**instead of MCPs (Model Context Protocol servers) or heavy
+SDKs** for talking to GitHub. This is what keeps the loop
+cheap, fast, and reliable.
+
+### What we mean
+
+The `team-manager` persona (and all the others, when they need
+to interact with GitHub) uses commands like:
+
+```bash
+gh issue list --label "type/feature" --state open --json number,title
+gh issue create --title "..." --body "..." --label "type/feature,backend"
+gh issue edit 42 --add-label "domain/mandai" --remove-label "triage"
+gh pr create --title "..." --body "..." --base main --head feature/1-bootstrap
+gh pr checks 5 --json name,state,conclusion
+gh release create v1.3.0 --title "..." --notes-file /tmp/notes.md --target main
+gh api repos/:owner/:repo/commits --jq '.[].sha'
+```
+
+Each call returns **exactly the JSON the persona needs**, ready
+to be piped into `jq`, `awk`, or a small parsing function. No
+schema, no server to run, no state to maintain.
+
+### Why this is dramatically better than MCPs for our use case
+
+| Aspect                        | `gh` CLI                                          | MCP server (e.g., `@modelcontextprotocol/server-github`)        |
+|-------------------------------|---------------------------------------------------|------------------------------------------------------------------|
+| **Token cost per call**       | Small (just the field you ask for).                | Large (server scaffolds the full GraphQL/REST context).          |
+| **Round-trips**               | 1 call = 1 question, 1 answer.                    | Often 1 call = N sub-questions to assemble the answer.          |
+| **Stateless**                 | Yes — pure CLI.                                   | Mostly, but the server holds connection pools, caches, etc.      |
+| **Setup**                     | `brew install gh` (or already installed).         | Install + configure + run a long-lived server.                   |
+| **Failure modes**             | CLI exit code, stderr. Trivial to debug.          | Server crashes, timeouts, schema mismatches, version drift.       |
+| **Composability**             | Pipes into `jq`, `awk`, `grep`, `python3`, etc.   | Locked into the MCP's tool schema.                               |
+| **Battle-tested**             | Official GitHub CLI, used by millions.             | Newer ecosystem; quality varies per server.                      |
+| **Auth**                      | `gh auth login` (one-time).                       | OAuth dance + token management.                                 |
+
+For the meta-harness use case (a team-manager posting a
+briefing, opening an issue, adding a label, checking CI status),
+**`gh` does exactly what we need with 5-10x less token overhead
+per interaction**. A typical MCP-based equivalent would have
+to:
+
+1. Discover the available tools.
+2. Match the user's intent to a tool.
+3. Call the tool with the right parameters.
+4. Parse the tool's structured response.
+5. Possibly make a follow-up call (because the first didn't
+   return enough).
+
+With `gh`, steps 1-3 collapse to a single CLI invocation
+already written by the persona. The agent reads the output,
+takes the next action, and moves on.
+
+### The pattern in the meta-harness
+
+Every persona that interacts with GitHub uses `gh` in its
+briefing. Examples from the actual personas (see
+`harness/personas/*.md`):
+
+- **`team-manager`**: `gh issue list`, `gh issue create`,
+  `gh issue edit`, `gh pr create`, `gh pr merge`,
+  `gh release create`, `gh label create`.
+- **`quality-assurance`**: `gh pr checks`, `gh pr view`,
+  `gh run download` (for logs), `gh api` (for sensor metadata).
+- **`devops-engineer`**: `gh workflow run`, `gh secret set`,
+  `gh release upload`.
+
+There is **no MCP in the meta-harness**. This is a deliberate
+choice. The `gh` CLI is a **better fit** for an agentic loop
+than an MCP server, because the agentic loop optimizes for
+**one question, one answer, one decision at a time** — exactly
+what the CLI gives you.
+
+### When MCP would make sense
+
+MCPs shine when the agent needs to:
+
+- Maintain state across many turns (e.g., a long-running
+  investigation that pulls and caches data).
+- Use specialized tools that don't have a CLI equivalent
+  (e.g., a custom internal API).
+- Coordinate multiple agents on shared resources.
+
+The meta-harness does none of these. Each persona is
+short-lived (one issue), each interaction is one CLI call,
+and the shared state is GitHub itself (issues, PRs, comments).
+**`gh` is the right tool.**
+
+---
+
+## 7. Why GitHub specifically (and not GitLab, Bitbucket, etc.)
 
 The meta-harness is **tool-portable at the agent level**
 (Hermes, Claude Code, Codex, etc. all work) but the pipeline is
@@ -229,7 +339,7 @@ adapter if there is demand.
 
 ---
 
-## 7. The "low-friction" promise, summarized
+## 8. The "low-friction" promise, summarized
 
 When a new project adopts the meta-harness, here is the entire
 friction budget:
