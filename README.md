@@ -6,7 +6,7 @@
 > Agent, Cursor).
 >
 > **Version:** [1.0.0](./VERSION) · **License:** [MIT](./LICENSE) ·
-> **Status:** stable · **Validated in production:** ✅
+> **Status:** stable · **Validation and test case:** ✅
 > [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)
 
 ---
@@ -390,7 +390,7 @@ tool has a small adapter in §9:
 | Hermes Agent | `~/.hermes/profiles/<name>/SOUL.md` | Per-persona profile     |
 | Cursor       | `.cursorrules`                | Generated from `AGENTS.md`     |
 
-## Validated in production: mandai-v2
+## Validation and test case: mandai-v2
 
 The framework was first validated end-to-end in
 [**brenonaraujo/mandai-v2**](https://github.com/brenonaraujo/mandai-v2)

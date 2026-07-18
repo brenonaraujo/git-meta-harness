@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.4] - 2026-07-18
+
+### Changed — Rename "Validated in production" to "Validation and test case"
+
+Per maintainer feedback, the section that documents the Mandaí v2
+pilot is now called **"Validation and test case"** instead of
+**"Validated in production"**. The semantics: the project that
+exercised the framework end-to-end (Mandaí v2) is referred to as
+the **validation and test case**, not as a "production
+deployment" reference. The framework itself is what is validated
+by applying it to a real project; that application is the
+test case, not a production-grade system.
+
+#### Changes
+
+- **`README.md`** (top metadata): `Validated in production: ✅`
+  → `Validation and test case: ✅`.
+- **`README.md`** §section header: `## Validated in production:
+  mandai-v2` → `## Validation and test case: mandai-v2`.
+- **`CHANGELOG.md`** §v1.0.0 subsection: `### Validated in
+  production` → `### Validation and test case`.
+
+#### Why v1.2.4 (patch)
+
+Purely a terminology fix. No content change, no breaking change.
+
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
 ## [1.2.3] - 2026-07-18
 
 ### Fixed — Replace remaining ASCII diagrams across the repo
@@ -327,10 +355,10 @@ multi-agent orchestration framework for greenfield → production software deliv
 - **Smoke test + local pre-flight** (ADR-0007, ADR-0008) — gate
   obrigatório antes de processar issues
 
-### Validated in production
+### Validation and test case
 - **Piloto Mandaí v2** — marketplace B2B2C de compra coletiva
-  comunitária (estilo Meituan Select / Duoduo Maicai), validado
-  end-to-end com Hermes Agent:
+  comunitária (estilo Meituan Select / Duoduo Maicai), servindo
+  como **validation and test case** end-to-end com Hermes Agent:
   - Repo: https://github.com/brenonaraujo/mandai-v2
   - 4 issues, 5 commits, 1 PR
   - Stack: Go 1.25 + Gin + GORM + PostgreSQL + Nuxt 4 + Pinia
