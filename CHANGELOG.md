@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] - 2026-07-18
+
+### Fixed — "Personas are built on demand, not copied" (clarification)
+
+Documentation patch. The v1.1.0 docs described the meta-harness
+as "materializing personas" but did not make it explicit enough
+that **personas are built on demand from the project's context,
+not copied from the templates**. This is a critical distinction:
+
+- A **template** (`harness/personas/*.md` in this repo) is a
+  conceptual persona: principles, posture, what they do and
+  don't do. Stable across projects.
+- A **materialized persona** (lives in the target project) is
+  the same persona, plus: the detected stack, the in-context
+  skills, the project name and domain knowledge, the runtime
+  adapter.
+
+A `domain-expert-banking.md` that has the same content as
+`domain-expert.template.md` is a **failure** of the framework,
+not a success — it means the materialization step was skipped.
+
+#### Changes
+
+- **`docs/CONCEPT.md`**: new sections §10 ("Personas are built
+  on demand for each project") and §11 ("Anti-pattern: 'I copied
+  the personas, we're done'"). Includes the two-layer table
+  (template vs materialized), the materialization step
+  algorithm, where materialized personas live, why the
+  distinction matters, and the anti-pattern.
+- **`harness/seed/meta-harness-seed.md`**: §1 "MATERIALIZAÇÃO"
+  rewritten. Adds a new subsection "Materialização (sempre antes
+  dos adapters)" that prescribes the 5-step materialization
+  algorithm. The per-tool adapter sections now reference
+  "personas materializadas" instead of just "personas". The
+  validation subsection explicitly checks that materialized
+  personas are not identical to the templates.
+
+#### Why v1.1.1 (patch) and not v1.1.2 or v1.2.0
+
+This is a **clarification of the existing concept**, not a
+breaking change and not a feature addition. The behavior was
+already what we wanted; the docs just didn't say it clearly
+enough. Per [Keep a Changelog](https://keepachangelog.com/),
+documentation corrections are patch-level.
+
 ## [1.1.0] - 2026-07-18
 
 ### Added — Concept documentation

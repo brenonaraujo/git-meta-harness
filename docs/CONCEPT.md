@@ -267,3 +267,147 @@ agents; you are **teaching the system how to configure agents for
 a new project, automatically, from a spec**.
 
 That is the thing that scales.
+
+---
+
+## 10. Personas are **built on demand** for each project
+
+A critical nuance: the personas in `harness/personas/` are
+**templates**, not finished agents. When the seed is run on a
+new project, the `team-manager` reads the project's context
+(spec, detected stack, domain) and **generates specialized
+personas** with content specific to that project.
+
+### 10.1 Two layers, one source of truth
+
+There are two layers in play, and confusing them is the most
+common error:
+
+| Layer | Where it lives | What it is |
+|-------|----------------|------------|
+| **Template** | `harness/personas/*.md` in this repo | Conceptual persona: principles, posture, what they do and don't do, what they deliver. Stable across projects. |
+| **Materialized persona** | In the target project (e.g., `~/.hermes/profiles/<name>/SOUL.md`, `.claude/agents/<name>.md`, `.github/agents/<name>.md`) | Same persona, plus: the detected stack (Go 1.26.5, Nuxt 4.5, PostgreSQL 18.4), the in-context skills (GORM, Gin, golang-migrate, oapi-codegen, pnpm), the project name and domain knowledge, the runtime adapter. |
+
+The invariant 12 ("domain-expert is always specialized") is not
+just "rename the file". It is "**generate content specific to the
+domain**". A `domain-expert-banking.md` that has the same content
+as the template is a **failure**, not a success — it means the
+materialization step was skipped.
+
+### 10.2 The materialization step
+
+When the `team-manager` runs the seed, the materialization step
+performs the following:
+
+1. **Reads the spec** (functional requirements, user personas,
+   domain context, constraints).
+2. **Detects the stack** (Go vs Node vs Python, PostgreSQL vs
+   MongoDB, Gin vs Echo, Nuxt vs SvelteKit, etc. — either from
+   the spec or from the existing repo files).
+3. **Detects the domain** (banking, retail, logistics, healthcare,
+   community group buying, etc.).
+4. **Generates each persona** with the relevant context:
+   - `backend-engineer` materialization knows the exact stack,
+     has the right skills injected (GORM, gin, golang-migrate,
+     oapi-codegen for a Go project; or Drizzle, Fastify, Prisma
+     for a Node project), and references the right sensors.
+   - `domain-expert-<domain>` materialization contains the
+     domain knowledge extracted from the spec (regulatory
+     framework, market dynamics, key entities, edge cases,
+     known anti-patterns). This is the most domain-sensitive
+     part.
+   - `solutions-architect`, `quality-assurance`,
+     `devops-engineer` get stack-specific guidance.
+5. **Generates the runtime adapter** (Hermes profile, Claude
+   Code agent, Codex config, etc.) from the materialized
+   personas, not from the templates.
+
+### 10.3 Skills are also injected dynamically
+
+The `harness/skills/*.md` files are a **library base**. The
+`team-manager` decides which skills each materialized persona
+gets, based on the detected stack and domain:
+
+- A Go project with PostgreSQL gets `tdd-go`,
+  `golang-migrate-migrations`, `oapi-codegen-spec-first`,
+  `twelve-factor-go`.
+- A Node project with Nuxt + Pinia gets `tdd-vitest`,
+  `pinia-stores`, `nuxt-i18n`, `twelve-factor-node`.
+- A banking project adds `pix-cobranca`, `open-finance`,
+  `lgpd-financial-data`.
+- A logistics project adds `last-mile-routing`,
+  `carrier-integration`, `sla-tracking`.
+
+A new project does not need to write a single skill. The
+materialization step injects the right subset from the library.
+
+### 10.4 Where the materialized personas live
+
+The materialized personas live in the **target project**, not in
+the meta-harness repo. The relationship is:
+
+```
+git-meta-harness (this repo, versioned)
+└── harness/personas/*.md         ← TEMPLATES (stable, reusable)
+        │
+        │  ← team-manager runs seed with spec
+        │
+        ▼
+your-project (the target)
+├── .claude/agents/*.md            ← MATERIALIZED for Claude Code
+├── .github/agents/*.md            ← MATERIALIZED for Copilot
+├── ~/.hermes/profiles/*/SOUL.md   ← MATERIALIZED for Hermes
+└── .codex/agents/*.md             ← MATERIALIZED for Codex
+```
+
+When a new commit lands in `git-meta-harness` that improves a
+template, the user can re-run the seed in their project to
+**re-materialize** and pick up the improvements — without
+losing the project-specific content (the materialization step
+merges, it does not overwrite).
+
+### 10.5 Why this distinction matters
+
+If the framework shipped **finished personas**, every project
+would either:
+- (a) copy them as-is, getting shallow, generic work (the
+  Mandaí v2 pilot bug that the smoke test caught: a generic
+  `domain-expert` was used because no one materialized
+  `domain-expert-mandai`), or
+- (b) rewrite them by hand, undoing the value of the framework
+  and creating a maintenance burden (every framework update
+  becomes a manual merge).
+
+By shipping **templates + a materialization step**, the
+framework delivers the right trade-off: stable, reusable
+templates on one side; project-specific, audit-traceable
+content on the other.
+
+This is the same pattern as a build system: the `Makefile` is
+the template, the `make` invocation is the materialization
+that produces a binary specific to the current code. The
+meta-harness is a build system for **teams of agents**.
+
+---
+
+## 11. Anti-pattern: "I copied the personas, we're done"
+
+A common failure mode is treating `harness/personas/*.md` as
+finished. Symptoms:
+
+- `domain-expert-banking.md` has the same content as
+  `domain-expert.template.md` (only the filename changed).
+- `backend-engineer` mentions "Go 1.26.5" but the project
+  uses Python 3.12.
+- The team-manager has to ask the human "what is the domain?"
+  after the seed has been run, instead of inferring it from
+  the spec.
+
+If you see these, the materialization step was skipped. Re-run
+the seed with the project's spec, and the personas will be
+regenerated with project-specific content.
+
+The meta-harness does not solve the "AI does the wrong thing"
+problem if the AI skips the materialization. The smoke test
+and the issue lifecycle check that it does not.
+

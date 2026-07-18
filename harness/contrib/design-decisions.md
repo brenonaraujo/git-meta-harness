@@ -1399,3 +1399,113 @@ precisa de 1 dos 4 recortes.
   commit que adicionou.
 - Mudar a articulação do conceito = atualizar os 4 docs +
   ADR-0012 (com changelog).
+
+---
+
+### ADR-0013 — Personas são construídas sob demanda, não copiadas como template (v1.1.1)
+
+**Data:** 2026-07-18
+**Status:** Aceito
+**Decisor(es):** time de plataforma
+**Contexto:** a v1.1.0 descreveu o meta-harness como
+"materializando personas" mas não deixou explícito o bastante
+que **as personas são construídas a partir do contexto do
+projeto, não copiadas dos templates**. A distinção é
+**crítica** porque é o que diferencia o meta-harness de uma
+biblioteca estática de personas.
+
+### Contexto
+
+- No piloto Mandaí v2, o primeiro uso do `domain-expert` foi
+  genérico (apenas renomeado), produzindo análise rasa. O
+  smoke test pegou isso como invariante 12 violada. A
+  **correção** foi gerar `domain-expert-mandai` com conteúdo
+  específico do domínio (compra coletiva comunitária, Pix,
+  multi-tenant, multi-role, i18n).
+- O mesmo padrão se aplicou a todas as personas: o template
+  `backend-engineer.md` é conceitual ("siga TDD, coverage
+  ≥ 80%"), mas a persona que trabalhou no Mandaí v2 sabia
+  que era Go 1.25, Gin, GORM, PostgreSQL, golang-migrate,
+  oapi-codegen. A persona materializada é **outro arquivo**,
+  **outro conteúdo**, **outro lugar** (no projeto, não no
+  meta-harness).
+- O v1.1.0 (`docs/CONCEPT.md` §6, "The 'meta' in meta-harness")
+  falou sobre "the contract that any agentic tool must honor"
+  mas não diferenciou template de materializada. Risco de
+  adopters copiarem o template `domain-expert-banking.md`
+  para `domain-expert-<seu-dominio>.md` sem mudar conteúdo,
+  reproduzindo o bug do Mandaí v2 em outros projetos.
+
+### Decisão
+
+- **Adicionar seção §10 ao `docs/CONCEPT.md`**: "Personas are
+  built on demand for each project". Cobre:
+  - Tabela de duas camadas (template vs materialized).
+  - Algoritmo de 5 passos do materialization step
+    (ler spec → detectar stack → detectar domínio → gerar
+    personas → gerar runtime adapter).
+  - Onde as personas materializadas vivem (no projeto, não
+    no meta-harness).
+  - Como skills são injetadas dinamicamente baseado no
+    stack detectado.
+- **Adicionar seção §11 ao `docs/CONCEPT.md`**: "Anti-pattern:
+  'I copied the personas, we're done'". Documenta o
+  failure mode explicitamente.
+- **Reescrever §1 do `harness/seed/meta-harness-seed.md`**:
+  - Novo subsection "Materialização (sempre antes dos
+    adapters)" com os 5 passos prescritivos.
+  - Adapters por tool agora referenciam "personas
+    materializadas" (não "personas").
+  - Validation subsection explicitamente verifica que
+    personas materializadas **não são** idênticas aos
+    templates.
+- **Versionar como v1.1.1 (patch)** porque é correção de
+  documentação, não feature nem breaking change.
+
+### Por que isso é uma decisão arquitetural (e não só textual)
+
+A invariante 12 ("domain-expert sempre especializado") sem o
+contexto de "construído sob demanda" permite 2 readings:
+
+- (a) Renomeia o template `domain-expert.md` para
+  `domain-expert-<domínio>.md` (passa o check, falha o
+  espírito).
+- (b) Gera conteúdo específico do domínio no
+  `domain-expert-<domínio>.md` (passa o check E o espírito).
+
+A v1.1.0 deixava (a) e (b) como interpretações válidas. A
+v1.1.1 explicita que **só (b) é correto**. Isso muda o
+comportamento esperado do `team-manager` no seed prompt.
+
+### Alternativas consideradas
+
+- **A:** Deixar ambíguo; confiar que adopters vão
+  descobrir pelo smoke test — falha porque o smoke test
+  atual não checa "conteúdo idêntico ao template", só
+  checa "renomeado".
+- **B:** Adicionar check explícito no smoke test que
+  falha se persona materializada for idêntica ao
+  template — adiciona complexidade, mas não esta
+  release. (Fica como ADR-0014 candidate para 1.2.0.)
+- **C (escolhida):** Documentar a distinção em CONCEPT.md
+  e reescrever o seed para ser prescritivo. Patch v1.1.1.
+
+### Consequências
+
+- **+** Adopters entendem que o framework é uma **fábrica
+  adaptativa**, não uma biblioteca estática.
+- **+** O seed prompt é prescritivo: 5 passos claros para
+  materializar.
+- **+** Anti-pattern documentado explicitamente: renomear
+  sem mudar conteúdo é falha.
+- **+** v1.1.1 corrige a ambiguidade sem breaking change.
+- **−** Quem já usou o framework e interpretou errado tem
+  que regenerar as personas materializadas (mas é um
+  refactor mecânico: rodar o seed de novo).
+- **−** Possível ADR futura (1.2.0) para adicionar check
+  automático no smoke test que detecta o anti-pattern.
+
+### Reversibilidade
+
+- Voltar para v1.1.0 = reverter o commit (mas o problema
+  ressurge).

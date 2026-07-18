@@ -86,11 +86,60 @@ ao usuário:
 Quando o repo existir (e estiver vazio ou próximo disso), gere os
 **artefatos nativos do tool em uso**, todos a partir de `harness/*`:
 
+> ⚠️ **ATENÇÃO — personas são construídas, não copiadas.** Os
+> arquivos em `harness/personas/*.md` são **templates** (forma
+> conceitual, princípios, postura). O que vai trabalhar no
+> projeto são **personas materializadas** com conteúdo
+> **específico do projeto**: stack detectado, domínio injetado,
+> skills relevantes, contexto. Para gerar, use a spec
+> funcional como fonte. **Não copie o template renomeando** —
+> isso seria a falha que pegamos no piloto Mandaí v2
+> (`domain-expert` genérico usado em vez de
+> `domain-expert-mandai` materializado).
+
+### Materialização (sempre antes dos adapters)
+
+Para CADA persona, faça o seguinte:
+
+1. **Leia o template** em `harness/personas/<name>.md` (ou
+   `domain-expert.template.md` para o domain-expert).
+2. **Leia a spec funcional** do projeto (em `docs/SPEC.md`,
+   na issue-mãe, ou no que o usuário passou).
+3. **Detecte o stack** do projeto (se já existe em arquivos:
+   `go.mod` → Go; `package.json` → Node; etc. Se não existe,
+   pergunte ao usuário OU infira da spec).
+4. **Detecte o domínio** (banco, retail, logístico, marketplace
+   comunitário, etc.) e gere um `domain-expert-<domínio>`
+   especializado com o conhecimento extraído da spec.
+5. **Gere a persona materializada** combinando: o template +
+   contexto do projeto + skills injetadas + conhecimento de
+   domínio (se aplicável). A persona materializada mora no
+   **projeto** (não no `git-meta-harness`).
+
+Exemplo de materialização (Mandaí v2):
+- Template: `harness/personas/backend-engineer.md` (genérico,
+  "você é um engenheiro backend, segue TDD, etc.").
+- Materializada em
+  `~/.hermes/profiles/backend-engineer/SOUL.md`: "Você é o
+  `backend-engineer` do **Mandaí v2** (marketplace B2B2C de
+  compra coletiva comunitária). Stack: Go 1.26.5, Gin, GORM,
+  PostgreSQL 18.4, golang-migrate, oapi-codegen. Domain:
+  multi-tenant por workspace, multi-role por conta (morador,
+  líder, fornecedor, admin), i18n en/pt-BR/es. Skills ativas:
+  tdd-go, golang-migrate-migrations, oapi-codegen-spec-first,
+  twelve-factor-go, slog-structured-logging. **Não**: nunca
+  rode o Docker daemon, nunca use SQLite (sempre PostgreSQL),
+  nunca use `swag` (sempre oapi-codegen)."
+
+### Adapters por tool (depois da materialização)
+
+Uma vez que cada persona está materializada com contexto, gere
+os **artefatos nativos do tool em uso**:
+
 ### Para Claude Code
 - Copie `harness/AGENTS.md` → `CLAUDE.md` na raiz.
-- Para cada `harness/personas/<name>.md`, gere
-  `.claude/agents/<name>.md` (removendo preâmbulos redundantes e
-  mantendo apenas system-prompt + tools + escopo).
+- Para cada persona **materializada** (não o template), gere
+  `.claude/agents/<name>.md` (system-prompt + tools + escopo).
 - Para cada `harness/sensors/<id>-<name>.md`, gere
   `.claude/skills/<id>-<name>/SKILL.md`.
 - Para cada workflow relevante, gere
@@ -100,39 +149,45 @@ Quando o repo existir (e estiver vazio ou próximo disso), gere os
 ### Para GitHub Copilot
 - Gere `.github/copilot-instructions.md` a partir de `harness/AGENTS.md`
   (resumido, no formato do Copilot).
-- Para cada persona, gere `.github/agents/<name>.md`.
+- Para cada persona **materializada**, gere `.github/agents/<name>.md`.
 
 ### Para Codex / OpenCode
 - `AGENTS.md` na raiz já funciona; confirme.
-- Copie personas para `.codex/agents/` ou `.opencode/agents/`.
+- Copie personas **materializadas** para `.codex/agents/` ou
+  `.opencode/agents/`.
 
 ### Para Hermes Agent
-- Crie 1 profile por persona:
+- Crie 1 profile por persona **materializada**:
   ```
-  hermes profile create team-manager --description "Orquestrador do meta-harness"
-  hermes profile create domain-expert-banking --description "..."
-  hermes profile create domain-expert-retail --description "..."
-  # (crie 1+ domain-experts conforme os domínios do projeto)
+  hermes profile create team-manager --description "Orquestrador do <NOME_DO_PROJETO>"
+  hermes profile create domain-expert-<domínio> --description "Especialista em <DOMÍNIO> no <NOME_DO_PROJETO>"
   hermes profile create solutions-architect --description "..."
-  hermes profile create backend-engineer --description "..."
-  hermes profile create frontend-engineer --description "..."
+  hermes profile create backend-engineer --description "Backend no <NOME_DO_PROJETO> (<STACK>)"
+  hermes profile create frontend-engineer --description "Frontend no <NOME_DO_PROJETO> (<STACK>)"
   hermes profile create quality-assurance --description "..."
   hermes profile create devops-engineer --description "..."
   # IMPORTANTE: NÃO passar --model. Todos os profiles herdam o
   # default do config.yaml do Hermes. Se precisar sobrescrever,
   # documente o porquê.
   ```
+- Em cada profile, escreva o `SOUL.md` com a persona
+  **materializada** (não o template genérico).
 - Copie `harness/skills/*.md` para `~/.hermes/skills/<name>/SKILL.md`.
-- Para cada persona, gere um `SOUL.md` no profile correspondente,
-  resumindo seu papel e responsabilidades.
 
 ### Para Devin / Cursor
 - Gere `.devin/` ou `.cursorrules` a partir de `harness/AGENTS.md`.
 
+### Validação pós-materialização
+
 Após materializar, **valide** que cada persona tem ao menos:
-- system-prompt claro (quem é, o que faz, o que não faz)
-- tools habilitadas (ex.: `Read`, `Write`, `Bash`, `gh`)
-- referência aos sensors que aplica
+- **System-prompt claro** (quem é, o que faz, o que não faz).
+- **Contexto do projeto** (nome, stack, domínio, restrições).
+- **Skills injetadas** (relevantes para o stack detectado).
+- **Tools habilitadas** (ex.: `Read`, `Write`, `Bash`, `gh`).
+- **Referência aos sensors** que aplica.
+
+Se uma persona **materializada** for idêntica ao template (só
+com nome diferente), a materialização foi pulada — refaça.
 
 ================================================================
 2. CRIAÇÃO DO ESQUELETO DO PROJETO
