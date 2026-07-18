@@ -19,13 +19,13 @@ echo "Repo: $REPO"
 echo
 
 # 1. Versão instalada
-echo "1. Versão instalada (esperado: ≥ 60 arquivos)"
-FILE_COUNT=$(find harness/ -type f 2>/dev/null | wc -l | tr -d ' ')
-if [ "$FILE_COUNT" -ge 60 ]; then
+echo "1. Versão instalada (esperado: ≥ 75 arquivos — v1.6.0 com CLI)"
+FILE_COUNT=$(find harness/ cli/ docs/ templates/ -type f 2>/dev/null | wc -l | tr -d ' ')
+if [ "$FILE_COUNT" -ge 75 ]; then
   echo "  ✅ $FILE_COUNT arquivos"
   PASSES=$((PASSES+1))
 else
-  echo "  ❌ $FILE_COUNT arquivos (esperado ≥ 60)"
+  echo "  ❌ $FILE_COUNT arquivos (esperado ≥ 75, v1.6.0)"
   echo "     Fix: rsync -a <meta-harness-m3-code>/harness/ ./harness/"
   FAILS=$((FAILS+1))
 fi
@@ -49,7 +49,16 @@ for f in \
   harness/sensors/09-verify-after-build.md \
   harness/templates/locales.template.json \
   harness/contrib/design-decisions.md \
-  harness/smoke-test.md; do
+  harness/smoke-test.md \
+  harness/workflow/06-release-pipeline.md \
+  docs/DEPLOY.md \
+  docs/CLI.md \
+  cli/go.mod \
+  cli/Makefile \
+  cli/installer/install.sh \
+  cli/installer/install.ps1 \
+  templates/.github-workflows-release.yml \
+  .github/workflows/cli-release.yml; do
   if [ -f "$f" ]; then
     echo "  ✅ $f"
     PASSES=$((PASSES+1))
@@ -156,6 +165,23 @@ if grep -qiE 'ADR-0014.*verify-after-build' harness/contrib/design-decisions.md 
 else
   echo "  ❌ ADR-0014 AUSENTE (v1.5.0)"
   FAILS=$((FAILS+1))
+fi
+
+# 8d. ADR-0015 + ADR-0016 (release pipeline + gmh CLI) presentes
+echo
+echo "8d. ADR-0015 (release pipeline) + ADR-0016 (gmh CLI) presentes"
+ADRS_OK=1
+if ! grep -qiE 'ADR-0015.*release pipeline|GHCR' harness/contrib/design-decisions.md 2>/dev/null; then
+  echo "  ❌ ADR-0015 AUSENTE (v1.6.0 release pipeline)"
+  ADRS_OK=0
+fi
+if ! grep -qiE 'ADR-0016.*gmh|CLI.*Go' harness/contrib/design-decisions.md 2>/dev/null; then
+  echo "  ❌ ADR-0016 AUSENTE (v1.6.0 gmh CLI)"
+  ADRS_OK=0
+fi
+if [ "$ADRS_OK" = "1" ]; then
+  echo "  ✅ ADR-0015 + ADR-0016 presentes"
+  PASSES=$((PASSES+1))
 fi
 
 # 9. GitHub labels type/* (se repo configurado)

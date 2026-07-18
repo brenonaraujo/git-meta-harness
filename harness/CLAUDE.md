@@ -5,7 +5,7 @@
 > `AGENTS.md`, formatado para ser carregado automaticamente.
 >
 > **Spec canônica:** [`AGENTS.md`](./AGENTS.md) · **Spec completa:**
-> [`bootstrap.md`](./bootstrap.md) · **Versão do meta-harness:** 1.5.0
+> [`bootstrap.md`](./bootstrap.md) · **Versão do meta-harness:** 1.6.0
 
 ---
 

@@ -1652,3 +1652,186 @@ do builder tinha mascarado.
 - ❌ "Compose tá OK, vi o YAML" → ✅
   `check-stack-versions.sh --check-latest` valida 15
   invariantes.
+
+### ADR-0015 — Release pipeline com GHCR + multi-deploy (v1.6.0)
+
+**Data:** 2026-07-18
+**Status:** Aceito
+**Decisor(es):** Brenon Araujo + team-manager
+**Contexto:** meta-harness precisa fechar o ciclo com release
+publicada + artefatos Docker prontos para deploy em produção.
+
+### Contexto
+
+Até a v1.5.0, o meta-harness cobria todo o ciclo
+issue → branch → PR → merge, mas **não havia release pipeline
+automatizado** que produzisse artefatos consumíveis fora do
+repo. A release workflow legada (workflow 04) era **manual**:
+devops-engineer tinha que buildar, taggear, e pushar
+manualmente — fácil esquecer passos, fácil de quebrar o
+versionamento.
+
+Em produção, isso significa que o usuário (time de plataforma)
+que adotava o meta-harness tinha que escrever seu próprio
+release workflow — re-implementando a roda em cada projeto.
+
+### Decisão
+
+Adicionar um **release pipeline automatizado** que:
+
+1. **Trigger:** push de tag `vX.Y.Z` na main (ou
+   `workflow_dispatch` manual).
+2. **Pre-flight:** re-roda `check-stack-versions.sh` e
+   `smoke-test.sh` antes de qualquer build.
+3. **Build:** multi-arch (amd64 + arm64) para backend + frontend,
+   em paralelo, com cache `scope=backend-amd64` etc.
+4. **Scan:** Trivy em CRITICAL — block imediato.
+5. **Sign:** cosign (keyless, OIDC GitHub).
+6. **SBOM:** SPDX anexado à GitHub Release.
+7. **Push:** `ghcr.io/<owner>/<repo>/<service>:<tag>`.
+8. **Release notes:** auto-geradas pelo `softprops/action-gh-release`.
+
+O output é **imagens prontas** que podem ser deployadas em
+**ECS, EKS, Docker Swarm, ou localmente via docker-compose**
+— todos cobertos por [`docs/DEPLOY.md`](../../docs/DEPLOY.md).
+
+### Componentes
+
+| Componente                                                | O quê                                            |
+|-----------------------------------------------------------|--------------------------------------------------|
+| `templates/.github-workflows-release.yml`                 | O workflow em si (template, vai para `.github/workflows/release.yml` no projeto) |
+| `harness/workflow/06-release-pipeline.md`                 | Workflow doc (como o team-manager aciona)        |
+| `docs/DEPLOY.md`                                          | Como usar as imagens em ECS/EKS/Swarm/local      |
+
+### Alternativas consideradas
+
+- **A:** Manter release 100% manual. — Pro: zero infra. Contra:
+  cada projeto re-implementa; drift de processo.
+- **B:** Usar `release-please` (Google) para auto-versionar
+  baseado em Conventional Commits. — Pro: zero trabalho humano
+  em versionar. Contra: opinionated; força Conventional Commits
+  estritos (o meta-harness aceita Conventional mas também
+  permite PRs manuais).
+- **C (escolhida):** Tag manual + pipeline totalmente
+  automatizado. — Pro: controle humano sobre a versão, CI faz
+  o resto. Contra: devops-engineer precisa rodar
+  `git tag && git push`.
+
+### Consequências
+
+- **+** Release é repetível e auditável (cosign + SBOM + Trivy).
+- **+** Multi-arch (amd64 + arm64) é default — Apple Silicon
+  e Graviton funcionam sem esforço.
+- **+** Time de plataforma consome as imagens direto do GHCR,
+  sem rebuild local.
+- **+** SLSA L3 (provenance via `docker/build-push-action@v6`
+  com `provenance: true`).
+- **−** Requer `GITHUB_TOKEN` com `packages: write` (já é
+  default no GitHub Actions).
+- **−** Requer configurar OIDC para cosign (já é built-in
+  no GitHub Actions com `id-token: write`).
+
+### Reversibilidade
+
+- Remover o workflow = reverter o template. Mas se o usuário
+  já materializou, precisa apagar `.github/workflows/release.yml`
+  do projeto.
+- Trocar de registry (ex.: ECR em vez de GHCR) = trocar
+  `REGISTRY: ghcr.io` e adicionar credenciais AWS. Workflow
+  em si é agnóstico.
+
+---
+
+### ADR-0016 — `gmh` CLI (Go single binary) (v1.6.0)
+
+**Data:** 2026-07-18
+**Status:** Aceito
+**Decisor(es):** Brenon Araujo + team-manager
+**Contexto:** adoção do meta-harness precisa ser 1-comando;
+sync de versão precisa ser trivial; skills/personas/plugins
+precisam de um registry.
+
+### Contexto
+
+Até a v1.5.0, o caminho para adotar o meta-harness num projeto
+novo era:
+
+1. Clonar `git-meta-harness`.
+2. Copiar `harness/` para o projeto.
+3. Editar `harness/seed/meta-harness-seed.md`.
+4. Rezar para não estar desatualizado.
+
+Em projetos existentes, sincronizar com a última versão era
+manual — não havia `gmh sync`.
+
+Além disso, à medida que o framework cresce (skills,
+personas especializadas, plugins), precisa de um **registry**
+e um **installer**. Distribuir via GitHub Releases é
+suficiente; mas o usuário precisa de uma CLI para usar.
+
+### Decisão
+
+Adicionar uma **CLI `gmh`** (git-meta-harness):
+
+1. **Linguagem:** **Go** (consistente com o stack; compila
+   binário único sem runtime).
+2. **Distribuição:** GitHub Releases com tag `cli-vX.Y.Z`.
+3. **Bootstrap installer:** estilo AWS CLI v2 —
+   `curl -sSL .../install.sh | bash` (e `install.ps1` no Windows).
+4. **Comandos:** `install`, `sync`, `update`, `doctor`,
+   `skills`, `personas`, `plugins`, `version`.
+5. **Multi-platform:** linux/darwin/windows × amd64/arm64
+   (5 binários por release).
+6. **Versionamento atrelado ao meta-harness:** a versão da CLI
+   é a mesma do framework (`v1.6.0`); o tag é `cli-v1.6.0` para
+   não conflitar com tags de release do framework (`v1.6.0`).
+
+### Componentes
+
+| Componente                            | O quê                                            |
+|---------------------------------------|--------------------------------------------------|
+| `cli/`                                | Source da CLI (Go module)                        |
+| `cli/cmd/`                            | Subcommands (cobra)                              |
+| `cli/internal/harness/`               | Read/write do diretório `harness/`               |
+| `cli/installer/install.sh`            | Bootstrap (Linux/macOS)                          |
+| `cli/installer/install.ps1`           | Bootstrap (Windows)                              |
+| `cli/Makefile`                        | Build cross-platform                             |
+| `docs/CLI.md`                         | Documentação completa                            |
+| `.github/workflows/cli-release.yml`   | Build + publish on `cli-vX.Y.Z` tag              |
+
+### Alternativas consideradas
+
+- **A:** Python com `pip install gmh` (do PyPI ou do GitHub).
+  Pro: development mais rápido, sem etapa de cross-compile.
+  Contra: requer Python 3.10+ instalado (Linux tem, mas
+  Windows não por padrão), packaging é mais complexo.
+- **B:** Node.js com `npm install -g gmh`. Pro: developers
+  já têm Node. Contra: framework é backend Go; misturar
+  linguagens é overhead; instalação requer Node 18+.
+- **C (escolhida):** **Go single static binary.** Pro: zero
+  deps no cliente (só baixar e chmod), cross-compile trivial,
+  consistente com o stack, 1 binary ~5 MB.
+  Contra: cold-start de desenvolvimento (precisa de CI matrix).
+
+### Consequências
+
+- **+** Adoção é 1 comando:
+  `curl ... | bash && gmh install`.
+- **+** Sync é 1 comando: `gmh sync` (preserva customizações).
+- **+** Skills/personas/plugins têm registry via `gmh skills
+  available`, `gmh personas create`, etc.
+- **+** `gmh doctor` em CI substitui o `smoke-test.sh`
+  (mas `smoke-test.sh` continua existindo para uso local
+  sem a CLI).
+- **+** Distribuição via GitHub Releases (já temos CI para isso).
+- **−** Manter a CLI em sync com o framework (quando sai
+  v1.7.0, sai `cli-v1.7.0` no mesmo dia).
+- **−** Build matrix 5x por release (mas cache `gha` mitiga).
+
+### Reversibilidade
+
+- Remover a CLI = apagar `cli/` + `.github/workflows/cli-release.yml`
+  + `docs/CLI.md`. O framework continua funcionando (o `harness/`
+  pode ser clonado manualmente como antes).
+- Trocar Go por Python = reescrever `cli/` em Python; os
+  comandos expostos são os mesmos, então a UX não muda.

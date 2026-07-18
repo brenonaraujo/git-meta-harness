@@ -1,4 +1,11 @@
-# Workflow 04 — Release
+# Workflow 04 — Release (legacy)
+
+> **Esta é a versão legada (manual).** Para v1.6.0+ use o
+> [`06-release-pipeline.md`](./06-release-pipeline.md) que
+> automatiza o release com GHCR + multi-arch + cosign + SBOM.
+>
+> Esta página é mantida para referência histórica e para
+> times que preferem controle manual das tags.
 
 > Como uma entrega vira release versionada, com tag, changelog e
 > imagem no GHCR. Disparado pelo `devops-engineer` após validação

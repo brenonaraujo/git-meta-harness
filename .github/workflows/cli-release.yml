@@ -1,0 +1,189 @@
+# ============================================================================
+# GitHub Actions — gmh CLI Release
+# ============================================================================
+# Builds the gmh CLI binary for 5 platforms and publishes to a
+# `cli-vX.Y.Z` GitHub Release.
+#
+# Triggers:
+#   - push de tag `cli-vX.Y.Z` na main
+#   - workflow_dispatch manual
+#
+# Output:
+#   - gmh-linux-amd64
+#   - gmh-linux-arm64
+#   - gmh-darwin-amd64
+#   - gmh-darwin-arm64
+#   - gmh-windows-amd64.exe
+#   - checksums.txt
+# ============================================================================
+
+name: cli-release
+
+on:
+  push:
+    tags:
+      - "cli-v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (e.g., v1.6.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            ext: ""
+          - os: linux
+            arch: arm64
+            ext: ""
+          - os: darwin
+            arch: amd64
+            ext: ""
+          - os: darwin
+            arch: arm64
+            ext: ""
+          - os: windows
+            arch: amd64
+            ext: ".exe"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.5"
+          cache: true
+          cache-dependency-path: cli/go.sum
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="cli-${{ inputs.version }}"
+          fi
+          VERSION_NO_PREFIX="${VERSION#cli-}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_no_prefix=$VERSION_NO_PREFIX" >> "$GITHUB_OUTPUT"
+
+      - name: Build binary
+        working-directory: cli
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: "0"
+        run: |
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          OUTPUT="bin/gmh-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          mkdir -p bin
+          go build \
+            -ldflags "-s -w -X main.Version=${{ steps.version.outputs.version_no_prefix }} -X main.Commit=$COMMIT -X main.Date=$DATE" \
+            -o "$OUTPUT" .
+          ls -la bin/
+
+      - name: Smoke test the binary
+        working-directory: cli
+        run: |
+          chmod +x bin/gmh-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+          ./bin/gmh-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }} version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gmh-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+          path: cli/bin/gmh-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+          if-no-files-found: error
+
+  checksums:
+    name: Checksums
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum gmh-* > checksums.txt
+          cat checksums.txt
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: dist/checksums.txt
+
+  release:
+    name: GitHub Release
+    needs: [build, checksums]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }} — gmh CLI
+          body: |
+            ## gmh ${{ github.ref_name }}
+
+            Static binary release of the gmh (git-meta-harness) CLI.
+
+            ### Install
+
+            ```bash
+            # Linux/macOS
+            curl -sSL https://raw.githubusercontent.com/brenonaraujo/git-meta-harness/${{ github.ref_name }}/cli/installer/install.sh | bash
+
+            # Windows PowerShell
+            iwr -useb https://raw.githubusercontent.com/brenonaraujo/git-meta-harness/${{ github.ref_name }}/cli/installer/install.ps1 | iex
+            ```
+
+            ### Manual download
+
+            Download the binary for your platform, `chmod +x`, and put in `$PATH`.
+
+            | OS      | Arch    | File                          |
+            |---------|---------|-------------------------------|
+            | Linux   | amd64   | `gmh-linux-amd64`             |
+            | Linux   | arm64   | `gmh-linux-arm64`             |
+            | macOS   | amd64   | `gmh-darwin-amd64`            |
+            | macOS   | arm64   | `gmh-darwin-arm64`            |
+            | Windows | amd64   | `gmh-windows-amd64.exe`       |
+
+            ### Verify
+
+            ```bash
+            sha256sum -c checksums.txt
+            ```
+
+            See [docs/CLI.md](https://github.com/brenonaraujo/git-meta-harness/blob/main/docs/CLI.md) for usage.
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+          files: |
+            dist/gmh-*
+            dist/checksums.txt

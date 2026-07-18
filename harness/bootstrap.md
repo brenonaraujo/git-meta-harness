@@ -5,7 +5,7 @@
 > saber para entregar um projeto **greenfield → release** mora aqui ou é
 > referenciado daqui.
 >
-> **Versão:** 1.5.0
+> **Versão:** 1.6.0
 > **Status:** stable
 > **Owners:** time de plataforma
 > **Licença:** MIT

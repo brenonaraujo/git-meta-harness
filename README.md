@@ -239,7 +239,32 @@ The team-manager will:
 6. Validate each sub-issue, run sensors, gate the PR.
 7. Block the merge until you, the human, validate.
 
-### 2. Copy the harness to an existing project
+### 2. Use the `gmh` CLI (recommended for v1.6.0+)
+
+The fastest way to adopt the meta-harness is the **`gmh` CLI** —
+a single static Go binary, installed with one command:
+
+```bash
+# Linux / macOS
+curl -sSL https://raw.githubusercontent.com/brenonaraujo/git-meta-harness/main/cli/installer/install.sh | bash
+
+# Windows PowerShell
+iwr -useb https://raw.githubusercontent.com/brenonaraujo/git-meta-harness/main/cli/installer/install.ps1 | iex
+```
+
+Then in your project:
+
+```bash
+cd my-project
+
+gmh install     # Install meta-harness
+gmh doctor      # Health check (must be ✅)
+gmh sync        # Update harness/ to latest version
+```
+
+See [`docs/CLI.md`](./docs/CLI.md) for the full manual.
+
+### 3. Copy the harness manually (legacy)
 
 ```bash
 # From your project root
@@ -250,13 +275,34 @@ cp /tmp/mh/.golangci.yml ./.golangci.yml
 # ... adapt as needed
 ```
 
-### 3. Verify it's healthy
+### 4. Verify it's healthy
 
 ```bash
 ./harness/scripts/smoke-test.sh .
 ./harness/scripts/check-stack-versions.sh --check-latest
 # Both must report ✅ OK.
 ```
+
+### 5. Publish a release (v1.6.0+)
+
+After merging a feature branch:
+
+```bash
+git checkout main
+git pull
+git tag v0.1.0
+git push origin v0.1.0
+# CI builds backend + frontend (multi-arch: amd64 + arm64)
+# Trivy scans, cosign signs, SBOMs generated
+# Images pushed to ghcr.io/<owner>/<repo>/<service>:0.1.0
+# GitHub Release auto-created with notes
+
+# Pull and run anywhere
+docker pull ghcr.io/<owner>/<repo>/backend:0.1.0
+```
+
+See [`docs/DEPLOY.md`](./docs/DEPLOY.md) for ECS, EKS, Docker
+Swarm, and local deployment.
 
 ## Architecture overview
 
@@ -506,10 +552,14 @@ Both must pass before any issue is processed. See
 
 ## Roadmap
 
-- **1.0.0** ✅ — First public release (this version)
-- **1.1.0** — Renovate/Dependabot config template (ADR candidate)
-- **1.2.0** — E2E test strategy (Playwright + Go integration)
-- **1.3.0** — Release automation (release-please config)
+- **1.0.0** ✅ — First public release
+- **1.1.0** ✅ — Concept documentation
+- **1.2.0** ✅ — Mermaid diagrams
+- **1.3.0** ✅ — `docs/LOOP.md`
+- **1.4.0** ✅ — `docs/HOWTO.md` + `code-graph` skill
+- **1.5.0** ✅ — verify-after-build (sensor 09) + invariante 19
+- **1.6.0** ✅ — release pipeline (GHCR) + `gmh` CLI ← this version
+- **1.7.0** — Renovate/Dependabot config template (ADR candidate)
 - **2.0.0** — Multi-repo orchestration (workspace of meta-harnesses)
 
 ## Contributing

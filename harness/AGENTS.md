@@ -4,7 +4,7 @@
 > layouts nativos de cada tool suportado. Cada seção é gerada a partir
 > das personas, sensors e workflow definidos em `bootstrap.md`.
 >
-> **Versão do meta-harness:** 1.5.0 (jul/2026) — verify-after-build.
+> **Versão do meta-harness:** 1.6.0 (jul/2026) — release pipeline + gmh CLI.
 > **Licença:** MIT. **Status:** stable.
 
 ## Para qual tool você está lendo isto?

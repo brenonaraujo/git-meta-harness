@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - 2026-07-18
+
+### Added — Release pipeline (GHCR) + `gmh` CLI
+
+The meta-harness **closes the loop** with two major additions:
+
+1. **Automated release pipeline** that publishes Docker
+   images to **GitHub Container Registry (GHCR)** with
+   multi-arch, cosign signatures, SBOMs, and Trivy scans.
+2. **`gmh` CLI** (Go single static binary) that lets users
+   install, sync, and manage the meta-harness in their
+   projects with a single command.
+
+#### Release pipeline (`docs/DEPLOY.md` + workflow 06)
+
+After merging a PR, `devops-engineer` tags the commit
+(`git tag v0.1.0 && git push origin v0.1.0`) and the
+[`release.yml`](../templates/.github-workflows-release.yml)
+workflow:
+
+- **Pre-flight:** re-runs `check-stack-versions.sh` +
+  `smoke-test.sh` on the tagged commit.
+- **Build:** multi-arch (amd64 + arm64) backend + frontend
+  in parallel, with cache `scope=backend-amd64` etc.
+- **Scan:** Trivy on CRITICAL (block).
+- **Sign:** cosign (keyless, OIDC GitHub).
+- **SBOM:** SPDX attached to GitHub Release.
+- **Push:** `ghcr.io/<owner>/<repo>/<service>:<tag>`.
+- **Release notes:** auto-generated.
+
+The published images can be deployed to **ECS, EKS, Docker
+Swarm, or locally via docker-compose** — all documented in
+[`docs/DEPLOY.md`](../docs/DEPLOY.md).
+
+#### `gmh` CLI (`cli/` + `docs/CLI.md`)
+
+A **Go single static binary** that:
+
+- **`gmh install`** — install meta-harness into a project.
+- **`gmh sync`** — sync local `harness/` with latest version.
+- **`gmh update --to vX.Y.Z`** — pin to a specific version.
+- **`gmh doctor`** — health check the local project.
+- **`gmh skills [list|install|remove|available]`** — manage skills.
+- **`gmh personas [list|create|remove]`** — manage domain-experts.
+- **`gmh plugins [...]`** — manage gmh plugins (experimental).
+- **`gmh version`** — print version info.
+
+**Install (Linux/macOS):**
+
+```bash
+curl -sSL https://raw.githubusercontent.com/brenonaraujo/git-meta-harness/main/cli/installer/install.sh | bash
+```
+
+**Install (Windows PowerShell):**
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/brenonaraujo/git-meta-harness/main/cli/installer/install.ps1 | iex
+```
+
+Distributed via `cli-vX.Y.Z` GitHub Releases for 5 platforms
+(linux/darwin/windows × amd64/arm64). See [`docs/CLI.md`](../docs/CLI.md)
+for the full manual.
+
+### Why this is `1.6.0` (minor, not patch)
+
+- Adds 2 **major new public APIs**: release pipeline + CLI.
+- Adds 2 new ADRs (0015, 0016) → significant design decisions.
+- Adds 2 new docs (DEPLOY.md, CLI.md) → public documentation.
+- All additive — does NOT break any existing project.
+
+### Backward compatibility
+
+- Existing projects continue to work without changes.
+- The release pipeline is opt-in (add the workflow file).
+- The `gmh` CLI is opt-in (don't have to install it; can keep
+  using `harness/scripts/smoke-test.sh`).
+
 ## [1.5.0] - 2026-07-18
 
 ### Added — `verify-after-build` (sensor 09) + invariante 19
