@@ -391,8 +391,30 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
     fail "$wf: Trivy v0.69.4 detectado — COMPROMETIDO (supply-chain mar/2026)"
     TRIVY_COMPROMISED=1
   fi
+  # v1.6.6: detecta trivy-action SEM prefixo 'v' (ex: @0.36.0 → 404)
+  if grep -qE "aquasecurity/trivy-action@[0-9]" "$wf"; then
+    fail "$wf: trivy-action SEM prefixo 'v' (ex: @0.36.0) — usar @v0.36.0 (404 em tag sem v)"
+    TRIVY_COMPROMISED=1
+  fi
 done
 [ "$TRIVY_COMPROMISED" -eq 0 ] && ok "Nenhuma versão comprometida do Trivy"
+
+# ============================================================================
+# 8b. golangci-lint-action: v9.3.0 é o MÍNIMO para golangci-lint v2.x (v1.6.6)
+# ============================================================================
+hdr "8b. golangci-lint-action: v9.3.0+ para golangci-lint v2.x"
+
+GOLANGCI_BAD=0
+for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
+  [ -f "$wf" ] || continue
+  # Detecta golangci-lint-action v6/v7/v8 com version: v2.x
+  if grep -qE "golangci/golangci-lint-action@v[678]\." "$wf" && \
+     grep -qE "version:[[:space:]]*v?2\." "$wf"; then
+    fail "$wf: golangci-lint-action @v6/v7/v8 + version: v2.x — incompatível ('invalid version string'). Use @v9.3.0+"
+    GOLANGCI_BAD=1
+  fi
+done
+[ "$GOLANGCI_BAD" -eq 0 ] && ok "golangci-lint-action compatível com versão pinada"
 
 # ============================================================================
 # 9. Nuxt: NÃO usar 3.x (EOL 31/jul/2026)

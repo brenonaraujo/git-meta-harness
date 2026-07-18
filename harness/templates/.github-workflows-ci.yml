@@ -106,9 +106,11 @@ jobs:
           cache: true
           cache-dependency-path: backend/go.sum
       - name: golangci-lint v2.12.2
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9.3.0
         with:
           # Schema v2 puro. NUNCA v1.x. Para migrar: `golangci-lint migrate`.
+          # v9.3.0 (jun/2026) é o mínimo que aceita golangci-lint v2.x
+          # (v6 não suporta v2 — invalid version string error).
           version: v2.12.2
           working-directory: backend
           args: --timeout=5m
@@ -346,7 +348,7 @@ jobs:
       - name: Trivy image scan (backend)
         # v0.36.0 (jul/2026) pós-supply-chain mar/2026. NUNCA @master.
         # Para prod crítica, SHA-pine.
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: app-backend:${{ github.sha }}
           format: sarif
@@ -385,7 +387,7 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to:   type=gha,mode=max,scope=frontend
       - name: Trivy image scan (frontend)
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: app-frontend:${{ github.sha }}
           format: sarif

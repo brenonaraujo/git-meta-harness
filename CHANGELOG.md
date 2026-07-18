@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.6] - 2026-07-18
+
+### Fixed — CRITICAL: template `harness/templates/.github-workflows-ci.yml` had broken action versions
+
+**Bug discovered when `gmh agents update` was delegated to Hermes on
+mandai-v2 (jul/2026).** The CI renewal PR opened by the agentic
+failed 8/13 checks with two classes of errors:
+
+1. **trivy-action without `v` prefix** — `aquasecurity/trivy-action@0.36.0`
+   (no `v`) returns **404** on GitHub Actions. The tag exists only
+   as `v0.36.0`. CI broke with `Unable to resolve action
+   aquasecurity/trivy-action@0.36.0, unable to find version 0.36.0`.
+
+2. **golangci-lint-action v6 with v2.12.2 linter** — `golangci-lint-action@v6`
+   does NOT support golangci-lint v2.x. CI broke with
+   `invalid version string 'v2.12.2', golangci-lint v2 is not
+   supported by golangci-lint-action v6, you must update to
+   golangci-lint-action v7.`
+
+**Root cause**: the canonical `harness/stack/versions.md` had
+the wrong values, and the agentic (and humans) blindly copied
+them. Two pinning bugs that escaped the verify-after-build
+protocol (sensor 09).
+
+**Fix**:
+- `harness/templates/.github-workflows-ci.yml`:
+  - `golangci/golangci-lint-action@v6` → `@v9.3.0` (latest, v2.x-compatible)
+  - `aquasecurity/trivy-action@0.36.0` → `@v0.36.0` (2 places)
+- `harness/stack/versions.md`:
+  - Fixed all 3 occurrences of the wrong pinning values
+  - Added notes explaining the gotchas (v prefix required, v9.3.0 minimum)
+- `harness/scripts/check-stack-versions.sh`:
+  - **New section 8b**: detects `golangci-lint-action @v6/v7/v8 + version: v2.x` → fail
+  - **Section 8 extended**: detects `trivy-action@[0-9]` (no v) → fail
+  - Total sections: 15 → 16 (sensor 7 now catches 2 more bug classes)
+
+**Lesson** (saved to memory): GitHub Actions require the **`v` prefix**
+on tags. `0.36.0` ≠ `v0.36.0` for refs/actions. Always test pinning
+end-to-end (sensor 09: verify-after-build).
+
 ## [1.6.5] - 2026-07-18
 
 ### Fixed — Critical bug in `gmh agents update` invocation

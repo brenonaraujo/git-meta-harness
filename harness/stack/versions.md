@@ -453,10 +453,10 @@ faz as chamadas acima e alerta drift.
 
 | Ferramenta        | Versão pinada  | Última estável (jul/2026) | Como rodar                           |
 |-------------------|---------------|--------------------------|--------------------------------------|
-| **golangci-lint**  | **v2.12.2**   | v2.12.2 (6/mai/2026)     | `golangci/golangci-lint-action@v6`   | **Schema v2 puro** — `golangci-lint migrate` para converter de v1 |
+| **golangci-lint**  | **v2.12.2**   | v2.12.2 (6/mai/2026)     | `golangci/golangci-lint-action@v9.3.0` | **Schema v2 puro** — `golangci-lint migrate` para converter de v1. **v9.3.0 é o MÍNIMO que aceita `version: v2.x`** (v6 não suporta v2 → "invalid version string"). |
 | **govulncheck**    | **latest**     | (atualizar)              | `go install golang.org/x/vuln/cmd/govulncheck@latest` | |
 | **trivy CLI**      | **v0.72.0**   | v0.72.0 (30/jun/2026)    | `aquasec/trivy:0.72.0`                | **NÃO** usar v0.69.4 (comprometido) |
-| **trivy-action**   | **v0.36.0**   | v0.36.0 (jul/2026)       | `aquasecurity/trivy-action@0.36.0`    | Pós-incidente supply-chain (mar/2026). Para produção, SHA-pinned |
+| **trivy-action**   | **v0.36.0**   | v0.36.0 (jul/2026)       | `aquasecurity/trivy-action@v0.36.0`   | **SEMPRE usar prefixo `v`** — `0.36.0` (sem `v`) retorna 404. Pós-incidente supply-chain (mar/2026). Para produção, SHA-pinned |
 | **oasdiff**        | **v1.7.0**    | (atualizar)              | `oasdiff/oasdiff-action@v1.7.0`      | |
 | **oasdiff-action** | **v1.7.0**    | (atualizar)              | (pinada, sem `latest`)                | Tag `@v1` é inválida (não existe) — sempre `@v1.7.0` |
 | **Gitleaks**       | **v8.18+**    | (atualizar)              | `gitleaks/gitleaks-action@v2`        | |
@@ -483,11 +483,11 @@ faz as chamadas acima e alerta drift.
 | `actions/setup-python`                 | **@v5**       | v5.3.0                   | Setup Python (Trivy, Spectral, etc.)    |
 | `actions/upload-artifact`              | **@v4**       | v4.4.0                   | Upload de artifacts                     |
 | `actions/download-artifact`            | **@v4**       | v4.1.2                   | Download de artifacts                    |
-| `golangci/golangci-lint-action`       | **@v6**       | v6.5.0                   | Lint Go (v2.12.2)                       |
+| `golangci/golangci-lint-action`       | **@v9.3.0**   | v9.3.0 (jun/2026)        | Lint Go (v2.12.2) — v9.3.0 é o MÍNIMO que aceita `version: v2.x` |
 | `docker/setup-buildx-action`           | **@v3**       | v3.7.1                   | Setup Buildx                            |
 | `docker/build-push-action`             | **@v6**       | v6.7.0                   | Build + push Docker image               |
 | `docker/login-action`                  | **@v3**       | v3.2.0                   | Login em registry                       |
-| `aquasecurity/trivy-action`            | **@0.36.0**   | 0.36.0 (jul/2026)        | Trivy image scan                        |
+| `aquasecurity/trivy-action`            | **@v0.36.0**  | v0.36.0 (abr/2026)       | Trivy image scan — SEMPRE com prefixo `v` (`0.36.0` retorna 404) |
 | `aquasecurity/setup-trivy`             | **@0.2.6**    | 0.2.6 (pós-incidente)    | Setup Trivy CLI                          |
 | `oasdiff/oasdiff-action`               | **@v1.7.0**   | (atualizar)              | OpenAPI contract diff                   |
 | `github/codeql-action/upload-sarif`    | **@v3**       | v3.27.0                  | Upload SARIF                             |
