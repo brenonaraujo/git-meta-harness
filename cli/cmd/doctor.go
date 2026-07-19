@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -303,13 +304,36 @@ func runLocalChecks(cwd, harnessDir string, verbose bool) *doctorReport {
 		check("CI workflow present", false)
 	}
 
-	// 13. CI vs template: detect drift (run gmh agents update to fix)
+	// 13. CI vs template: detect drift (run gmh agents update to fix).
+	// Normalize project-specific renames + version pins so they don't
+	// count as drift:
+	//   - <project>-backend|frontend → app-backend|frontend
+	//   - @<version> (when the diff is the version) → @
+	//   - format: <fmt> lines ignored
+	//   - output: <file> lines ignored
 	templateYml := filepath.Join(cwd, "harness", "templates", ".github-workflows-ci.yml")
 	if fileExists(ciYml) && fileExists(templateYml) {
 		localCI, _ := os.ReadFile(ciYml)
 		tplCI, _ := os.ReadFile(templateYml)
-		localLines := strings.Split(string(localCI), "\n")
-		tplLines := strings.Split(string(tplCI), "\n")
+		// Normalize lines that commonly differ for legitimate reasons
+		// (project-specific image names, pinned tool versions, scan formats).
+		normalize := func(s string) string {
+			// Image name: <project>-backend|frontend → app-backend|frontend
+			s = regexp.MustCompile(`[\w-]+-backend:`).ReplaceAllString(s, "app-backend:")
+			s = regexp.MustCompile(`[\w-]+-frontend:`).ReplaceAllString(s, "app-frontend:")
+			// Pinned tool versions: keep the package, drop the version
+			// (so govulncheck@latest vs @v1.1.4 don't count as drift)
+			s = regexp.MustCompile(`govulncheck@\S+`).ReplaceAllString(s, "govulncheck@<version>")
+			s = regexp.MustCompile(`oapi-codegen@\S+`).ReplaceAllString(s, "oapi-codegen@<version>")
+			// Trivy format/output differ legitimately
+			s = regexp.MustCompile(`(?m)^(\s*)format:\s*\S+`).ReplaceAllString(s, "${1}format: <fmt>")
+			s = regexp.MustCompile(`(?m)^(\s*)output:\s*\S+`).ReplaceAllString(s, "${1}output: <file>")
+			return s
+		}
+		localNorm := normalize(string(localCI))
+		tplNorm := normalize(string(tplCI))
+		localLines := strings.Split(localNorm, "\n")
+		tplLines := strings.Split(tplNorm, "\n")
 		localSet := make(map[string]bool)
 		for _, l := range localLines {
 			localSet[l] = true

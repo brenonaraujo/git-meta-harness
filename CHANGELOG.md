@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.10] - 2026-07-18
+
+### Fixed — `gmh doctor` no longer false-flags "CI drift" for legitimate customizations
+
+**Bug**: `gmh doctor` reported
+`CI: aligned with template (drift: +N lines from template)`
+even when the only differences were legitimate project-specific
+customizations:
+- Image names like `mandai-backend` vs template's generic `app-backend`
+- Pinned tool versions (`govulncheck@v1.1.4` vs `@latest` in template)
+- Trivy scan format (`format: table` vs `format: sarif`)
+
+These customizations are intentional and should not be flagged
+as drift from the framework template.
+
+**Fix**: normalize lines before comparison in
+`cli/cmd/doctor.go`:
+- `<word>-backend` / `<word>-frontend` → `app-backend` / `app-frontend`
+- `govulncheck@<version>` → `govulncheck@<version>` (literal)
+- `oapi-codegen@<version>` → `oapi-codegen@<version>` (literal)
+- `format: <fmt>` and `output: <file>` lines normalized
+
+Result: `gmh doctor` now reports `All local checks passed`
+for projects with legitimate customizations.
+
 ## [1.6.9] - 2026-07-18
 
 ### Fixed — `gmh update --to vX.Y.Z` now bumps the local VERSION file even when `harness/` is unchanged
