@@ -122,10 +122,27 @@ Sempre: `triage` → `refined` → `ready` → `in-progress` → `in-review`
 
 Se tentar pular, o `team-manager` recusa e devolve.
 
-### 2. Paralelizar o que dá
+### 2. Paralelizar o que dá (com decomposition safety — v1.9.0)
 
 Backend e frontend podem trabalhar **na mesma branch** (em arquivos
 separados). O `team-manager` atribui os dois e o PR é único.
+
+**MAS** (v1.9.0+): antes de disparar 2+ builders em paralelo
+(sobretudo em sub-issues de uma decomposição), `team-manager`
+**DEVE** rodar o
+[sensor 10](../sensors/10-decomposition-safety.md) para validar
+que os `path-scope` são disjuntos (ou têm `depends-on` explícito).
+
+```bash
+./harness/scripts/check-parallel-builders.sh --ready
+# exit 0 = OK, exit 1 = overlap, exit 2 = sem path-scope
+```
+
+**Lição do Épico #12 do Mandaí v2 (jul/2026)**: 6 builders
+disparados em paralelo no mesmo `cwd` sem essa validação causaram
+conflito de compilação (`UserRepository` redeclarado em
+`internal/repository/`) e ~4h de trabalho perdido. O sensor 10
+existe para garantir que isso não aconteça de novo.
 
 ### 3. Enforce invariantes
 

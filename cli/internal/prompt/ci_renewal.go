@@ -43,12 +43,12 @@ type CIRenewalInput struct {
 // The agentic (Hermes, Claude Code, etc.) receives this prompt and
 // should:
 //
-//	1. Re-read .github/workflows/ci.yml and the framework's new
-//	   template (harness/templates/.github-workflows-ci.yml)
-//	2. Understand the project's customizations (preserve them)
-//	3. Update .github/workflows/ci.yml to match the new template,
-//	   merging in project-specific customizations
-//	4. Open a PR with the title "ci: renew to framework v{version}"
+//  1. Re-read .github/workflows/ci.yml and the framework's new
+//     template (harness/templates/.github-workflows-ci.yml)
+//  2. Understand the project's customizations (preserve them)
+//  3. Update .github/workflows/ci.yml to match the new template,
+//     merging in project-specific customizations
+//  4. Open a PR with the title "ci: renew to framework v{version}"
 //
 // The agentic has access to: project context, framework skills
 // (github-pr-workflow, twelve-factor, code-graph), the new template
@@ -151,17 +151,17 @@ with the framework's new template.
      additional jobs, custom paths).
    - Add the framework's new sensors: govulncheck, dorny/paths-filter,
      scope cache, Trivy SHA-pinned, cosign (if release pipeline).
-   - Pin ALL action versions (no `+"`@latest`"+`, no `+"`@master`"+`).
-   - Add `+"`GOTOOLCHAIN=local`"+` to all Go jobs (impedes `+"`go mod tidy`"+`
+   - Pin ALL action versions (no ` + "`@latest`" + `, no ` + "`@master`" + `).
+   - Add ` + "`GOTOOLCHAIN=local`" + ` to all Go jobs (impedes ` + "`go mod tidy`" + `
      from rewriting go.mod in CI).
    - Add 12-Factor audit as an always-running job.
    - Add i18n audit if the project has i18n.
-   - Use `+"`dorny/paths-filter@v3.0.2`"+` (SHA-pinned in prod) at the top
+   - Use ` + "`dorny/paths-filter@v3.0.2`" + ` (SHA-pinned in prod) at the top
      to skip irrelevant jobs.
 
 4. **Open a PR:**
-   - Branch: `+"`ci/renew-framework-" + strings.TrimPrefix(in.LatestVersion, "v") + "`" + `
-   - Title: `+"`ci: renew to framework " + in.LatestVersion + "`" + `
+   - Branch: ` + "`ci/renew-framework-" + strings.TrimPrefix(in.LatestVersion, "v") + "`" + `
+   - Title: ` + "`ci: renew to framework " + in.LatestVersion + "`" + `
    - Body: list the new sensors/gates added, the customizations
      preserved, and the verification commands.
 
@@ -170,7 +170,7 @@ with the framework's new template.
 ## Critical
 
 - **DO NOT trust auto-report.** Re-read files. Re-run commands. (Invariante 19.)
-- **DO NOT break existing CI.** Test with `+"`act`"+` or in a fork before opening the PR.
+- **DO NOT break existing CI.** Test with ` + "`act`" + ` or in a fork before opening the PR.
 - **PRESERVE secrets and env vars** (DATABASE_URL, GHCR_TOKEN, etc.).
 - **Use pinned actions only** (no @latest, no @master).
 - **Document each change** in the PR body — the user will review.

@@ -355,6 +355,37 @@ make compose-down
       REST → GraphQL, GHCR → ECR), essa AC ainda faz sentido?"
       SIM → AC de comportamento. NÃO → AC acoplada a tech,
       reformular.
+21. **Path-scope + depends-on obrigatórios para sub-issues em
+    paralelo** (cercas de decomposição, v1.9.0). Lição do Épico
+    #12 do Mandaí v2 (jul/2026): 6 builders rodaram em paralelo
+    no mesmo `cwd` sem checagem de overlap. Backend #13 (auth-api)
+    e #15 (user-role) ambos declararam `UserRepository` no mesmo
+    pacote (`internal/repository/`) → conflito de compilação e
+    trabalho perdido.
+    - **Toda sub-issue** (criada a partir da decomposição de uma
+      issue-mãe) **deve** ter 1+ label `path-scope: <glob>` no
+      DoD. `solutions-architect` declara no DoD, não é opcional.
+    - **Antes de disparar 2+ builders em paralelo**, o
+      `team-manager` **DEVE** rodar
+      [`./harness/scripts/check-parallel-builders.sh --ready`](../scripts/check-parallel-builders.sh)
+      (sensor 10). Exit code ≠ 0 = **bloquear** a transição
+      `ready` → `in-progress`.
+    - Se o sensor detectar **overlap** entre path-scopes, opções:
+      (a) adicionar `depends-on: #X` em uma das sub-issues
+      (serializa), (b) refatorar path-scope para ser disjunto.
+    - Sub-issue **sem path-scope** = DoD incompleto = rejeitar
+      (`needs-info` para `solutions-architect`).
+    - Sub-issue com path-scope que cobre `go.mod`, `package.json`,
+      `pnpm-lock.yaml`, ou `migrations/*.sql` = **sempre
+      serializar** (alto risco de conflito de lock file ou ordem
+      de migration).
+    - Ver
+      [`personas/solutions-architect.md`](./personas/solutions-architect.md)
+      §"Path scoping" (quem declara),
+      [`personas/team-manager.md`](./personas/team-manager.md)
+      §6 "Decomposition Safety" (quem valida),
+      [`sensors/10-decomposition-safety.md`](./sensors/10-decomposition-safety.md)
+      (protocolo).
 
 ---
 

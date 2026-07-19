@@ -106,6 +106,109 @@ devem seguir.
 ### Riscos
 - R1: <risco> → <mitigação>
 
+### Path scoping (obrigatório para sub-issues) — v1.9.0
+
+> **Toda sub-issue criada a partir de uma decomposição DEVE
+> declarar `path-scope`** (label `path-scope: <glob>`) **e ser
+> serializada se houver overlap com outra sub-issue em
+> paralelo**. Sem path-scope, a sub-issue **não vai pra `ready`**.
+
+**Por que existe**: o Épico #12 do Mandaí v2 (jul/2026) executou
+6 builders em paralelo no mesmo `cwd`. Backend #13 (auth-api) e
+#15 (user-role) ambos declararam interface `UserRepository` no
+mesmo pacote (`internal/repository/`) → conflito de compilação
+e trabalho perdido (nenhum commit chegou). Sem path-scope explícito
+e sem bloqueio de paralelização por overlap, o `team-manager`
+não tem como detectar isso antes de disparar.
+
+#### Como declarar path-scope
+
+Use **glob syntax** (mesma do `.gitignore` / `find`):
+
+```yaml
+# Sub-issue de auth-api
+path-scope:
+  - backend/internal/auth/**
+  - backend/api/openapi.yaml   # 1 arquivo específico
+  - backend/internal/repository/auth.go   # evita UserRepository
+  - backend/migrations/000002_auth.up.sql
+  - backend/migrations/000002_auth.down.sql
+
+# Sub-issue de user-role
+path-scope:
+  - backend/internal/domain/role/**
+  - backend/internal/repository/user.go   # outro arquivo
+  - web/app/stores/auth.ts                # frontend pode tocar
+```
+
+**Regras de ouro**:
+- ✅ **1 path-scope por sub-issue** (pode ser uma lista de globs,
+  mas o conjunto é o que importa).
+- ✅ **Use `**` para "tudo abaixo"** (recursive).
+- ✅ **Especifique arquivos individuais** se forem poucos (evita
+  globs permissivos demais que conflitam com outras sub-issues).
+- ❌ **Não use path-scope muito largo** (ex.: `backend/**` cobre
+  tudo e conflita com qualquer outra sub-issue backend).
+- ❌ **Não use path-scope muito estreito** se o builder vai precisar
+  mexer em mais coisas (deixe margem para imports, testes, etc).
+
+#### Quando serializar (depends-on)
+
+Se 2 sub-issues têm **path-scope overlap**, o `team-manager`
+**não dispara em paralelo** sem dependência explícita. Em vez disso:
+
+```yaml
+# #15 depende de #13 fechar antes
+labels:
+  - path-scope: backend/internal/auth/**
+  - path-scope: backend/internal/repository/auth.go
+  - depends-on: #13
+```
+
+O GitHub renderiza `depends-on: #X` como blocker nativo (se você
+tiver instalado o app [Blocked PRs](https://github.com/settings/blocked_prs)
+ou similar). Mesmo sem app, o `team-manager` lê a label antes de
+disparar builders.
+
+#### Tabela de quando serializar vs paralelizar
+
+| Cenário | Decisão | Exemplo |
+|---|---|---|
+| 2 sub-issues com **path-scope disjunto** | ✅ **Paralelizar** | #13 (auth) + #14 (homepage) |
+| 2 sub-issues com **path-scope overlap** | ⚠️ **Serializar** (depends-on) | #13 (auth) + #15 (user-role) tocando `repository/` |
+| 2 sub-issues onde **uma declara path-scope** e **outra não** | 🛑 **Bloquear** (rejeitar a que não tem) | #13 com path-scope + #15 sem → rejeitar #15 |
+| Sub-issue com **path-scope vazio ou só `*`** | 🛑 **Bloquear** | path-scope `["*"]` cobre tudo e não diz nada |
+| Sub-issue que **toca package.json OU go.mod** | ⚠️ **Serializar tudo** (alto risco) | Mudança em lock file = rebuild full |
+| Sub-issue que **deleta arquivo** referenciado por outra | 🛑 **Bloquear** | refactor que quebra import |
+
+#### Exemplo concreto (Épico #12 do Mandaí v2 refatorado)
+
+**Antes (v1.8.0, sem path-scope)** — quebrou:
+```
+#13 backend auth-api         (sem path-scope)
+#15 backend user-role        (sem path-scope)  → ambos criaram UserRepository
+```
+
+**Depois (v1.9.0, com path-scope)** — detecta overlap:
+```
+#13 path-scope: backend/internal/auth/**, backend/internal/repository/auth.go
+#15 path-scope: backend/internal/domain/role/**, backend/internal/repository/user.go
+
+# Detecção de overlap (rodar ./harness/scripts/check-parallel-builders.sh):
+⚠️  OVERLAP: #13 e #15 ambos tocam backend/internal/repository/*.go
+   → Solução: adicionar depends-on: #13 em #15
+   → Ou: refatorar path-scope para que sejam disjuntos
+```
+
+#### Quem valida
+
+- **`team-manager`** (sensor 10-decomposition-safety) detecta overlap
+  antes de disparar builders em paralelo.
+- **`solutions-architect`** declara path-scope no DoD (esta seção).
+- **`backend-engineer` / `frontend-engineer`** validam que
+  estão trabalhando **dentro** do path-scope (se precisarem
+  tocar fora, pedir extensão ao `team-manager`).
+
 ### Pronto para implementação?
 - [x] Sim — atribuir a `backend-engineer` e/ou `frontend-engineer` (label `ready`).
 - [ ] Não — faltam decisões (label `needs-info`).

@@ -211,9 +211,9 @@ func fromMsg(target, from string) string {
 
 func nextStepsMsg(version string) string {
 	return fmt.Sprintf(`### After merge
-1. Run `+"`./harness/scripts/check-stack-versions.sh`"+` to confirm.
-2. Run `+"`./harness/scripts/smoke-test.sh`"+` to validate.
-3. See `+"`docs/CLI.md`"+` for usage of the new version.`)
+1. Run ` + "`./harness/scripts/check-stack-versions.sh`" + ` to confirm.
+2. Run ` + "`./harness/scripts/smoke-test.sh`" + ` to validate.
+3. See ` + "`docs/CLI.md`" + ` for usage of the new version.`)
 }
 
 // isOlder returns true if a is semver-older than b.

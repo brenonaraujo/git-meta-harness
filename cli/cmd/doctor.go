@@ -416,5 +416,5 @@ func versionDelta(local, latest string) int {
 	}
 	lp := semverTuple(local)
 	hp := semverTuple(latest)
-	return hp[0]*10000+hp[1]*100+hp[2] - (lp[0]*10000 + lp[1]*100 + lp[2])
+	return hp[0]*10000 + hp[1]*100 + hp[2] - (lp[0]*10000 + lp[1]*100 + lp[2])
 }

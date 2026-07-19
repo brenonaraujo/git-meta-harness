@@ -194,10 +194,10 @@ func agentsInspectCmd() *cobra.Command {
 
 func agentsSyncCmd() *cobra.Command {
 	var (
-		aggressive bool
-		dryRun     bool
-		openPR     bool
-		base       string
+		aggressive  bool
+		dryRun      bool
+		openPR      bool
+		base        string
 		onlyProfile string
 	)
 	cmd := &cobra.Command{
@@ -604,11 +604,11 @@ func frameworkVersion(cwd string) string {
 //	gmh agents update --open-pr            # Open a PR with the agentic's work
 func agentsUpdateCmd() *cobra.Command {
 	var (
-		dryRun     bool
-		noPrompt   bool
-		openPR     bool
-		base       string
-		agentName  string
+		dryRun    bool
+		noPrompt  bool
+		openPR    bool
+		base      string
+		agentName string
 	)
 	cmd := &cobra.Command{
 		Use:   "update",

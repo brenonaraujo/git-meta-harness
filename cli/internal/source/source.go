@@ -26,10 +26,10 @@ const (
 
 // Release describes a single GitHub Release.
 type Release struct {
-	TagName string `json:"tag_name"`
-	Name    string `json:"name"`
-	Draft   bool   `json:"draft"`
-	Prerelease bool `json:"prerelease"`
+	TagName    string `json:"tag_name"`
+	Name       string `json:"name"`
+	Draft      bool   `json:"draft"`
+	Prerelease bool   `json:"prerelease"`
 }
 
 // Client talks to GitHub.

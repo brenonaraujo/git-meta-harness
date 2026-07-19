@@ -88,6 +88,20 @@ jobs:
           echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "is_cli_only=$IS_CLI_ONLY" >> "$GITHUB_OUTPUT"
 
+      - name: Test + vet + fmt
+        # Lesson from v1.8.0: `go build` alone does NOT catch
+        # fmt.Sprintf arg mismatches, unused variables, or shadow.
+        # Running `go test ./...` + `go vet ./...` + `gofmt -l`
+        # catches these BEFORE the binaries are built. v1.6.1
+        # shipped a Sprintf bug undetected for 8 releases.
+        working-directory: cli
+        run: |
+          set -e
+          go test ./...
+          go vet ./...
+          test -z "$(gofmt -l .)" || (echo "❌ gofmt would reformat:" && gofmt -l . && exit 1)
+          echo "✅ Test + vet + fmt passed"
+
       - name: Build binary
         working-directory: cli
         env:

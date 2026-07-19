@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] - 2026-07-18
+
+### Added — Decomposition Safety (path-scope + depends-on + sensor 10) (ADR-0019)
+
+**Context**: The Épico #12 (auth + role switching) of the Mandaí
+v2 validation project was decomposed into 6 sub-issues (#13–#18)
+that were dispatched in parallel by 6 builders sharing the same
+`cwd`. Backend #13 (auth-api) and #15 (user-role) both declared
+the `UserRepository` interface in the same package
+(`internal/repository/`) — compile conflict. **None of the 6
+builders committed** — work was lost (~4h wasted).
+
+**4 coordinated changes**:
+
+1. **`solutions-architect.md` §Path scoping (NEW, required)**:
+   - Every sub-issue from a decomposition **MUST** declare 1+
+     `path-scope: <glob>` label in the DoD.
+   - Glob syntax (same as `.gitignore` / `find -path`).
+   - Glob rules of thumb + edge cases (lock files, migrations).
+   - "When to serialize" table with 6 scenarios.
+
+2. **Sensor 10 — Decomposition Safety (NEW)**:
+   - [`harness/sensors/10-decomposition-safety.md`](harness/sensors/10-decomposition-safety.md)
+     — protocol for the `team-manager` to detect path-scope
+     overlap before dispatching builders.
+   - [`harness/scripts/check-parallel-builders.sh`](harness/scripts/check-parallel-builders.sh)
+     — automated bash script (Python-backed glob overlap
+     heuristic) with 3 exit codes (0 = OK, 1 = overlap, 2 = no
+     path-scope).
+
+3. **`team-manager.md` §6 "Decomposition Safety" (NEW)**:
+   - Step-by-step protocol: read path-scopes → calculate
+     overlap → block or accept.
+   - Concrete example from Épico #12 (before/after).
+   - "Good vs Bad" behavior examples.
+   - Edge cases (lock files, migrations, file deletion).
+
+4. **AGENTS.md invariante 21 (NEW)**:
+   - `path-scope` + `depends-on` + sensor 10 = non-violable.
+   - Sub-issue without path-scope = DoD incomplete.
+   - Sub-issue covering `go.mod`, `package.json`, lock files
+     = always serialize.
+
+5. **`workflow/05-orchestration.md` §2 expanded**:
+   - "Parallelize what fits" now references sensor 10 + Épico
+     #12 lesson explicitly.
+
+6. **Canonical labels**:
+   - `path-scope: <glob>` (1+ per sub-issue) — declared in DoD.
+   - `depends-on: #X` (1+ per sub-issue) — explicit
+     serialization (GitHub renders as native blocker with
+     [Blocked PRs](https://github.com/settings/blocked_prs) app).
+
+### Changed
+
+- `team-manager.md` §7 (Comportamento esperado): added reference
+  to §6 "Decomposition Safety".
+- `team-manager.md` §10 (Limites): added "Não dispara 2+ builders
+  em paralelo sem rodar sensor 10".
+
+### Forward-compatible with v2.0.0
+
+- v2.0.0 will add **worktree isolation** (`git worktree add`
+  per builder) + **WIP commits** (incremental persistence).
+- path-scope remains useful even with worktree (declarative
+  intent, regardless of where work happens).
+
 ## [1.8.0] - 2026-07-18
 
 ### Added — Cerca Técnica (espelho da Cerca de Design) + skill `domain-refinement` (ADR-0018)

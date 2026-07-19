@@ -2117,3 +2117,174 @@ economizado.
 skill em `~/.hermes/skills/` e propagar a Cerca Técnica
 para o profile `domain-expert-mandai` (já customizado,
 só atualiza, não sobrescreve).
+
+---
+
+## ADR-0019 — Decomposition Safety (path-scope + depends-on) (v1.9.0)
+
+> **Status:** Aceito (2026-07-18).
+> **Contexto:** Mandaí v2, Épico #12 (autenticação + role
+> switching), jul/2026.
+> **Decisão:** `team-manager` NUNCA dispara 2+ builders em
+> paralelo sem antes validar que seus `path-scope` são
+> disjuntos (ou têm `depends-on` explícito). 4 mudanças
+> coordenadas: sensor 10 + script de detecção + DoD
+> obrigatório + invariante não-violável.
+
+### Contexto
+
+Em jul/2026, durante a decomposição do Épico #12 (autenticação
++ role switching) do Mandaí v2 em 6 sub-issues (#13–#18), o
+`team-manager` disparou 6 builders em paralelo **no mesmo
+`cwd`** sem checagem de overlap de paths:
+
+| Sub-issue | Builder | path-scope? |
+|---|---|---|
+| #13 backend auth-api | backend-engineer | ❌ |
+| #15 backend user-role | backend-engineer | ❌ |
+| #14 frontend homepage | frontend-engineer | ❌ |
+| #16 frontend cadastro/login | frontend-engineer | ❌ |
+| #17 frontend home auth | frontend-engineer | ❌ |
+| #18 infra migrations+seed | devops-engineer | ❌ |
+
+**Resultado (1ª tentativa)**:
+- **#13 (auth-api) e #15 (user-role) ambos declararam
+  interface `UserRepository`** no mesmo pacote
+  (`internal/repository/`) → conflito de compilação.
+- **#15 (user-role) referenciou tipos do auditlog** (que
+  estava criando) antes de #15 terminar → erro de tipo
+  indefinido.
+- **Nenhum dos 6 builders chegou a commitar** — o trabalho
+  foi perdido (working tree volátil dos processos Hermes
+  que terminaram por "limite de iterações" + conflito).
+- **Custo**: ~4h de orquestração desperdiçada, retrabalho
+  manual necessário para consolidar o que sobrou.
+
+**Causa raiz**: o meta-harness (até v1.8.0) **não tinha
+mecanismo para detectar overlap de paths** entre sub-issues
+em paralelo. O `team-manager` confiou em "backend e
+frontend em arquivos separados" (`workflow/05-orchestration.md`
+§2), mas **2 backends no mesmo package não são "arquivos
+separados"** — eles compartilham imports e tipos.
+
+### Decisão
+
+**4 mudanças coordenadas** + invariante não-violável:
+
+#### 1. Path-scope obrigatório no DoD (solutions-architect)
+
+`solutions-architect` declara `path-scope: <glob>` (1+) no
+DoD de cada sub-issue criada via decomposição. Glob syntax
+mesma do `.gitignore` / `find -path`.
+
+Sem path-scope = sub-issue não vai pra `ready`
+(DoD rejeitado, `needs-info` para solutions-architect).
+
+#### 2. Sensor 10-decomposition-safety + script automatizado
+
+Novo
+[`harness/sensors/10-decomposition-safety.md`](../sensors/10-decomposition-safety.md)
++ script
+[`harness/scripts/check-parallel-builders.sh`](../scripts/check-parallel-builders.sh).
+
+**Protocolo** (3 passos, ~2 min total):
+1. Ler path-scope de cada sub-issue em `ready`
+2. Calcular overlap dos globs (heurística: regex-based
+   test paths matching)
+3. Bloquear (exit 1) ou aceitar (exit 0)
+
+Se overlap detectado E sem `depends-on` explícito → **exit 1**.
+
+#### 3. Labels canônicas no repo
+
+- `path-scope: <glob>` (1+ por sub-issue) — declarada no DoD
+- `depends-on: #X` (1+ por sub-issue) — serialização explícita
+
+GitHub renderiza `depends-on` nativamente (com app
+[Blocked PRs](https://github.com/settings/blocked_prs)).
+
+#### 4. Invariante 21 na AGENTS.md
+
+Codifica path-scope + depends-on + bloqueio como
+não-violável. Ver `harness/AGENTS.md` invariante 21.
+
+#### 5. §6 nova no team-manager.md
+
+`team-manager` ganha seção dedicada "Decomposition Safety"
+com protocolo passo-a-passo, exemplos concretos do Épico
+#12 (antes/depois), e comportamento esperado (BOM vs RUIM).
+
+#### 6. workflow/05-orchestration.md §2 expandido
+
+Texto de "Paralelizar o que dá" agora inclui referência
+explícita ao sensor 10 e à lição do Épico #12.
+
+### Consequências
+
+- **+** `team-manager` tem ferramenta automática para
+  detectar overlap antes de desperdiçar trabalho.
+- **+** Sub-issues sem path-scope explícito **não passam**
+  — força rigor na decomposição.
+- **+** `depends-on` permite serialização explícita sem
+  ambiguidade.
+- **+** Custo do sensor é baixo (~2 min para rodar) e
+  automatizado.
+- **−** `solutions-architect` precisa adicionar path-scope
+  em toda sub-issue (curva de aprendizado inicial, mitigada
+  pela tabela de exemplos e regras de ouro).
+- **−** `team-manager` precisa rodar sensor antes de cada
+  batch de dispatch (mais 2 min, mitigado por ser
+  automatizado e bloqueante).
+- **−** Overlap detectado por glob heuristic pode ter
+  **falso positivo** (2 globs que se sobrepõem em teoria
+  mas não na prática) ou **falso negativo** (2 arquivos
+  que conflitam mas os globs não foram declarados com
+  granularidade suficiente). Mitigação: revisar manualmente
+  o output do sensor antes de bloquear.
+
+### Reversibilidade
+
+- Reverter = remover sensor 10, script, §6 do
+  `team-manager.md`, invariante 21, e regra de path-scope
+  no `solutions-architect.md`. ~30 min.
+- **Forward-compatible com v2.0.0**: v2.0.0 adiciona
+  **worktree isolation** (cada builder em worktree
+  separado) + **WIP commits** incrementais. Path-scope
+  permanece útil mesmo com worktree (é a forma de
+  declarar intenção, independente de onde o trabalho
+  acontece).
+
+### Worktree isolation (v2.0.0, PLANEJADO, NÃO NESTE ADR)
+
+Limitação conhecida do v1.9.0: mesmo com path-scope
+disjunto declarado, 2 builders no **mesmo filesystem**
+podem ter race conditions em arquivos fora do path-scope
+(ex.: `.git/`, `go.sum` se ambos rodam `go mod tidy`,
+lock files, IDE state). Worktree isolation (cada builder
+em `git worktree add` separado) elimina isso.
+
+**Quando**: v2.0.0 (próximo major). Roadmap:
+- Cada builder: `git worktree add ../projeto-#13 feature/13-...`
+- `cwd` distinto por builder → sem conflito de filesystem
+- Merge no fim via `git merge --no-ff` ou rebase
+- Custo: ~5x mais código (precisa sync de go.mod, package.json,
+  lock files)
+
+### Lições do Épico #12 do Mandaí v2 (jul/2026)
+
+| Sintoma observado | Correção (v1.9.0) |
+|---|---|
+| 6 builders em paralelo, mesmo `cwd` | Sensor 10 detecta overlap antes |
+| Backend #13 e #15 ambos criaram `UserRepository` | path-scope `repository/auth.go` vs `repository/user.go` (disjunto) |
+| Auditlog (#15) referenciou tipos não-existentes | `depends-on: #X` serializa ordem |
+| Trabalho perdido (nenhum commit) | v2.0.0: WIP commits incrementais |
+| Race conditions em `.git/`, `go.sum` | v2.0.0: worktree isolation |
+
+**Custo evitado**: ~4h/epic de retrabalho manual
+(consolidação de conflitos, debug de compilação, recriação
+de branches). Em 4 épicos por mês = ~16h/mês economizado.
+
+**Validação**: aplicado em Mandaí v2 via
+`gmh update --to v1.9.0 --force` (após release).
+Recriação do Épico #12 (em issue de exemplo) deve passar
+o sensor 10 com path-scope corretamente declarado.
