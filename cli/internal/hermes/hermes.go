@@ -178,6 +178,26 @@ func (c *Client) WriteSkill(name, content string) error {
 	return os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(content), 0o644)
 }
 
+// WriteProfileSkill writes a skill's content to a profile's local
+// skills directory: ~/.hermes/profiles/<profileName>/skills/<skillName>/SKILL.md.
+//
+// v1.10.3: this is required because the Hermes desktop UI counts
+// only physical skills in each profile's `skills/` directory; it
+// does NOT count skills from `external_dirs` (which still work at
+// runtime, but show 0 in the UI). To make the UI show the right
+// count, we copy the 12 harness skills into each profile's
+// `skills/` directory.
+//
+// The 73+ Hermes global catalog skills are NOT copied (they live
+// only in ~/.hermes/skills/ and are reachable via external_dirs).
+func (c *Client) WriteProfileSkill(profileName, skillName, content string) error {
+	dir := filepath.Join(c.Home, "profiles", profileName, "skills", skillName)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(content), 0o644)
+}
+
 // ProfileConfig represents a Hermes profile's config.yaml.
 //
 // Only the fields we touch in the meta-harness are exposed here.

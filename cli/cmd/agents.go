@@ -329,6 +329,42 @@ Examples:
 				ui.Info("Skills: %d installed, %d updated, %d unchanged", skillsInstalled, skillsUpdated, skillsUnchanged)
 			}
 
+			// v1.10.3: copy harness skills into each profile's `skills/`
+			// directory so the Hermes desktop UI shows the right count.
+			// The UI counts only physical skills in profile's `skills/`
+			// (not external_dirs). 73+ Hermes global catalog skills
+			// remain in `~/.hermes/skills/` and are reachable at runtime
+			// via external_dirs.
+			if manifest != nil && !dryRun {
+				ui.Info("")
+				ui.Info("Profile skills (v1.10.3 — copy harness skills into each profile):")
+				profileSkillCopied := 0
+				profileSkillSkipped := 0
+				for _, p := range profiles {
+					if onlyProfile != "" && p.Name != onlyProfile {
+						continue
+					}
+					existing, _ := hermesClient.ListSkills()
+					_ = existing
+					for _, s := range manifest.Skills {
+						// Check if the profile's local skills/<s>/SKILL.md
+						// already has the same content
+						profileSkillPath := filepath.Join(hermesClient.Home, "profiles", p.Name, "skills", s.Name, "SKILL.md")
+						existingContent, _ := os.ReadFile(profileSkillPath)
+						if string(existingContent) == s.Content {
+							profileSkillSkipped++
+							continue
+						}
+						if err := hermesClient.WriteProfileSkill(p.Name, s.Name, s.Content); err != nil {
+							ui.Warn("  ⚠ %s → %s: %v", p.Name, s.Name, err)
+							continue
+						}
+						profileSkillCopied++
+					}
+				}
+				ui.OK("  %d profile-skill copies synced, %d already in sync", profileSkillCopied, profileSkillSkipped)
+			}
+
 			// Summary
 			ui.Info("")
 			ui.Header("Summary")

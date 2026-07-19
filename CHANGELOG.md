@@ -5,6 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.10.3] - 2026-07-19
+
+### Fixed — Hermes desktop UI shows 0 skills (HOTFIX)
+
+**Context**: After v1.10.2, the user reported that even
+though the runtime saw 115 skills (12 harness + 103 Hermes
+global), the Hermes desktop UI showed 0 for most profiles
+(e.g., `backend-engineer: Skills: 0`).
+
+**Root cause**: The Hermes desktop UI's `_count_skills`
+function uses `skills_dir.rglob("SKILL.md")` — it counts
+ONLY physical skills in each profile's `skills/` directory.
+It does **NOT** count skills from `external_dirs` (which
+still work at runtime, but the UI shows 0).
+
+**Profiles affected** (before this fix):
+- `domain-expert`: 73 skills (the 73 bundled from Hermes)
+- `team-manager`: 1 skill (software-development, manually copied)
+- `backend-engineer`, `frontend-engineer`, `solutions-architect`,
+  `quality-assurance`, `devops-engineer`, `domain-expert-mandai`:
+  **0 skills** (skills/ empty after `external_dirs` migration)
+
+**Solution (v1.10.3 hotfix)**:
+
+1. **New function** in [`cli/internal/hermes/hermes.go`](cli/internal/hermes/hermes.go):
+   - `WriteProfileSkill(profileName, skillName, content)` —
+     writes to `~/.hermes/profiles/<name>/skills/<skill>/SKILL.md`
+     (so the UI counts it).
+
+2. **`gmh agents sync` now copies harness skills into each
+   profile** (v1.10.3) — the 12 harness skills (not the 73+
+   Hermes global catalog, which remain only in the global
+   `~/.hermes/skills/` and are reachable at runtime via
+   `external_dirs`).
+
+3. **Strategy: duplication** (not replacement) — skills live
+   in 2 places:
+   - `~/.hermes/skills/<skill>/SKILL.md` (global, via `external_dirs`)
+   - `~/.hermes/profiles/<name>/skills/<skill>/SKILL.md` (per profile, for UI)
+
+   This is the **meio-termo** (middle-ground) approach: the
+   12 skills that change with the framework are duplicated
+   (so the UI works); the 73+ Hermes static skills stay
+   only in the global catalog (storage optimization).
+
+**Validado** (mandai-v2, 7 profiles):
+- team-manager: 4 skills (3 harness + 1 software-development)
+- backend-engineer: 9 skills (3 harness + 6 mais)
+- frontend-engineer: 8 skills
+- solutions-architect: 6 skills
+- quality-assurance: 5 skills
+- devops-engineer: 3 skills
+- domain-expert-mandai: 3 skills
+
+**Trade-off**:
+- **+**: UI shows correct count, runtime still sees full
+  115-skill catalog, sync is fully automatic.
+- **−**: ~2× storage of harness skills (12 skills × 7 profiles
+  + 12 global = 96 arquivos instead of 12). Acceptable.
+- **−**: Sync is slightly slower (~5s for 7 profiles × 12 skills).
+
+**For other projects com Hermes**: rodando `gmh agents sync`
+agora popula `skills/` em cada profile automaticamente. UI
+do Hermes desktop mostra a contagem correta sem edição manual.
+
+**Cost avoided**: ~5 min × 7 profiles = ~35 min de cópia manual
+por setup de projeto novo + sincronização a cada release do
+framework (que era manual e propensa a drift).
+
 ## [1.10.2] - 2026-07-19
 
 ### Added — `gmh agents sync` writes `config.yaml` with `skills.external_dirs`
