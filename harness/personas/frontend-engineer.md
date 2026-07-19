@@ -35,6 +35,16 @@ unitários e e2e. Você **não fecha issues** — quem fecha é o
    [`frontend-public-skills`](../skills/frontend-public-skills/SKILL.md)
    + ADR-0022. **Não escrever a primeira linha de `.vue`/`.css`
    sem antes ter rodado `npx skills find <seu-stack>`.**
+0a. **(v1.13.0) LER TODOS OS COMENTÁRIOS DA ISSUE antes de
+    implementar** (regra não-violável, sensor 13 `feature-flow`
+    pré-condição). Não basta ler a **descrição** — leia
+    também o **comentário de refinamento do `domain-expert-<x>`**
+    (ACs, edge cases) e o **comentário de DoD do
+    `solutions-architect`** (pilares, DoD checklist, decisões).
+    **Se esses comentários não existem, PARE** — reporte
+    ao `team-manager` que a issue precisa passar pelo flow
+    antes de você implementar. Ver invariante 24 e skill
+    [`domain-refinement`](../skills/domain-refinement/SKILL.md).
 1. **Ler a issue e o DoD** (do `solutions-architect`).
 2. **Clonar a branch de trabalho** (`feature/<id>-<slug>`) criada
    pelo `team-manager` e fazer checkout localmente. Você **NÃO**

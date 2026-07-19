@@ -10,6 +10,36 @@ Closes #<id>
 
 Refs #<id> (se for sub-issue ou dependência)
 
+## Context from domain-expert (v1.13.0+, invariante 24)
+
+> **Obrigatório pra `type/feature`.** Sem esta seção, o
+> `team-manager` deve devolver com `in-review` (regra
+> não-violável).
+
+Referência ao comentário de refinamento do `domain-expert-<x>`:
+
+- Issue de refinamento: #<id-do-comentário-ou-issue>
+- Autor: @<domain-expert-username>
+- ACs cobertos nesta PR: AC-1, AC-3, AC-5
+- Edge cases cobertos: EC-2, EC-4
+
+Se algum AC NÃO está coberto, **liste aqui por quê** (deferred
+pra issue separada, escopo mudou, etc).
+
+## DoD from solutions-architect (v1.13.0+, invariante 24)
+
+> **Obrigatório pra `type/feature`.** Sem esta seção, o
+> `team-manager` deve devolver com `in-review`.
+
+Referência ao comentário de DoD do `solutions-architect`:
+
+- Issue de DoD: #<id>
+- Autor: @<solutions-architect-username>
+- Pilares cobertos: Pilar 1, Pilar 2
+- Decisões arquiteturais aplicadas: ADR-XXXX (link)
+
+Se algum item DoD NÃO está completo, **liste aqui por quê**.
+
 ## Changes
 
 - [ ] Mudança 1

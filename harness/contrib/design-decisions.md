@@ -3212,3 +3212,224 @@ deve ter um live test que rode o binário com `--help` e valide
 a forma. O test em
 `TestInvocation_Hermes_ProfileFlagBeforeSubcommand` é o modelo.
 
+
+---
+
+## 0025 — Feature Flow Enforcement (v1.13.0)
+
+**Status:** Accepted
+**Data:** 2026-07-19
+**Decisor:** Brenon Araujo (jul/2026, BRT) — "team manager parou
+          de passar pelo domain-expert e pelo solutions architect"
+**Relacionado:** ADR-0004 (smart routing), invariante 12 (domain-expert
+              sempre especializado), invariante 24 do AGENTS.md,
+              sensor 13 `feature-flow`
+
+### Contexto
+
+Mandaí v2, jul/2026, épico **#48 F7+F8+F10** (Avaliações +
+Reputação + Share). Investigação empírica:
+
+```bash
+$ gh issue view 48 --json title,body,labels,comments
+Title: [Épico] Avaliações + Reputação + Share (F7+F8+F10)
+Body:  ## ⭐ Épica: Avaliações + Reputação + Share...
+       (descrição mínima, sem ACs, sem DoD)
+Labels: type/feature
+Comments: 0   # ZERO comentários
+
+$ gh issue list --state all --limit 10 --json number,title,labels
+# 49-52 (sub-issues do #48): sem type/, sem refined, sem ready
+# 42-46 (sub-issues do #41 Pix+Payouts): mesmo problema
+```
+
+O épico inteiro foi pra builders **sem passar pelo flow
+canônico**:
+- ❌ Sem `domain-expert-mandai` refinement
+- ❌ Sem `solutions-architect` DoD
+- ❌ Sem ACs (critérios de aceite)
+- ❌ Sem edge cases documentados
+- ❌ Sem pilares arquiteturais
+- ❌ Sem DoD macro (≤ 80 linhas, 3-5 pilares)
+
+**Custo**:
+- Builders implementam no escuro, sem contexto
+- ~30min-1h de retrabalho por sub-issue (Brenon tem que
+  voltar e refinar, ou builder pergunta 5x no chat)
+- Decisões arquiteturais tomadas no improviso (drift entre
+  issues)
+- Edge cases não cobertos (são descobertos só em produção)
+- 4 builders em paralelo sem alinhamento = conflito
+
+**Causa raiz**:
+
+O framework **documenta** o flow correto
+(`AGENTS.md` §3.1, `team-manager.md` §4 Smart Routing,
+invariante 12: "domain-expert sempre especializado"). MAS:
+
+1. **Sem enforcement automático** — o `team-manager` pode
+   pular `refined` e `ready` sem ser bloqueado por nenhum
+   sensor.
+2. **Sem templates canônicos de comentário** — o
+   `domain-expert` e o `solutions-architect` não tinham
+   formato canônico, então o conteúdo variou (alguns
+   robustos, alguns mínimos).
+3. **Sem regra explícita pro builder** — o `backend-engineer`
+   e o `frontend-engineer` podiam começar a implementar
+   lendo só a **descrição** da issue (que tem 1-2 parágrafos
+   de contexto), sem ler comentários.
+
+### Decisão (v1.13.0)
+
+**5 mudanças coordenadas**:
+
+1. **Sensor 13 `feature-flow`** (NOVA, BLOQUEANTE,
+   `harness/scripts/check-feature-flow.sh` +
+   `harness/scripts/visual/check_feature_flow.py`):
+   - Detecta 5 categorias de violação em issues `type/feature`:
+     - `no_refined_label` — falta label `refined`
+     - `no_ready_label` — falta label `ready`
+     - `no_refinement_comment` — sem comentário com ACs + edge cases
+     - `no_dod_comment` — sem comentário com pilares + DoD
+     - `dod_without_refined` — architect correu antes do domain-expert
+   - **BLOQUEANTE** (exit 1) — não permite `in-progress` sem flow
+   - Auto-detecta repo via `git remote get-url origin`
+   - Roda contra 1 issue (`./check-feature-flow.sh 49`) ou todas
+     type/feature (`./check-feature-flow.sh`)
+
+2. **Templates de comentário canônicos** em
+   `harness/templates/comments/` (v1.13.0):
+   - **`domain-expert-refinement.md`** (1.6KB) — template
+     obrigatório pra domain-expert postar refinamento.
+     Inclui: Persona, Comportamento, ACs (mín 1), Edge cases
+     (mín 1), Validação.
+   - **`solutions-architect-dod.md`** (2.6KB) — template
+     obrigatório pra architect postar DoD. Inclui: 3-5
+     pilares, DoD checklist, Decisões (ADR-lite), Riscos,
+     12-factor audit.
+   - Sensor 13 valida heurística (regex AC/EC/DoD/pilar)
+     pra garantir que o comentário tem o conteúdo canônico.
+
+3. **Invariante 24 do AGENTS.md** (NOVA) — "Feature flow
+   enforcement" (não-violável + bloqueante):
+   - Toda issue `type/feature` REQUER `refined` + `ready` +
+     comentários canônicos antes de `in-progress`.
+   - Builder **ler todos os comentários** (não só descrição)
+     antes de codar.
+   - Templates de comentário canônicos em
+     `harness/templates/comments/`.
+
+4. **team-manager.md §3.1.3** (NOVA) — "Feature flow
+   enforcement":
+   - Comando canônico antes de delegar builder.
+   - Tabela de recovery por categoria.
+   - Edge cases (sub-issues pequenas, refinement parcial,
+     builder reclama, builder empurra 3x).
+
+5. **Personas builder atualizadas** (regra 0a em
+   `backend-engineer.md` e `frontend-engineer.md`):
+   - "LER TODOS OS COMENTÁRIOS DA ISSUE antes de
+     implementar" (não-violável).
+   - "Se os comentários não existem, PARE — reporte ao
+     team-manager que a issue precisa passar pelo flow
+     antes de você implementar."
+
+6. **PR template atualizado** (`harness/templates/pr-description.md`):
+   - Nova seção "Context from domain-expert (v1.13.0+,
+     invariante 24)" — obrigatória pra `type/feature`.
+   - Nova seção "DoD from solutions-architect (v1.13.0+,
+     invariante 24)" — idem.
+   - Builder referencia quais ACs/pilares cobriu e quais
+     não (com justificativa).
+
+### Princípio fundamental
+
+> **"Documentar o flow não basta — tem que ENFORCE no sensor
+> + fornecer templates canônicos + dar regra explícita ao
+> builder."**
+
+Três pilares (não UM):
+
+1. **Sensor bloqueante** (exit 1): garante que team-manager
+   não pula.
+2. **Templates canônicos** (copy-paste): garante consistência
+   de formato (regex consegue validar).
+3. **Regra explícita ao builder** (ler comentários): garante
+   que o contexto chega ao implementador.
+
+### Validação empírica (Mandaí v2, jul/2026)
+
+**Antes da v1.13.0** (estado real, jul/2026):
+
+```
+$ gh issue list --state all --limit 10 --json number,title,labels
+⚠️ #48 [type/feature] refined=False ready=False | F7+F8+F10
+⚠️ #49-52 [no-type]   refined=False ready=False   | sub-issues
+⚠️ #42-46 [no-type]   refined=False ready=False   | sub-issues
+```
+
+**Depois da v1.13.0** (sensor 13 rodado contra o mesmo repo):
+
+```
+$ ./harness/scripts/check-feature-flow.sh 48
+==> Feature flow check (sensor 13, v1.13.0)
+==> Issue: #48
+
+Checked 1 type/feature issue(s).
+
+BLOCKING: FEATURE FLOW VIOLATIONS (sensor 13, v1.13.0):
+
+  Issue #48: [Épico] Avaliações + Reputação + Share (F7+F8+F10)
+    ❌ no_refined_label
+    ❌ no_ready_label
+    ❌ no_refinement_comment
+    ❌ no_dod_comment
+
+Total: 4 violation(s) across 1 issue(s).
+```
+
+**Caso clean (mock issue com flow completo)**: exit 0 ✅
+
+```
+Checked 1 type/feature issue(s).
+OK: All type/feature issues have refined + ready + DoD.
+```
+
+### Custo evitado (estimativa)
+
+- **~30min-1h por issue** que pula o flow (retrabalho + QA
+  explicando + bugs em produção).
+- **~5 issues por épico** × **4 épicos por mês** = ~20 issues/mês.
+- **~10h-20h/mês** economizadas × **12 meses** = **~120-240h/ano**.
+
+### Quem detecta / Quem corrige
+
+- **`team-manager`**: roda o sensor 13 antes de `in-progress`.
+  Se vermelho: **devolve com `in-progress` → `triage`** +
+  comentário listando violações.
+- **`backend-engineer` / `frontend-engineer`**: regra 0a,
+  ler todos os comentários antes de codar. Se faltam:
+  PARE e reporte ao team-manager.
+- **`quality-assurance`**: verifica no PR se as seções
+  "Context from domain-expert" + "DoD from architect"
+  estão preenchidas (PR template).
+- **CI (futuro)**: pode rodar `./check-feature-flow.sh` no
+  job `pre-merge` e bloquear se vermelho.
+
+### Lições
+
+1. **Documentar não é enforce.** Smart routing no §4 era
+   bonito no papel, mas sem sensor + template + regra ao
+   builder, o team-manager pulou.
+2. **Templates canônicos** (copy-paste) são essenciais.
+   Sem eles, cada domain-expert/architect escreve diferente
+   e o sensor não consegue validar formato.
+3. **Builder LÊ comentários.** Não basta o flow existir —
+   o implementador precisa LER o que domain-expert e
+   architect escreveram. Sem essa regra, o builder
+   implementa "no escuro".
+4. **PR template como enforcement secundário.** Mesmo que
+   o sensor 13 passe (no passado), o PR template exige
+   referência explícita aos ACs e DoD. **Defesa em
+   profundidade**.
+

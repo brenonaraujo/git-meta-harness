@@ -1,6 +1,160 @@
 # Changelog
 
 
+## [1.13.0] - 2026-07-19
+
+### Added — Feature Flow Enforcement (ADR-0025)
+
+**Context**: Mandaí v2 (jul/2026, Épico #48 F7+F8+F10 — Avaliações
++ Reputação + Share) exposed a systemic problem: the `team-manager`
+created the epic with `type/feature`, but **zero sub-issues went
+through the canonic flow** (`domain-expert` → `solutions-architect` →
+builder). Result: builders received only the 1-2 paragraph issue
+description (no ACs, no DoD, no edge cases), implemented "in the dark",
+and cost ~30min-1h of rework per sub-issue.
+
+The framework **documented** the flow (AGENTS.md §3.1, team-manager
+§4 Smart Routing, invariante 12) but had **no enforcement** — the
+team-manager could skip `refined` and `ready` without being blocked.
+
+**Solution (v1.13.0) — 6 coordinated changes**:
+
+#### 1. Sensor 13 `feature-flow` (BLOCKING) + script
+
+[`harness/scripts/check-feature-flow.sh`](harness/scripts/check-feature-flow.sh)
+(3.2KB shell) +
+[`harness/scripts/visual/check_feature_flow.py`](harness/scripts/visual/check_feature_flow.py)
+(8.1KB Python).
+
+**Detects 5 categories** in `type/feature` issues:
+- `no_refined_label` — missing `refined` label (domain-expert didn't refine)
+- `no_ready_label` — missing `ready` label (architect didn't DoD)
+- `no_refinement_comment` — no comment with ACs + edge cases
+- `no_dod_comment` — no comment with pillars + DoD
+- `dod_without_refined` — architect ran before domain-expert
+
+**BLOCKING** (exit 1) — prevents `in-progress` without proper flow.
+
+**Usage**:
+```bash
+# All type/feature issues
+./harness/scripts/check-feature-flow.sh
+
+# One issue
+./harness/scripts/check-feature-flow.sh 48
+
+# Explicit repo
+./harness/scripts/check-feature-flow.sh --repo owner/name 48
+```
+
+**Validation against Mandaí v2**:
+```
+$ ./harness/scripts/check-feature-flow.sh 48
+BLOCKING: FEATURE FLOW VIOLATIONS (sensor 13, v1.13.0):
+
+  Issue #48: [Épico] Avaliações + Reputação + Share (F7+F8+F10)
+    ❌ no_refined_label
+    ❌ no_ready_label
+    ❌ no_refinement_comment
+    ❌ no_dod_comment
+```
+
+#### 2. Comment templates (canonical, in `harness/templates/comments/`)
+
+- **[`domain-expert-refinement.md`](harness/templates/comments/domain-expert-refinement.md)**
+  (1.6KB) — mandatory format: Persona, Comportamento, Por que importa,
+  ACs (mín 1), Edge cases (mín 1), Validação. Copy-paste ready.
+- **[`solutions-architect-dod.md`](harness/templates/comments/solutions-architect-dod.md)**
+  (2.6KB) — mandatory format: 3-5 Pilares, DoD checklist, Decisões
+  (ADR-lite), Riscos, 12-factor audit. Copy-paste ready.
+
+Sensor 13 validates heuristically (regex AC/EC/DoD/pilar) to ensure
+the comment has the canonical content.
+
+#### 3. AGENTS.md invariante 24 (NEW)
+
+"Feature flow enforcement" — non-violable + blocking. Every
+`type/feature` issue REQUIRES:
+
+1. `refined` label applied by `domain-expert-<x>` (after posting
+   refinement comment with ACs + edge cases)
+2. `ready` label applied by `solutions-architect` (after posting
+   DoD comment with 3-5 pillars)
+3. Builder **reads ALL comments** (not just the description) before
+   implementing, and references ACs/DoD in commits
+
+#### 4. team-manager §3.1.3 (NEW)
+
+"Feature flow enforcement" with:
+- Canonical command before delegating to builder
+- Recovery table per category (no_refined_label, no_ready_label, etc.)
+- Edge cases: small sub-issues (recommend changing type), partial
+  refinement (wait for architect), builder complains (refuse), builder
+  pushes 3x with red sensor (escalate to user)
+
+#### 5. Builder personas updated
+
+- **`backend-engineer.md`** (responsibility 0, NEW) — "READ ALL
+  COMMENTS OF THE ISSUE before implementing" (non-violable).
+  If those comments don't exist, **STOP** — report to team-manager
+  that the issue needs to go through the flow.
+- **`frontend-engineer.md`** (responsibility 0a, NEW) — same rule.
+
+#### 6. PR template updated
+
+[`harness/templates/pr-description.md`](harness/templates/pr-description.md):
+
+- New section: **"Context from domain-expert (v1.13.0+, invariante 24)"**
+  — mandatory for `type/feature`. References refinement comment
+  + lists which ACs are covered.
+- New section: **"DoD from solutions-architect (v1.13.0+, invariante 24)"**
+  — same, for DoD pillars.
+
+Defense in depth: sensor 13 blocks flow; PR template ensures
+builder actually read it.
+
+### Validation
+
+- ✅ Issue #48 of Mandaí v2 (bad case) detected: 4 violations
+- ✅ Mock issue with proper flow (clean case) → exit 0
+- ✅ Smoke-test still passes (43 passes + 1 local expected fail)
+- ✅ AGENTS.md recognizes 24 invariantes (incl. new 24)
+
+### Breaking changes
+
+**None** (backward compatible):
+- Existing flow works as before
+- Sensor 13 only **adds** a new check (doesn't change existing
+  labels or workflow)
+- Comment templates are **suggested** (sensor validates
+  content heuristically, doesn't enforce format strictly)
+- PR template additions are optional for now (team-manager
+  can ask for them per project)
+
+### Migration guide
+
+```bash
+# 1. Pull latest meta-harness
+cd your-project
+gmh update --to v1.13.0
+
+# 2. (Optional) Validate your existing type/feature issues
+./harness/scripts/check-feature-flow.sh
+
+# 3. (Optional) Add sensor 13 to CI
+# In .github/workflows/ci.yml:
+#   - name: Feature flow
+#     run: ./harness/scripts/check-feature-flow.sh
+
+# 4. Use the comment templates in your next feature:
+#    - Copy harness/templates/comments/domain-expert-refinement.md
+#    - Post comment on the issue, fill in, add label `refined`
+#    - solutions-architect copies solutions-architect-dod.md
+#    - Post DoD, add label `ready`
+#    - Now builder can implement with full context
+```
+
+
 ## [1.12.2] - 2026-07-19 (HOTFIX)
 
 ### Fixed — `gmh` agentic invocation: Hermes `-p` is a global flag

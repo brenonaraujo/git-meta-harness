@@ -240,6 +240,89 @@ gh issue edit <id> --add-assignee <@domain-expert-<x>-username>
 > `domain-expert-<x>` **não** existe, é blocker: peça ao usuário
 > para criar a especialização em `harness/personas/`.
 
+### 3.1.3. **Feature flow enforcement** (sensor 13, v1.13.0) — BLOQUEANTE
+
+> **Lição do Mandaí v2 (jul/2026, Épico #48 F7+F8+F10):**
+> o `team-manager` criou o épico com `type/feature`, mas
+> **nenhuma sub-issue** foi pra `refined` (domain-expert)
+> nem pra `ready` (architect). O épico inteiro foi pra
+> builder sem refinamento. Resultado: builder recebeu só
+> a descrição da issue (sem ACs nem DoD), implementou no
+> escuro, e retrabalhamos ~30min por issue.
+
+**Antes de mover qualquer `type/feature` (ou sub-issue) pra
+`in-progress` (= antes de delegar pro builder), você DEVE
+ter confirmado que:**
+
+1. ✅ `domain-expert-<x>` refinou e postou comentário com
+   ACs + edge cases (use o template
+   `harness/templates/comments/domain-expert-refinement.md`).
+   Label `refined` aplicada.
+2. ✅ `solutions-architect` definiu DoD e postou comentário
+   com 3-5 pilares (use o template
+   `harness/templates/comments/solutions-architect-dod.md`).
+   Label `ready` aplicada.
+3. ✅ **Sensor 13 `feature-flow` retorna exit 0** (rodar
+   `./harness/scripts/check-feature-flow.sh <issue-id>`).
+
+**Comando canônico (antes de delegar builder):**
+
+```bash
+# 1. Verifica flow da issue (sub-issue do épico)
+./harness/scripts/check-feature-flow.sh 49   # sub-issue 49 do épico 48
+# Exit 0 = OK, pode delegar pro builder
+# Exit 1 = BLOQUEADO, lista violações + recovery
+
+# 2. Se OK, mover labels:
+gh issue edit 49 --remove-label "ready" --add-label "in-progress"
+gh issue edit 49 --add-assignee backend-engineer
+
+# 3. Comentário de briefing pro builder:
+gh issue comment 49 --body "🤖 team-manager → @backend-engineer
+Issue #49 (F7 A — Migrations: reviews + ADR).
+- Refinamento: ver comentário do @domain-expert-mandai em #48 (Refine...)
+- DoD: ver comentário do @solutions-architect em #48 (DoD...)
+- Branch: feature/49-f7-reviews-migrations (criada)
+- Ao terminar: in-review + avisar aqui."
+```
+
+**5 violações detectadas pelo sensor 13**:
+
+| Categoria | Significado | Recovery |
+|---|---|---|
+| `no_refined_label` | Faltou label `refined` | Pedir ao domain-expert pra refinar + aplicar label |
+| `no_ready_label` | Faltou label `ready` | Pedir ao architect pra DoD + aplicar label |
+| `no_refinement_comment` | Sem comentário com ACs+EC | Postar usando o template |
+| `no_dod_comment` | Sem comentário com pilares+DoD | Postar usando o template |
+| `dod_without_refined` | Architect correu antes do domain | Refazer: domain-expert primeiro, depois architect |
+
+**Se o sensor BLOQUEIA:**
+
+```
+❌ Action required: corrija o flow antes de delegar pro builder.
+Não delegue "pra acelerar" — o builder vai implementar sem
+contexto, e o retrabalho é maior que o atraso do flow.
+```
+
+**Edge cases**:
+
+- **Sub-issues pequenas que "não precisam de DoD"**: o flow
+  vale pra **qualquer** `type/feature`. Se for tão trivial
+  que não precisa de domain-expert + architect, **mude a
+  label de `type/feature` pra `type/tech-debt`** (que pula
+  domain-expert) ou `type/technical` (que pula domain-expert
+  mas passa por architect).
+- **Refinamento parcial** (domain-expert postou mas architect
+  ainda não): BLOQUEIA. Espere o architect terminar.
+- **Builder reclama que demora**: explique que o flow
+  economiza 30min-1h de retrabalho por issue. O custo do
+  flow (2-5min de refinement + 5-10min de DoD) é muito
+  menor que o retrabalho.
+- **Builder empurra 3x com sensor vermelho**: o mesmo
+  builder está trabalhando sem contexto. Escale
+  (`@user` no comentário) — é problema do flow, não
+  do builder.
+
 ---
 
 ## 4. **Smart Routing** — quem entra no fluxo?

@@ -551,6 +551,46 @@ hermes skills install <path-para-harness/skills/<name>>
       `frontend-engineer` (sempre). `team-manager` valida
       no PR review.
 
+24. **Feature flow enforcement** (v1.13.0, ADR-0025).
+    Lição do Mandaí v2 (jul/2026, Épico #48 F7+F8+F10):
+    o `team-manager` criou o épico com `type/feature`,
+    mas **nenhuma sub-issue** foi pra `refined`
+    (domain-expert) nem pra `ready` (architect). O épico
+    inteiro foi pra builder sem refinamento. Resultado:
+    builder recebendo só a descrição da issue (sem ACs
+    nem DoD), implementando no escuro.
+    - **Toda issue `type/feature` REQUER**:
+      1. Label `refined` aplicada por `domain-expert-<x>`
+         (após postar comentário de refinamento com ACs +
+         edge cases).
+      2. Label `ready` aplicada por `solutions-architect`
+         (após postar comentário de DoD com 3-5 pilares).
+      3. Builder **ler TODOS os comentários** da issue
+         (não só a descrição) **antes de implementar**,
+         e referenciar ACs e DoD nos commits.
+    - **Sensor 13 `feature-flow` (NOVA) BLOQUEIA**
+      (exit 1) com 5 categorias: `no_refined_label`,
+      `no_ready_label`, `no_refinement_comment`,
+      `no_dod_comment`, `dod_without_refined`. Roda antes
+      de mover a label pra `in-progress` (= antes de
+      delegar pro builder).
+    - **Templates de comentário canônicos** (obrigatórios
+      em copy-paste) em
+      [`harness/templates/comments/`](./templates/comments/):
+      - `domain-expert-refinement.md` (persona, comportamento,
+        ACs, edge cases, validação).
+      - `solutions-architect-dod.md` (pilares, DoD checklist,
+        decisões, riscos, 12-factor audit).
+    - **`team-manager` (§3.1.3) roda o sensor 13 antes
+      de delegar builder**. Se vermelho: **devolve com
+      `in-progress` → `triage`** + comentário listando
+      o que falta.
+    - **Builder (`backend-engineer` e `frontend-engineer`)
+      regra explícita**: **ler todos os comentários da
+      issue** antes de codar. PR template exige seção
+      "Context from domain-expert" + "DoD from architect"
+      com referência aos IDs dos comentários.
+
 ---
 
 > Este arquivo é **vivo**: o `team-manager` é responsável por mantê-lo
