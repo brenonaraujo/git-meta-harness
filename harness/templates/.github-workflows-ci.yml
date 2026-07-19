@@ -37,7 +37,6 @@ env:
   # Versões pinadas — ver harness/stack/versions.md (fonte canônica)
   GO_VERSION: "1.26.5"
   NODE_VERSION: "24"
-  PNPM_VERSION: "10"
 
 jobs:
   # ==========================================================================
@@ -52,7 +51,7 @@ jobs:
       infra:    ${{ steps.filter.outputs.infra }}
       docs:     ${{ steps.filter.outputs.docs }}
       workflow: ${{ steps.filter.outputs.workflow }}
-      contracts:${{ steps.filter.outputs.contracts }}
+      contracts: ${{ steps.filter.outputs.contracts }}
     steps:
       - name: Checkout (full history for diff)
         uses: actions/checkout@v4
@@ -202,14 +201,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
       - uses: pnpm/action-setup@v4
+
         with:
-          version: ${{ env.PNPM_VERSION }}
+
+          version: 9
+
+      - uses: actions/setup-node@v4
+
+        with:
+
+          node-version: ${{ env.NODE_VERSION }}
       - name: Install deps
         working-directory: web
         run: pnpm install --frozen-lockfile
@@ -227,14 +229,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
       - uses: pnpm/action-setup@v4
+
         with:
-          version: ${{ env.PNPM_VERSION }}
+
+          version: 9
+
+      - uses: actions/setup-node@v4
+
+        with:
+
+          node-version: ${{ env.NODE_VERSION }}
       - name: Install deps
         working-directory: web
         run: pnpm install --frozen-lockfile
@@ -256,14 +261,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
       - uses: pnpm/action-setup@v4
+
         with:
-          version: ${{ env.PNPM_VERSION }}
+
+          version: 9
+
+      - uses: actions/setup-node@v4
+
+        with:
+
+          node-version: ${{ env.NODE_VERSION }}
       - name: Install deps
         working-directory: web
         run: pnpm install --frozen-lockfile

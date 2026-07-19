@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.7] - 2026-07-18
+
+### Fixed — Detection: Trivy supply-chain attack (mar/2026) — `trivy-action` gray-zone warning
+
+**Context**: On Mar 19, 2026, attackers force-pushed malicious code to 76
+of 77 version tags of `aquasecurity/trivy-action`. A second wave hit
+Mar 22-24 (Docker Hub v0.69.5, v0.69.6, latest). v0.35.0 was the only
+pre-attack tag that survived.
+
+Reference: <https://snyk.io/articles/trivy-github-actions-supply-chain-compromise/>
+and <https://thehackernews.com/2026/03/trivy-security-scanner-github-actions.html>
+
+**Safe versions**:
+- `trivy CLI`: `v0.69.3` or earlier
+- `trivy-action`: `v0.35.0` or **SHA-pinned** (recommended for production)
+- `setup-trivy`: `v0.2.6`
+
+**Changes**:
+- `harness/scripts/check-stack-versions.sh` section 8: now warns on
+  `trivy-action@v0.36.0` through `v0.69.x` (gray-zone between attacks)
+- `harness/stack/versions.md`: pin table corrected — `trivy-action`
+  was `v0.36.0` (gray-zone), now `v0.35.0` or SHA-pinned with
+  explanation of the compromise window
+
+**Lesson**: Mutatable tags in GitHub Actions are an attack surface.
+For any third-party security tooling, prefer SHA-pinned refs.
+
 ## [1.6.6] - 2026-07-18
 
 ### Fixed — CRITICAL: template `harness/templates/.github-workflows-ci.yml` had broken action versions

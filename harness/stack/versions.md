@@ -487,7 +487,7 @@ faz as chamadas acima e alerta drift.
 | `docker/setup-buildx-action`           | **@v3**       | v3.7.1                   | Setup Buildx                            |
 | `docker/build-push-action`             | **@v6**       | v6.7.0                   | Build + push Docker image               |
 | `docker/login-action`                  | **@v3**       | v3.2.0                   | Login em registry                       |
-| `aquasecurity/trivy-action`            | **@v0.36.0**  | v0.36.0 (abr/2026)       | Trivy image scan — SEMPRE com prefixo `v` (`0.36.0` retorna 404) |
+| `aquasecurity/trivy-action`            | **@v0.35.0** ou SHA-pinned | v0.35.0 (mar/2026, pré-ataque) | Trivy image scan — **v0.36.0-v0.69.x é ZONA CINZENTA** (comprometimento mar/2026 poisonou 76/77 tags). Usar `@v0.35.0` (última validada) ou SHA-pinned. **SEMPRE com prefixo `v`** (`0.36.0` retorna 404). |
 | `aquasecurity/setup-trivy`             | **@0.2.6**    | 0.2.6 (pós-incidente)    | Setup Trivy CLI                          |
 | `oasdiff/oasdiff-action`               | **@v1.7.0**   | (atualizar)              | OpenAPI contract diff                   |
 | `github/codeql-action/upload-sarif`    | **@v3**       | v3.27.0                  | Upload SARIF                             |

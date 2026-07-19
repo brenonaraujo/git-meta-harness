@@ -396,6 +396,12 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
     fail "$wf: trivy-action SEM prefixo 'v' (ex: @0.36.0) — usar @v0.36.0 (404 em tag sem v)"
     TRIVY_COMPROMISED=1
   fi
+  # v1.6.7: detecta trivy-action em zona cinzenta (v0.36.0-v0.69.3)
+  # Comprometimento mar/2026: v0.35.0+ é seguro, mas é zona cinzenta até
+  # v0.69.4 (que também foi poisonado). Recomenda SHA-pinned em produção.
+  if grep -qE "aquasecurity/trivy-action@v0\.(3[6-9]|[4-6][0-9])\." "$wf"; then
+    warn "$wf: trivy-action@v0.36.0-v0.69.x é ZONA CINZENTA (supply-chain attack mar/2026). Usar @v0.35.0 (última validada pré-ataque) ou SHA-pinned."
+  fi
 done
 [ "$TRIVY_COMPROMISED" -eq 0 ] && ok "Nenhuma versão comprometida do Trivy"
 
