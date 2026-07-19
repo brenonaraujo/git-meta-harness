@@ -2672,3 +2672,207 @@ de retrabalho evitado.
 épico (F6+) deve ter refinamento + DoD com ≤ 5k tokens
 cada, sem nomes de funções/SQL/paths no output. Sensor 11
 recomenda encurtar se passar.
+
+---
+
+## 0022 — Frontend Public Skills + Cold-Start Polish
+
+**Status:** Accepted
+**Data:** 2026-07-19
+**Decisor:** Brenon Araujo via PR #23 do Mandaí v2 + discussão sobre
+          "frontend-engineer não segue skills públicas"
+**Relacionado:** issue #42 (Mandaí v2 cold-start), invariante 23 do
+              AGENTS.md, sensor 12 `frontend-polish`, 3 templates Nuxt
+              UI em `harness/templates/nuxt-ui/`
+
+### Contexto
+
+O PR #23 do Mandaí v2 ("Redesign Landing + i18n + Auth wizard",
+jul/2026) expôs 5 problemas sistêmicos do `frontend-engineer`:
+
+1. **Cores hex hardcoded** em `<style scoped>` (e.g., `#10b981`,
+   `#064e3b`, `#ecfdf5`) em vez de usar os design tokens já
+   definidos em `app.config.ts` (`primary: 'green'`).
+2. **CSS BEM** (`.home-hero__title`, `.home-hero__ctas`) misturado
+   com classes Tailwind — confuso e anti-pattern.
+3. **Comentários redundantes** explicando o que o componente faz
+   (e.g., `// HomeHero — top of the public landing page. Carries
+   the one-liner tagline and the two primary CTAs...`).
+4. **Emojis decorativos** sem função semântica.
+5. **Zero uso do registry público de skills** (`https://www.skills.sh`,
+   `npx skills`). A skill oficial `nuxt/ui@nuxt-ui` (15.2K installs)
+   existe, é mantida pela Nuxt team, e tem padrões prontos — mas
+   o builder não consultou.
+
+**Resultado**: landing page com cara de "W3Schools 2018" em vez
+de marketplace profissional. Custo: 1 iteração de retrabalho
+polish + tempo de QA explicando o que estava errado.
+
+**Causa raiz tripla**:
+- O meta-harness **não documentava** o registry público (skill
+  `nuxt-ui-patterns` só tinha 1 frase sobre templates oficiais).
+- O meta-harness **não tinha mecanismo** de bloquear anti-patterns
+  visuais (só sensor 08-i18n-audit, e esse não cobre UI quality).
+- O `frontend-engineer` **não tinha regra explícita** "consultar
+  skills públicas ANTES de implementar UI".
+
+### Decisão
+
+Esta versão (v1.12.0) ataca **as 3 causas raiz simultaneamente**:
+
+1. **Documenta o registry público** via 3 skills:
+   - **`frontend-public-skills`** (NOVA, 10.5KB): workflow
+     canônico de `npx skills find/add/use`, lista curada por
+     stack, MCP do Nuxt UI, validação de segurança.
+   - **`tailwind-only-patterns`** (NOVA, 9KB): pra projetos sem
+     Nuxt UI (shadcn-vue, Reka UI standalone, etc).
+   - **`visual-polish`** (NOVA, 12.3KB): técnicas de polish
+     (hierarchy, whitespace, contrast WCAG AA, consistency,
+     motion, touch targets ≥ 44×44px).
+
+2. **Detecta + bloqueia anti-patterns** via sensor 12
+   `frontend-polish` (NOVA, 11.7KB) + `check-frontend-polish.sh`
+   (14KB, Python-backed, 369 linhas, 10 categorias):
+   - `hardcoded_colors`, `bem_naming`, `redundant_comment`,
+     `emojis_excessive`, `spacing_off_scale`, `inline_color_style`,
+     `off_stack_imports`, `img_no_alt`, `button_no_text`,
+     `no_design_system`.
+   - **BLOQUEANTE** (exit 1) — diferente do sensor 11 (recomendação).
+   - **Razão de ser bloqueante**: refactor é trivial (< 5min) mas
+     cold-start ruim custa caro (retrabalho + tempo de QA).
+
+3. **Força a consulta ao registry** via 2 regras não-violáveis na
+   persona `frontend-engineer.md`:
+   - **Responsabilidade #0** (v1.12.0): "Consultar registry público
+     de skills ANTES de implementar UI". Não escrever a primeira
+     linha de `.vue`/`.css` sem antes ter rodado
+     `npx skills find <seu-stack>`.
+   - **Responsabilidade #13** (v1.12.0): "Screenshot local ANTES
+     de abrir PR". Cold-start visual é feature, não polish step
+     depois. Roda
+     `harness/scripts/visual/playwright-screenshot.mjs` contra a
+     rota nova.
+
+4. **Fornece cold-start visual pronto** via 3 templates Nuxt UI
+   em `harness/templates/nuxt-ui/`:
+   - **`landing.vue`** (5.7KB) — hero + features + CTA + footer,
+     tokens semânticos, hierarchy correta, zero emojis.
+   - **`dashboard.vue`** (3.6KB) — admin panel com stats cards +
+     `UDashboardPage` + `UDashboardNavbar`, sidebar via layout.
+   - **`auth-form.vue`** (4.3KB) — login/signup reutilizável,
+     preselect role via `?role=`, i18n pronto.
+
+5. **Adiciona Visual Report** na persona `quality-assurance.md`:
+   - Screenshot Playwright (3 viewports: 375/768/1440) por rota
+     nova/alterada.
+   - Checklist visual (hierarchy, whitespace, contrast, consistency,
+     responsive).
+   - Salvo em `qa/visual-report-<pr>.md` no repo do projeto.
+   - Bloqueia se sensor 12 vermelho.
+
+6. **Adiciona 2 scripts Playwright** em
+   `harness/scripts/visual/`:
+   - **`playwright-screenshot.mjs`** (3.7KB) — script Node
+     standalone, `pnpm add -D playwright` + `pnpm exec playwright
+     install chromium` (1x) + `pnpm screenshot` (a cada vez).
+   - **`setup-playwright-screenshot.sh`** (2.6KB) — instala
+     Playwright + adiciona `package.json` scripts (`screenshot`,
+     `screenshot:setup`).
+
+7. **Atualiza skill `nuxt-ui-patterns` pra v2.0.0** (253 → ~340
+   linhas):
+   - Frontmatter stack: `nuxt-ui-v3` → `nuxt-ui-v4` (Mandaí v2 usa
+     `@nuxt/ui@^4.10.0`).
+   - Seção "Public Skills Registry" (npx skills, MCP).
+   - Seção "Anti-patterns" (5 sub-seções com exemplos bom/ruim).
+   - Self-check expandido (npx skills, sensor 12, screenshot, etc).
+
+8. **Adiciona invariante 23 ao AGENTS.md** (não-violável +
+   bloqueante): "Frontend polish (cold-start visual)".
+
+### Princípios
+
+| Camada | Quem | Entrega |
+|---|---|---|
+| **Pre-flight** | `frontend-engineer` | `npx skills find <stack>` + `npx skills add <oficial>` + ler skill |
+| **Implementação** | `frontend-engineer` | Código com tokens semânticos, hierarchy correta, zero hex hardcoded |
+| **Pre-PR** | `frontend-engineer` | `pnpm screenshot` + sensor 12 verde |
+| **PR review** | `team-manager` (você) | roda sensor 12 + Visual Report do QA |
+| **Bloqueio** | sensor 12 + `team-manager` | exit 1, devolve com `in-review` + lista de violações |
+
+### Custo evitado (estimativa)
+
+- **~1 iteração de retrabalho polish por feature de UI**: ~30min
+  por iteração × 4 features/mês = ~2h/mês.
+- **~10-20min de QA explicando o que está errado** (quando builder
+  empurra 3x com sensor vermelho): ~30min × 1x/mês = ~30min/mês.
+- **Total**: ~2.5h/mês × 12 meses = ~30h/ano economizadas.
+
+### Validação
+
+- **Sensor 12 validado** com 4 casos:
+  1. Componentes "limpos" (templates Nuxt UI) → exit 0 ✅
+  2. Componentes com hex hardcoded (Mandaí v2 PR #23) → exit 1
+     com lista + recovery ✅
+  3. Componentes com BEM + emojis → exit 1 ✅
+  4. Componentes com spacing off-scale (e.g., `p-3`, `gap-5`) →
+     exit 1 ✅
+
+- **Skill `frontend-public-skills` validada** com workflow real:
+  1. `npx skills find nuxt-ui` → 6 skills listadas
+     (`nuxt/ui@nuxt-ui` é oficial, 15.2K installs).
+  2. `npx skills add nuxt/ui@nuxt-ui` → instala SKILL.md.
+  3. Skill fica disponível pro agent (via `external_dirs` do
+     Hermes).
+
+- **Playwright screenshot validado** com Mandaí v2:
+  1. `pnpm dev` em `localhost:3000`.
+  2. `node harness/scripts/visual/playwright-screenshot.mjs
+     --routes /,/auth/login`.
+  3. Gera `qa/screenshots/landing-desktop.png` + `auth_login-desktop.png`.
+
+- **Templates Nuxt UI validados** com copi-colar em Mandaí v2:
+  1. Copiou `harness/templates/nuxt-ui/landing.vue` para
+     `web/app/pages/index.vue`.
+  2. Adicionou chaves i18n em `i18n/locales/{en,pt-BR,es}.json`.
+  3. Rodou `pnpm dev` → tela renderiza sem erros.
+  4. Rodou sensor 12 → exit 0.
+
+### Quem detecta / Quem corrige
+
+- **`frontend-engineer`**: roda sensor 12 local ANTES de PR. Se
+  vermelho, **corrige antes de abrir PR** (não empurra pro QA).
+- **`team-manager` (você)**: roda no PR review. Se vermelho,
+  **devolve com** `in-review` + comentário listando violações.
+- **`quality-assurance`**: roda + Playwright + Visual Report.
+  Bloqueia se vermelho.
+- **`solutions-architect`**: define tokens em `app.config.ts` e
+  linka esta seção no DoD.
+
+### Lições
+
+1. **Cold-start visual é uma feature, não polish step depois.**
+   Primeira renderização define percepção do produto. Não dá pra
+   "consertar depois".
+2. **Skills públicas existem — use o registry.** A Nuxt team
+   mantém `nuxt/ui@nuxt-ui` (15.2K installs). É mantida,
+   auditada, e tem padrões prontos. Reinventar é caro.
+3. **Anti-patterns visuais são detectáveis automaticamente.**
+   Cores hex hardcoded, BEM, emojis excessivos, spacing off-scale
+   — tudo via regex. Sensor bloqueia em < 1s, refactor em < 5min.
+4. **BLOQUEANTE > recomendação quando refactor é trivial.**
+   Sensor 11 (scope) é recomendação porque reformular issue
+   comment é caro. Sensor 12 (polish) é bloqueante porque
+   refactor é trivial. Mesma arquitetura, threshold diferente.
+
+### Custo
+
+- **3 skills novas** (~32KB total) + skill atualizada
+  (`nuxt-ui-patterns` v2.0.0, +10KB) = ~42KB de docs/skills.
+- **1 sensor novo** (11.7KB) + script (14KB) = ~26KB de tooling.
+- **3 templates** (~14KB total) = cold-start visual pronto.
+- **2 scripts Playwright** (~6.4KB) = visual regression ready.
+- **1 invariante nova** (12 linhas no AGENTS.md).
+
+**Total**: ~100KB de framework. **Custo evitado**: ~30h/ano.
+

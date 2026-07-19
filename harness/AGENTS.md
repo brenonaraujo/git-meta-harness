@@ -501,6 +501,56 @@ hermes skills install <path-para-harness/skills/<name>>
       em cada persona). Builder **não aplica** (sua camada
       é livre).
 
+23. **Frontend polish (cold-start visual)** (v1.12.0,
+    ADR-0022). Lição do Mandaí v2 (jul/2026, PR #23 —
+    Redesign Landing): o `frontend-engineer` entregou UI
+    com **cores hex hardcoded** (`#10b981`, `#064e3b`),
+    **CSS BEM** misturado com Tailwind, **comentários
+    redundantes**, **emojis excessivos**, e **zero uso
+    de skills públicas** (`npx skills`). Resultado: tela
+    com cara de "W3Schools 2018" em vez de marketplace
+    profissional.
+    - **Consultar registry público ANTES de implementar**
+      (regra não-violável). Todo `frontend-engineer` PRECISA
+      rodar `npx skills find <seu-stack>` e instalar pelo
+      menos 1 skill oficial (e.g., `nuxt/ui@nuxt-ui`)
+      **antes** de escrever a primeira linha de `.vue`/`.css`.
+      Ver skill
+      [`frontend-public-skills`](./skills/frontend-public-skills/SKILL.md).
+    - **Respeitar design tokens do projeto** (sempre).
+      Zero hex hardcoded em componentes (vai no `app.config.ts`
+      ou `@theme`). Zero CSS BEM misturado com Tailwind/Nuxt
+      UI. Use **só** tokens semânticos (`color="primary"`,
+      `text-fg`, `bg-elevated`).
+    - **Screenshot local ANTES do PR** (regra não-violável).
+      Cold-start visual é uma **feature**, não polish step
+      depois. Ver
+      [`scripts/visual/playwright-screenshot.mjs`](./scripts/visual/playwright-screenshot.mjs).
+    - **Sensor 12 `frontend-polish` (NOVA) BLOQUEIA**
+      (exit 1) com 10 categorias: `hardcoded_colors`,
+      `bem_naming`, `redundant_comment`, `emojis_excessive`,
+      `spacing_off_scale`, `inline_color_style`,
+      `off_stack_imports`, `img_no_alt`, `button_no_text`,
+      `no_design_system`. Diferente do sensor 11 (que é
+      recomendação), este **BLOQUEIA** porque refactor é
+      trivial (< 5min) mas cold-start ruim custa caro.
+    - **3 templates Nuxt UI prontos** (copy-paste) em
+      [`harness/templates/nuxt-ui/`](./templates/nuxt-ui/):
+      `landing.vue`, `dashboard.vue`, `auth-form.vue`.
+      Todos com tokens semânticos, hierarchy/whitespace/
+      contrast corretos, zero emojis decorativos.
+    - **Skill `visual-polish`** codifica as técnicas
+      (hierarchy, whitespace, contrast WCAG AA, consistency,
+      motion, touch targets ≥ 44×44px).
+    - **`team-manager` (§13) e `quality-assurance` (Visual
+      Report) rodam o sensor 12 + Playwright screenshot**.
+      Se vermelho: **devolve com `in-review` + lista de
+      violações**. Se builder empurra 3x com sensor vermelho,
+      `team-manager` escala (marca `@user` no comentário).
+    - **Quem aplica `visual-polish` antes de PR**:
+      `frontend-engineer` (sempre). `team-manager` valida
+      no PR review.
+
 ---
 
 > Este arquivo é **vivo**: o `team-manager` é responsável por mantê-lo

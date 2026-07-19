@@ -1,15 +1,20 @@
 ---
 name: nuxt-ui-patterns
-version: 1.0.0
+version: 2.0.0
 type: ui-patterns
-stack: nuxt-ui-v3
+stack: nuxt-ui-v4
 ---
 
-# Nuxt UI v3 — Patterns & Best Practices
+# Nuxt UI v4 — Patterns & Best Practices
 
 Skill for the **frontend-engineer** persona. Applies when building
-frontends with **Nuxt UI v3** (project's pin: `@nuxt/ui@3.3.6`).
+frontends with **Nuxt UI v4** (project's pin: `@nuxt/ui@^4.10.0`).
 Inspired by the official [nuxt-ui-templates](https://github.com/nuxt-ui-templates)
+
+> **v2.0.0 (jul/2026):** atualizado pra Nuxt UI v4 (Tailwind v4
+> + Reka UI), adicionado seção "Public Skills Registry", seção
+> "Anti-patterns", e self-check expandido. Ver
+> [CHANGELOG](../../../CHANGELOG.md) v1.12.0 e ADR-0022.
 organization (Dashboard, SaaS, LMS, Minimal) — all MIT-licensed.
 
 ## 🚨 Rule #0 — Page first, modal last
@@ -238,10 +243,197 @@ npx nuxi@latest init my-app -t github:nuxt-ui-templates/dashboard
 Depois adapte: renomeie `app-` → `<seu-projeto>-`, ajuste as cores
 em `app.config.ts`, etc.
 
+---
+
+## 🌐 Public Skills Registry (v1.12.0+)
+
+> **Lição do Mandaí v2 (jul/2026):** o `frontend-engineer`
+> entregou UI com cores hardcoded e zero uso de skills
+> públicas. O registry existe — é só consultar.
+
+### Por que usar o registry
+
+Skills públicas (Vercel `vercel-labs/skills`, [skills.sh](https://www.skills.sh))
+são mantidas **pelos criadores do framework** e têm:
+
+- **Versionamento compatível** com a versão pinada.
+- **Exemplos auditados** (Socket + Snyk + Gen Agent Trust Hub).
+- **Padrões de produção** (não invenção de quem usou 1x).
+
+### Workflow pré-implementação (v1.12.0, regra não-violável)
+
+```bash
+# 1. Identificar stack (já tem @nuxt/ui no package.json?)
+grep "@nuxt/ui" web/package.json
+
+# 2. Consultar registry
+npx skills find nuxt-ui
+
+# 3. Instalar a skill oficial (mantida pela Nuxt team)
+npx skills add nuxt/ui@nuxt-ui
+
+# 4. (Opcional) Setup do MCP — agent ganha API de componentes
+claude mcp add --transport http nuxt-ui https://ui.nuxt.com/mcp
+
+# 5. AGORA SIM implementar — já com a skill oficial no contexto
+```
+
+### Skills Nuxt UI no registry (top 3, jul/2026)
+
+| Skill | Installs | Manutenção |
+|---|---|---|
+| `nuxt/ui@nuxt-ui` | 15.2K | **Nuxt team** (oficial) |
+| `onmax/nuxt-skills@reka-ui` | 6.6K | Comunidade (foco Reka UI) |
+| `onmax/nuxt-skills@nuxt-ui` | 6.1K | Comunidade (geral) |
+
+Ver skill
+[`frontend-public-skills`](../frontend-public-skills/SKILL.md)
+para a lista completa curada.
+
+---
+
+## 🚨 Anti-patterns (sensor 12 detecta e BLOQUEIA)
+
+> **v1.12.0:** o `frontend-engineer` é bloqueado pelo
+> `check-frontend-polish.sh` se qualquer um desses padrões
+> aparecer. **Corrija antes de abrir PR.**
+
+### 1. Cores hex hardcoded em `<template>` ou `<style>`
+
+❌ **Errado** (o que o Mandaí v2 PR #23 tinha):
+
+```vue
+<style scoped>
+.hero {
+  background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%);
+}
+.title {
+  color: #064e3b;  <!-- ❌ hex hardcoded -->
+}
+</style>
+```
+
+✅ **Correto** (sempre via tokens semânticos):
+
+```vue
+<style scoped>
+.hero {
+  background: linear-gradient(180deg, var(--ui-bg-elevated), var(--ui-bg));
+}
+.title {
+  color: var(--ui-text);
+}
+</style>
+```
+
+Ou melhor, sem `<style scoped>` — use **Nuxt UI props**:
+
+```vue
+<UButton color="primary" size="lg">Salvar</UButton>
+```
+
+**Regra:** o token semântico vive em `app.config.ts` (e.g.,
+`primary: 'green'`). Componentes usam `color="primary"`, nunca
+o hex literal. Sensor 12 detecta `#abcdef` em `.vue`/`.css`
+(exceto em `app.config.ts`).
+
+### 2. CSS BEM misturado com Tailwind/Nuxt UI
+
+❌ **Errado** (mistura confusa):
+
+```vue
+<button class="home-hero__cta bg-primary-500">Salvar</button>
+```
+
+✅ **Correto** (Nuxt UI props + Tailwind utilities):
+
+```vue
+<UButton color="primary" size="lg" block>Salvar</UButton>
+```
+
+**Regra:** se você está estilizando com classes BEM (`.foo__bar`)
+E Tailwind ao mesmo tempo, está errado. Escolhe **um**:
+Nuxt UI props (preferido) OU Tailwind utilities OU CSS modules.
+
+### 3. Comentários redundantes explicando o que o código faz
+
+❌ **Errado** (comentário explica o óbvio):
+
+```vue
+<script setup lang="ts">
+// HomeHero — top of the public landing page. Carries the one-liner
+// tagline and the two primary CTAs (Entrar / Criar conta). Mobile-first.
+</script>
+```
+
+✅ **Correto** (comentário explica **por que** ou **restrições**,
+não **o que**):
+
+```vue
+<script setup lang="ts">
+// CTAs land on /auth/{login,register}; preselect role from query
+// (?role=leader) for the signup flow (#16).
+</script>
+```
+
+**Regra:** o `frontend-engineer` está no `code-style.md` que
+proíbe comentários redundantes. Sensor 12 detecta comentários
+que repetem literalmente o nome do componente/função.
+
+### 4. Emojis excessivos
+
+❌ **Errado** (UI cheia de emojis decorativos):
+
+```vue
+<h1>🎉 Bem-vindo ao Mandaí! 💚</h1>
+<p>🚀 Sua praça compra junto ✨</p>
+```
+
+✅ **Correto** (ícones ou zero):
+
+```vue
+<h1>Bem-vindo ao Mandaí</h1>
+<p>Sua praça compra junto</p>
+```
+
+**Regra:** emojis em UI são permitidos **só** quando fazem
+função semântica (e.g., 🎉 para "conquista") OU quando o
+projeto explicitamente pede tom informal. Sensor 12 detecta
+> 3 emojis por arquivo `.vue` OU > 1 emoji no `<template>` de
+componente sério (form, dashboard, etc).
+
+Use **ícones** (Nuxt UI tem `lucide` collection:
+`icon="i-lucide-shopping-cart"`).
+
+### 5. Spacing fora da escala
+
+❌ **Errado** (valores aleatórios):
+
+```vue
+<div class="p-3 mt-7 gap-5">
+```
+
+✅ **Correto** (escala 4/8/12/16/24/32):
+
+```vue
+<div class="p-4 mt-8 gap-4">
+```
+
+**Regra:** use apenas `1, 2, 4, 6, 8, 12, 16, 24` (4/8/12/16/24/32/48/64/96px).
+**Nunca** `3, 5, 7, 9, 10, 11, 13, 14, 15`.
+
+---
+
 ## ✅ Self-check antes de mergear
 
 Antes de abrir PR de UI, verifique:
 
+- [ ] **`npx skills find nuxt-ui` foi rodado** ANTES de
+      implementar (regra não-violável, v1.12.0)
+- [ ] **Pelo menos 1 skill Nuxt UI** está instalada
+      (`npx skills add nuxt/ui@nuxt-ui` é o mínimo)
+- [ ] **Zero cores hex hardcoded** em `.vue`/`.css` (tudo via
+      tokens semânticos do `app.config.ts`)
 - [ ] **Zero modais** para tasks > 30s ou com mais de 2 campos
 - [ ] **Breadcrumbs** em todas as páginas 2+ níveis
 - [ ] **Tab navigation** funciona (Tab/Shift+Tab cicla, Esc fecha modais)
@@ -250,4 +442,10 @@ Antes de abrir PR de UI, verifique:
 - [ ] **Responsive** — testado em mobile (375px), tablet (768px), desktop (1280px+)
 - [ ] **Loading + empty + error states** em cada lista/form
 - [ ] **URL state** — filtros, paginação, e item selecionado são refletidos na URL
+- [ ] **Emojis** ≤ 1 por componente sério (ou justificado)
+- [ ] **Spacing scale** consistente (4/8/12/16/24/32)
+- [ ] **Screenshot local** gerado com Playwright (ver
+      `harness/scripts/visual/playwright-screenshot.mjs`)
+- [ ] **Sensor 12 `frontend-polish`** roda verde (não tem
+      hex hardcoded, BEM, comentários redundantes)
 - [ ] **i18n** — strings extraídas para `i18n/locales/*.json`

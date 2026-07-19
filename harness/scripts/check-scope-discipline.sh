@@ -43,7 +43,7 @@ OUTPUT=$(cat)
 # (thresholds are set inside the Python script via $PERSONA env var)
 
 # Run detection
-SIGNALS=$(echo "$OUTPUT" | python3 -c '
+SIGNALS=$(PERSONA="$PERSONA" echo "$OUTPUT" | PERSONA="$PERSONA" python3 -c '
 import sys, re, os
 text = sys.stdin.read()
 persona = os.environ.get("PERSONA", "domain-expert")
@@ -57,9 +57,9 @@ thresholds = {
         "tokens": 1,
     },
     "solutions-architect": {
-        "sql_keywords": 5, "orm_names": 3, "typeorm_nestjs": 2,
-        "go_files": 5, "internal_paths": 3, "migrations": 2,
-        "endpoints": 5, "func_names": 10, "prometheus": 3,
+        "sql_keywords": 2, "orm_names": 1, "typeorm_nestjs": 1,
+        "go_files": 2, "internal_paths": 1, "migrations": 1,
+        "endpoints": 2, "func_names": 3, "prometheus": 1,
         "tokens": 1,
     },
 }[persona]
@@ -85,7 +85,7 @@ for name, pattern in checks:
         results.append(f"{name}:{count}")
 
 print("\n".join(results) if results else "OK")
-' PERSONA="$PERSONA")
+')
 
 # Total output size for display
 CHARS=$(echo -n "$OUTPUT" | wc -c | tr -d ' ')

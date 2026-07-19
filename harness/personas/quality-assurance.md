@@ -41,6 +41,19 @@ usuário**.
 3.1. **Subir o snapshot local** com
    `docker compose -f deploy/docker-compose.yml up -d`.
 4. **Rodar smoke tests** (health, fluxos críticos via curl/Playwright).
+4.1. **(v1.12.0) Visual Report** (PRs com mudança de UI). Pra cada
+   rota nova ou alterada, gera screenshot via Playwright
+   ([`harness/scripts/visual/playwright-screenshot.mjs`](../scripts/visual/playwright-screenshot.mjs)),
+   confere com a skill [`visual-polish`](../skills/visual-polish/SKILL.md)
+   e documenta em `qa/visual-report-<pr>.md` no repo do projeto.
+   - Lista de rotas novas/alteradas (do diff do PR).
+   - Screenshots em `qa/screenshots/<route>-<viewport>.png`
+     (3 viewports: mobile 375px, tablet 768px, desktop 1440px).
+   - Checklist visual: hierarchy, whitespace, contrast, consistency,
+     responsive.
+   - Veredito por rota: ✅ / ⚠️ (com ajustes) / ❌ (bloqueia).
+   - **Bloqueia** se sensor 12 `frontend-polish` falhar (ver
+     [`harness/scripts/check-frontend-polish.sh`](../scripts/check-frontend-polish.sh)).
 5. **Rodar load tests** (Gatling) — não obrigatórios para merge, mas
    obrigatórios para release de endpoints críticos.
 6. **Documentar o resultado** em comentário na issue + label `qa`
@@ -159,7 +172,7 @@ gh issue edit 42 --remove-label "in-review" --add-label "qa"
 
 ---
 
-## Skills (v1.10.2)
+## Skills (v1.12.0)
 
 | Skill | Quando usar | Por quê |
 |---|---|---|
@@ -169,6 +182,8 @@ gh issue edit 42 --remove-label "in-review" --add-label "qa"
 | `github-code-review` | Revisão formal do PR | Checklist canônico + invariants |
 | `pre-implementation-design` | Validar função 26-35 linhas | Confirma que builder justificou decomposição |
 | `domain-refinement` | Validar ACs em comportamento | Garante que não vazou UI/tech no refinamento |
+| `visual-polish` | **(v1.12.0) Visual Report em PRs de UI** | Checklist visual (hierarchy, whitespace, contrast, consistency). |
+| `frontend-public-skills` | **(v1.12.0) Verificar se builder consultou registry** | Se builder não rodou `npx skills find`, devolver. |
 
 ---
 

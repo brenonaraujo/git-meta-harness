@@ -5,6 +5,10 @@
 > **Quando:** após `solutions-architect` (label `ready` → `in-progress`).
 > **Output típico:** código Nuxt + testes + Dockerfile + commits na
 > branch da feature.
+>
+> **v1.12.0:** regras atualizadas — consultar skills públicas ANTES
+> de implementar UI, e screenshot local OBRIGATÓRIO antes de PR.
+> Ver §"Skills" + sensor 12 `frontend-polish`.
 
 ---
 
@@ -24,6 +28,13 @@ unitários e e2e. Você **não fecha issues** — quem fecha é o
 
 ## Responsabilidades
 
+0. **(v1.12.0) Consultar registry público de skills ANTES de
+   implementar** (regra não-violável). Use o `npx skills` CLI
+   (Vercel) pra descobrir e instalar skills públicas do seu
+   stack (Nuxt UI, Tailwind, shadcn, Vue, etc). Ver skill
+   [`frontend-public-skills`](../skills/frontend-public-skills/SKILL.md)
+   + ADR-0022. **Não escrever a primeira linha de `.vue`/`.css`
+   sem antes ter rodado `npx skills find <seu-stack>`.**
 1. **Ler a issue e o DoD** (do `solutions-architect`).
 2. **Clonar a branch de trabalho** (`feature/<id>-<slug>`) criada
    pelo `team-manager` e fazer checkout localmente. Você **NÃO**
@@ -74,6 +85,23 @@ unitários e e2e. Você **não fecha issues** — quem fecha é o
     Idiomas padrão: **en, pt-BR, es**. Ver skill
     [`../skills/i18n.md`](../skills/i18n.md) e princípio 11 do
     `bootstrap.md`.
+13. **(v1.12.0) Screenshot local ANTES de abrir PR** (regra
+    não-violável). Cold-start visual é uma **feature**, não
+    polish step depois. Roda
+    [`harness/scripts/visual/playwright-screenshot.mjs`](../scripts/visual/playwright-screenshot.mjs)
+    contra a rota nova (e.g., `/`, `/auth/login`,
+    `/dashboard/admin`). **Se o screenshot parece amador
+    (cores aleatórias, espaçamento inconsistente, sem
+    hierarchy), refazer antes de abrir PR.** Ver skill
+    [`visual-polish`](../skills/visual-polish/SKILL.md). Sensor
+    12 `frontend-polish` vai BLOQUEAR o PR de qualquer jeito
+    (anti-patterns visuais).
+14. **(v1.12.0) Respeitar os design tokens do projeto** —
+    sempre. Ler `app.config.ts` (Nuxt UI) ou `assets/css/main.css`
+    (Tailwind v4 `@theme`) ANTES de estilizar. Zero hex
+    hardcoded em componentes (sensor 12 BLOQUEIA). Zero CSS BEM
+    misturado com Tailwind/Nuxt UI. Use **só** tokens
+    semânticos (`color="primary"`, `text-fg`, `bg-elevated`).
 
 ---
 
@@ -280,15 +308,18 @@ gh issue edit 42 --remove-label "ready" --add-label "in-progress"
 
 ---
 
-## Skills (v1.10.2)
+## Skills (v1.12.0)
 
 | Skill | Quando usar | Por quê |
 |---|---|---|
-| `nuxt-ui-patterns` | Componentes Nuxt UI v3 | UDashboardPage, UTable, UForm, UCommandPalette; page-first modal-last |
-| `ux-design-best-practices` | Qualquer UI/UX | Modal decision tree, WCAG AA, breadcrumbs, tap targets 44x44px |
-| `i18n` | Copy de UI, mensagens de erro | Toda string externalizada (en, pt-BR, es) |
-| `pre-implementation-design` | Composables, helpers, componentes não-triviais | Força listar 2-3 decomposições ANTES de codar |
-| `twelve-factor` | Config (env), observability | Frontend também segue 12-factor (config, logs, disposability) |
+| `frontend-public-skills` | **SEMPRE, ANTES de implementar UI** | Registry público (`npx skills`), lista curada por stack, MCP setup. **REGRA #0** desde v1.12.0. |
+| `nuxt-ui-patterns` (v2.0.0) | Componentes Nuxt UI v4 | UDashboardPage, UTable, UForm, UCommandPalette; page-first modal-last; anti-patterns documentados. |
+| `tailwind-only-patterns` | Projeto sem Nuxt UI (Tailwind v4 puro) | Decisão tree, shadcn-vue, Reka UI standalone, tokens semânticos. |
+| `visual-polish` | Polish visual de qualquer UI | Hierarchy, whitespace, contrast (WCAG AA), consistency, motion, touch targets. |
+| `ux-design-best-practices` | Qualquer UI/UX | Modal decision tree, WCAG AA, breadcrumbs, tap targets 44x44px. |
+| `i18n` | Copy de UI, mensagens de erro | Toda string externalizada (en, pt-BR, es). |
+| `pre-implementation-design` | Composables, helpers, componentes não-triviais | Força listar 2-3 decomposições ANTES de codar. |
+| `twelve-factor` | Config (env), observability | Frontend também segue 12-factor (config, logs, disposability). |
 
 ---
 

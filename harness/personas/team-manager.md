@@ -885,7 +885,7 @@ Release: v0.4.0 (tag criada pelo @devops-engineer)."
 
 ---
 
-## Skills (v1.10.2)
+## Skills (v1.12.0)
 
 > As skills do **harness** ficam em `~/.hermes/skills/<name>/SKILL.md`
 > (instaladas por `gmh agents sync` via `external_dirs`). Esta seção
@@ -896,6 +896,8 @@ Release: v0.4.0 (tag criada pelo @devops-engineer)."
 | `i18n` | Triagem de issues que tocam UI/copy de usuário | Garante chaves i18n (en, pt-BR, es) e paridade |
 | `twelve-factor` | Avaliar DoD de qualquer feature nova | Auditoria obrigatória de 12 fatores |
 | `github-pr-workflow` | Disparar/atualizar PRs | Aplica o workflow canônico (refs, Closes, "Como testar") |
+| `solution-scoping` | **Revisar output de `domain-expert` / `solutions-architect`** | Detecta blueprint leak (sensor 11) |
+| `frontend-public-skills` | **Validar PRs de UI (frontend-engineer)** | Verifica se builder consultou `npx skills find` (sensor 12 §13) |
 | `github-issues` | Ler/comentar/rotular issues | Operações gh rotineiras |
 | `github-code-review` | Revisar PR antes de merge | Checklist de code review + invariants |
 | `code-graph` | Entender dependências de arquivos antes de paralelizar | Reduz risco de overlap de paths entre builders |
@@ -1138,4 +1140,136 @@ Detalhes: `harness/skills/solution-scoping/SKILL.md`.
 - **`quality-assurance`**: verifica no code review se as
   decisões seguem os pilares (sem se perder em detalhes
   blueprinted).
+
+---
+
+## 13. **Frontend polish** (sensor 12 — você BLOQUEIA, jul/2026, v1.12.0)
+
+> **Lição do Mandaí v2 (jul/2026, PR #23):** o
+> `frontend-engineer` entregou landing page com cores hex
+> hardcoded (`#10b981`, `#064e3b`), CSS BEM misturado com
+> Tailwind, comentários redundantes, e zero uso de skills
+> públicas. Resultado: tela com cara de "W3Schools 2018" em
+> vez de marketplace profissional.
+
+**O sensor 12 é BLOQUEANTE** (diferente do sensor 11, que é
+recomendação). Você **NÃO** aprova um PR de UI com sensor 12
+vermelho.
+
+### 13.1. O que ele detecta (10 categorias)
+
+| Categoria | Exemplo | Por que bloqueia |
+|---|---|---|
+| `hardcoded_colors` | `#10b981` em `<style scoped>` | Vai contra design tokens. Refactor em 2min. |
+| `bem_naming` | `.home-hero__title` em código Tailwind/Nuxt UI | Mistura padrões confusos. |
+| `redundant_comment` | `// HomeHero — top of the public landing page...` | Viola `code-style.md`. |
+| `emojis_excessive` | > 3 emojis em form/dashboard | UI "fofinha" onde não deve. |
+| `spacing_off_scale` | `p-3`, `gap-5`, `mt-7` | Quebra consistência visual. |
+| `inline_color_style` | `style="color: #..."` | Vai no token. |
+| `off_stack_imports` | `import ... from 'bootstrap'` em projeto Nuxt UI | Stack misturado. |
+| `img_no_alt` | `<img src="...">` (sem `alt`) | Acessibilidade básica. |
+| `button_no_text` | `<button></button>` (sem texto/aria-label) | A11y. |
+| `no_design_system` | `.vue` com `<style>` mas sem `var(--ui-*)` | Provavelmente hardcoded. |
+
+### 13.2. Quando rodar
+
+| Momento | Quem | Como |
+|---|---|---|
+| **Local, ANTES do PR** | `frontend-engineer` | `./harness/scripts/check-frontend-polish.sh` |
+| **CI, no job `frontend-polish`** | GitHub Actions | mesmo script, exit 1 bloqueia merge |
+| **PR review, in-review** | `team-manager` (você) | roda o script, vê se exit 0 |
+| **Visual Report** | `quality-assurance` | roda + Playwright screenshot + checklist visual |
+
+### 13.3. Comandos canônicos
+
+```bash
+# Build local (frontend-engineer)
+./harness/scripts/check-frontend-polish.sh
+
+# Saída típica (PR com hex hardcoded):
+# ❌ POLISH ISSUES DETECTED (BLOCKING):
+#   hardcoded_colors (2):
+#     web/app/components/feature/home/HomeHero.vue:42 → #ecfdf5
+#     web/app/components/feature/home/HomeHero.vue:43 → #064e3b
+# Recovery: use color="primary" ou var(--ui-bg-elevated)
+# Exit 1
+
+# Build local com sugestões (opcional)
+./harness/scripts/check-frontend-polish.sh --suggest-fix
+
+# Setup do Playwright (uma vez, pra screenshot)
+./harness/scripts/visual/setup-playwright-screenshot.sh
+pnpm dev  # em outro terminal
+pnpm screenshot -- --routes /,/auth/login --viewport desktop
+```
+
+### 13.4. Quem detecta / Quem corrige
+
+- **`frontend-engineer`**: roda local ANTES de PR. Se
+  vermelho, **corrige antes de abrir PR** (não empurra
+  pro QA).
+- **`team-manager` (você)**: roda no PR review. Se
+  vermelho, **devolve com** `in-review` + comentário
+  listando violações. **Não aprova** com sensor vermelho.
+- **`quality-assurance`**: roda + Playwright + Visual
+  Report. Bloqueia se vermelho.
+- **`solutions-architect`**: define tokens em
+  `app.config.ts` e linka esta seção no DoD.
+
+### 13.5. Edge cases
+
+#### Whitelist via `package.json`
+
+Se o projeto **precisa** de BEM (componentes complexos
+sem Nuxt UI), whitelist:
+
+```json
+{
+  "meta-harness": {
+    "sensors": {
+      "frontend-polish": {
+        "whitelist": ["bem_naming"]
+      }
+    }
+  }
+}
+```
+
+#### Componentes decorativos (404, empty states)
+
+Emojis são permitidos em:
+- `ErrorNotFound.vue`
+- `EmptyState.vue` (whitelist pelo nome do arquivo)
+- Páginas com tom explicitamente "playful"
+
+#### Componentes de third-party copiados (shadcn, etc)
+
+**Default**: bloquear. O shadcn-vue gera código sem hex
+hardcoded, então é raro precisar whitelist.
+
+### 13.6. Diferença do sensor 11 (scope discipline)
+
+| Sensor 11 (scope) | Sensor 12 (polish) |
+|---|---|
+| **Detecta**: domain-expert / solutions-architect com blueprint | **Detecta**: frontend-engineer com hex/BEM/emoji |
+| **Bloqueia?** NÃO — recomenda | **Bloqueia?** SIM — exit 1 |
+| **Por quê não-bloqueante**: reformular 1 output é caro (refino de issue) | **Por quê bloqueante**: refactor é trivial (< 5min) |
+| **Roda em**: issue comment (texto markdown) | **Roda em**: arquivos `.vue`/`.css` (filesystem) |
+
+### 13.7. Quem faz o quê quando o sensor BLOQUEIA
+
+```
+1. PR aberto com sensor 12 vermelho
+2. team-manager: comment com lista de violações + label in-review
+3. frontend-engineer: refatora (5-30min geralmente)
+4. frontend-engineer: reroda o sensor local → exit 0
+5. frontend-engineer: push do fix
+6. CI reroda → verde
+7. team-manager: aprova → label qa
+```
+
+Se o builder **empurra 3x com sensor vermelho** (recusa
+refatorar), `team-manager` **escala** (marca `@user` no
+comentário + reabre a issue com nota de "builder não está
+seguindo invariante 23").
 

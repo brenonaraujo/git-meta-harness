@@ -1,5 +1,250 @@
 # Changelog
 
+
+## [1.12.0] - 2026-07-19
+
+### Added — Frontend Public Skills + Cold-Start Polish (ADR-0022)
+
+**Context**: Mandaí v2's PR #23 (Redesign Landing, jul/2026)
+exposed 5 systemic problems in the `frontend-engineer` delivery:
+
+| Anti-pattern | Example in PR #23 | Detector |
+|---|---|---|
+| **Hex colors hardcoded** | `background: #ecfdf5`, `color: #064e3b` | regex `#([0-9a-fA-F]{3,8})\b` |
+| **CSS BEM** | `.home-hero__title`, `.home-hero__cta` | regex `\.[a-z][a-z0-9-]*__[a-z]` |
+| **Redundant comments** | `// HomeHero — top of the public landing page...` | heuristic: comment repeats component name |
+| **Excessive emojis** | 4+ decorative emojis in form/dashboard | Unicode emoji regex, threshold-based |
+| **Off-scale spacing** | `p-3`, `gap-5`, `mt-7` | regex filtering against allowed scale |
+
+**Root cause triple**:
+- The meta-harness **didn't document** the public skills registry
+  (`https://www.skills.sh`, `npx skills`).
+- The meta-harness **had no mechanism** to block visual anti-patterns
+  (only sensor 08-i18n-audit, which doesn't cover UI quality).
+- The `frontend-engineer` persona **had no explicit rule** "consult
+  public skills BEFORE implementing UI".
+
+**Solution (v1.12.0) — 7 coordinated changes**:
+
+#### 1. Skill `frontend-public-skills` (NEW, 10.5KB)
+
+Documents the registry workflow:
+
+```bash
+# 1. Identify stack
+grep "@nuxt/ui" web/package.json
+
+# 2. Consult registry
+npx skills find nuxt-ui
+# → nuxt/ui@nuxt-ui              15.2K installs (oficial)
+# → onmax/nuxt-skills@reka-ui   6.6K
+# → onmax/nuxt-skills@nuxt-ui   6.1K
+
+# 3. Install official skill
+npx skills add nuxt/ui@nuxt-ui
+
+# 4. (Optional) Setup MCP for runtime component API
+claude mcp add --transport http nuxt-ui https://ui.nuxt.com/mcp
+```
+
+Includes:
+- Curated lists by stack (Nuxt UI, Tailwind-only, shadcn, Vue,
+  Visual, Playwright)
+- Security validation (how to check `/security` page)
+- MCP server setup (Nuxt UI has one)
+- Self-check pre-implementation
+- Anti-pattern documentation (hardcoded colors, BEM, etc)
+
+#### 2. Skill `tailwind-only-patterns` (NEW, 9KB)
+
+For projects **without** `@nuxt/ui`:
+- Tailwind v4 CSS-first config (`@theme`)
+- shadcn-vue, PrimeVue, Reka UI standalone
+- Decision tree: when to use which library
+- Token system (`bg-bg-elevated text-fg border-border`)
+- Anti-patterns (hex hardcoded, `@apply` excess, BEM mixing)
+
+#### 3. Skill `visual-polish` (NEW, 12.3KB)
+
+Stack-agnostic techniques:
+- **Hierarchy**: H1 36-48px, H2 24-30px, H3 20px (modular scale)
+- **Whitespace**: scale 4/8/12/16/24/32/48/64/96 (no `p-3` or `gap-5`)
+- **Contrast (WCAG AA)**: ≥ 4.5:1 text, ≥ 3:1 UI components
+- **Consistency**: same variants, sizes, padding across project
+- **Motion**: 200-300ms sweet spot, animate `transform`/`opacity`
+- **Touch targets**: ≥ 44×44px (Apple HIG / Material)
+- **5-second self-check**: "Would I pay for this app? Looks like
+  Linear/Notion/Vercel?"
+
+#### 4. Skill `nuxt-ui-patterns` v2.0.0 (UPDATED, +10KB)
+
+- Frontmatter: `nuxt-ui-v3` → `nuxt-ui-v4` (Mandaí v2 uses
+  `@nuxt/ui@^4.10.0`)
+- New section: "Public Skills Registry" (npx skills, MCP)
+- New section: "Anti-patterns" (5 categories with good/bad examples)
+- Expanded self-check (npx skills, sensor 12, screenshot, etc)
+
+#### 5. Sensor 12 `frontend-polish` (NEW, 11.7KB) + Python script
+
+[`harness/scripts/check-frontend-polish.sh`](harness/scripts/check-frontend-polish.sh)
+(3KB shell) +
+[`harness/scripts/visual/check_frontend_polish.py`](harness/scripts/visual/check_frontend_polish.py)
+(8.5KB Python companion).
+
+**Detects 10 categories**:
+- `hardcoded_colors` (hex/rgb/hsl in components, not in tokens)
+- `bem_naming` (`.foo__bar`, `.foo--bar`)
+- `redundant_comment` (comment repeats component name)
+- `emojis_excessive` (> 3 in any file, > 1 in serious components)
+- `spacing_off_scale` (`p-3`, `gap-5`, `mt-7` — values not in scale)
+- `inline_color_style` (`style="color: #..."`)
+- `off_stack_imports` (bootstrap in Nuxt UI project)
+- `img_no_alt` (`<img>` without `alt`)
+- `button_no_text` (`<button></button>` without text/aria-label)
+- `no_design_system` (component with `<style>` but no `var(--ui-*)`)
+
+**BLOCKING** (exit 1) — different from sensor 11 (warning-only).
+Rationale: refactor is trivial (< 5min) but cold-start poor
+quality costs expensive rework.
+
+**Validates**:
+- ✅ Clean components (Nuxt UI templates) → exit 0
+- ❌ Mandaí v2 PR #23 (hex hardcoded, BEM, redundant comments) →
+   exit 1 with 22 issues + recovery
+
+#### 6. Templates Nuxt UI (NEW, 3 files, ~10KB)
+
+[`harness/templates/nuxt-ui/`](harness/templates/nuxt-ui/):
+- **`landing.vue`** (3.6KB) — hero + features + CTA + footer, all
+  with `text-highlighted text-muted bg-elevated` tokens, no BEM,
+  no hex.
+- **`dashboard.vue`** (2.5KB) — admin panel with stats cards
+  (3 trend variants), `UDashboardPage` + `UDashboardNavbar`.
+- **`auth-form.vue`** (3.6KB) — login/signup reusable, role
+  preselect via `?role=leader|resident|supplier`, i18n ready.
+
+All 3 pass sensor 12 (`OK: No frontend polish issues detected`).
+
+#### 7. Visual Report (in `quality-assurance.md`)
+
+New responsibility 4.1 (v1.12.0):
+- Generate screenshots via Playwright (3 viewports: 375/768/1440)
+- For each route new/changed in the PR
+- Save in `qa/screenshots/<route>-<viewport>.png`
+- Visual checklist (hierarchy, whitespace, contrast, consistency,
+  responsive)
+- Save report in `qa/visual-report-<pr>.md`
+- **Block** if sensor 12 fails
+
+#### 8. Playwright scripts (NEW, 2 files, ~6.4KB)
+
+[`harness/scripts/visual/playwright-screenshot.mjs`](harness/scripts/visual/playwright-screenshot.mjs)
+(3.7KB) — Node script, `pnpm screenshot` after setup.
+
+[`harness/scripts/visual/setup-playwright-screenshot.sh`](harness/scripts/visual/setup-playwright-screenshot.sh)
+(2.6KB) — installs Playwright + Chromium + adds `package.json`
+scripts (`screenshot`, `screenshot:setup`). Idempotent.
+
+#### 9. AGENTS.md invariante 23 (NEW)
+
+> **Frontend polish (cold-start visual)** (v1.12.0, ADR-0022).
+> Lição do Mandaí v2 (jul/2026, PR #23): o `frontend-engineer`
+> entregou UI com cores hex hardcoded, CSS BEM misturado com
+> Tailwind, comentários redundantes, emojis excessivos, e zero
+> uso de skills públicas. Resultado: tela com cara de
+> "W3Schools 2018" em vez de marketplace profissional.
+
+Rule of thumb:
+- **`frontend-engineer` MUST consult `npx skills find <stack>`**
+  before writing any `.vue`/`.css`
+- **Respect project design tokens** (zero hex, zero BEM mixed)
+- **Screenshot local BEFORE PR** (Playwright)
+- **Sensor 12 BLOCKS** (exit 1) on anti-patterns
+
+#### 10. team-manager §13 (NEW)
+
+"Frontend polish (sensor 12 — você BLOQUEIA)":
+- 10 categories that block
+- 4 moments to run (local frontend / CI / PR review / Visual Report)
+- Recovery actions per category
+- Difference from sensor 11 (blocking vs recommendation)
+
+#### 11. ADR-0022 (NEW)
+
+Documents the decision: 3 root causes, 7 changes, principles,
+cost avoided (~30h/year), validation (4 test cases), lessons.
+
+### Personas updated
+
+- **`frontend-engineer.md`**: rules #0 (npx skills) and #13
+  (screenshot local), rule #14 (respect design tokens), §"Skills"
+  expanded to v1.12.0 with 3 new skills
+- **`quality-assurance.md`**: Visual Report responsibility, §"Skills"
+  includes `visual-polish` and `frontend-public-skills`
+- **`team-manager.md`**: §13 (Frontend polish), §"Skills" includes
+  `frontend-public-skills`
+
+### Total: 11 coordinated changes
+
+- 3 new skills (~32KB)
+- 1 updated skill (nuxt-ui-patterns v2.0.0, +10KB)
+- 1 new sensor (12) + Python companion (~20KB)
+- 3 templates Nuxt UI (~10KB)
+- 2 Playwright scripts (~6.4KB)
+- 1 ADR (~5KB)
+- 1 AGENTS.md invariante
+- 3 personas updated
+- 1 CHANGELOG entry
+
+**Total**: ~100KB of framework. **Cost avoided**: ~30h/year
+(rework polish + QA explanation + cold-start amortization).
+
+### Validation
+
+- ✅ 3 Nuxt UI templates pass sensor 12 (`OK: No frontend polish
+   issues detected`)
+- ✅ Mandaí v2 PR #23 components FAIL sensor 12 (22 issues:
+   18 BEM + 3 redundant_comment + 1 hardcoded_colors)
+- ✅ Clean test case (CleanLanding.vue) exits 0
+- ✅ Smoke-test passes 43/44 (1 fail is local: Hermes has
+   generic domain-expert profile, expected in Brenon's env)
+- ✅ AGENTS.md recognized 23 invariantes (incl. new 23)
+
+### Breaking changes
+
+**None** (backward compatible):
+- Existing projects that use BEM can whitelist via
+  `package.json` → `meta-harness.sensors.frontend-polish.whitelist`
+- Existing nuxt-ui-patterns users get v2.0.0 transparently
+  (npx skills workflow is new, rest is additive)
+
+### Migration guide
+
+```bash
+# 1. Pull latest meta-harness
+cd your-project
+gmh update --to v1.12.0
+
+# 2. (Optional) Install Playwright
+bash harness/scripts/visual/setup-playwright-screenshot.sh
+
+# 3. (Optional) Install public skill for your stack
+npx skills add nuxt/ui@nuxt-ui  # or wshobson/agents@tailwind-design-system
+
+# 4. (Optional) Setup CI job for sensor 12
+# Add to .github/workflows/ci.yml:
+#   - name: Frontend polish
+#     run: ./harness/scripts/check-frontend-polish.sh
+
+# 5. Existing projects with BEM: whitelist
+# package.json:
+#   "meta-harness": {
+#     "sensors": {
+#       "frontend-polish": { "whitelist": ["bem_naming"] }
+#     }
+#   }
+```
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
