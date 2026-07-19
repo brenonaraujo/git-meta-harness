@@ -314,6 +314,134 @@ e [`nuxt-ui-patterns`](../skills/nuxt-ui-patterns/SKILL.md) para
 escolher o padrão apropriado (página + breadcrumb, slideover, modal
 de confirmação, etc.).
 
+### 4.1.2. Cerca técnica — não deixe `domain-expert` especificar tecnologia
+
+> Adicionado em **v1.8.0** depois do incidente Mandaí v2 (jul/2026)
+> onde o `domain-expert` foi acionado para refinar issues **puramente
+> técnicas** (ex.: "configurar Helm chart de staging", "criar índice
+> composto no PostgreSQL", "atualizar Trivy action para SHA-pinned")
+> e direcionou implementação ("usar `gorm.Model`, salvar no
+> PostgreSQL, cache Redis TTL 5min, endpoint POST /api/v1/users com
+> payload { name, email }"). Pior: ele foi acionado em issues
+> `type/technical` / `type/infra` / `type/tech-debt` que **não
+> passam** por ele.
+
+**Detecção em dois eixos**:
+
+**(a) Tipo errado da issue** — `domain-expert` está sendo acionado
+para refinar algo que **não tem domínio**:
+
+| Label da issue | `domain-expert` entra? | Por quê? |
+|---|---|---|
+| `type/feature` | ✅ SIM | Há comportamento de negócio a refinar |
+| `type/bug` (de negócio) | ✅ SIM | Regra de negócio falhou ou faltou |
+| `type/spike` (escopo de domínio) | ⚠️ Às vezes | Investigação do comportamento do domínio |
+| `type/technical` | ❌ **NÃO** | Setup puro. Sem valor de domínio |
+| `type/infra` | ❌ **NÃO** | Infraestrutura. Sem valor de domínio |
+| `type/tech-debt` | ❌ **NÃO** | Dívida técnica. Sem valor de domínio |
+| `type/docs` | ❌ **NÃO** | Documentação. Sem valor de domínio |
+| `type/ui` | ❌ **NÃO** | Design. Sem valor de domínio (apenas UX) |
+
+Se a issue tem `type/technical` / `type/infra` / `type/tech-debt`
+/ `type/docs` / `type/ui` E foi roteada para `domain-expert`,
+**reroute imediatamente**:
+
+```bash
+# Remover assignee + label de domínio (se houver)
+gh issue edit 42 --remove-assignee domain-expert-<x> 2>/dev/null
+gh issue edit 42 --remove-label "domain/<x>"
+
+# Atribuir ao orquestrador correto do tipo
+case $TYPE in
+  type/technical|type/tech-debt)
+    gh issue edit 42 --add-assignee solutions-architect ;;
+  type/infra)
+    gh issue edit 42 --add-assignee devops-engineer
+    gh issue edit 42 --add-assignee solutions-architect ;;
+  type/ui)
+    gh issue edit 42 --add-assignee frontend-engineer ;;
+  type/docs)
+    gh issue edit 42 --add-assignee <autor-da-issue> ;;
+esac
+
+# Comentar o reroute
+gh issue comment 42 --body "🔁 Reroute: tipo \`$TYPE\` não passa por \`domain-expert\`. Atribuído a \`<nova-persona>\`."
+```
+
+**(b) Tech vazando dentro de ACs de domínio** — o `domain-expert`
+está refazendo a issue de domínio mas direcionando implementação
+tech:
+
+**Sinais de violação** (verifique o output do `domain-expert`):
+- Endpoints: "POST /api/v1/users", "GET /v2/orders/:id"
+- Payloads: "`{ name, email, role }`", "`{ items: [] }`"
+- Frameworks: "Vue 3", "Pinia", "Nuxt UI", "Go", "Gin", "FastAPI"
+- ORM/banco: "`gorm.Model`", "PostgreSQL", "Redis", "MongoDB"
+- Auth: "OAuth2 + PKCE", "JWT", "mTLS", "HMAC-SHA256"
+- Fila: "SQS", "Kafka", "AMQP", "RabbitMQ"
+- CI: "Trivy action SHA-pinned", "golangci-lint v2.12.2", "CODEQL"
+- Performance: "índice composto (a, b DESC)", "3 réplicas + HPA 70%"
+
+Se sim, **devolva para o `domain-expert`** com pedido de reformulação
+em **comportamento de domínio** (ex.: "persistir o usuário de forma
+durável e única" em vez de "salvar no PostgreSQL com `gorm.Model`").
+
+**Ação**: pedir reformulação usando o template abaixo, ou aplicar
+você mesmo a reformulação antes de seguir para `solutions-architect`.
+
+```markdown
+@<domain-expert> — esse refinamento tem **tecnologia embutida**.
+Por favor reformule em termos de **comportamento de domínio**
+(o que precisa acontecer) ou em **SLO/SLA esperado** (capacidade,
+performance, resiliência) em vez de **tecnologia específica**
+(framework, banco, fila, protocolo, action de CI).
+
+Quem decide tecnologia é o `solutions-architect` + builder
+(consultando as skills `openapi-spec-first`, `tdd-go`,
+`twelve-factor`). Decisões de stack mudam; regra de negócio
+não muda. ACs devem sobreviver à troca de stack.
+
+Exemplos:
+- ❌ "Endpoint POST /api/v1/users com payload `{ name, email }`"
+- ✅ "Criar novo usuário com nome e email"
+
+- ❌ "Cache com Redis e TTL de 5min"
+- ✅ "Resultados consistentes por 5 minutos"
+
+- ❌ "Auth com OAuth2 + PKCE + refresh token rotation"
+- ✅ "Login seguro sem expor credenciais, com sessão persistida"
+
+- ❌ "Índice composto (tenant_id, created_at DESC)"
+- ✅ "Listagem eficiente para 10k pedidos (p95 ≤ 200ms)"
+
+Quando reformular, mantenha:
+- Persona (Quem se beneficia)
+- Comportamento esperado (O que precisa acontecer)
+- Por que importa (Valor de negócio)
+- SLO/SLA (Performance, capacidade, resiliência)
+- Edge cases do domínio
+- Regulamentação
+```
+
+**Teste que o `domain-expert` deve aplicar antes de postar**:
+> "Se eu trocar a stack inteira (Go → Rust, Nuxt → React,
+> PostgreSQL → MongoDB, REST → GraphQL, GHCR → ECR), essa AC
+> ainda faz sentido?"
+> - SIM → AC de comportamento. ✅
+> - NÃO → AC acoplada à tecnologia. Reformule. ❌
+
+**Quem decide tecnologia**: `solutions-architect` consulta
+[`openapi-spec-first`](../skills/openapi-spec-first/SKILL.md),
+[`tdd-go`](../skills/tdd-go/SKILL.md) e
+[`twelve-factor`](../skills/twelve-factor/SKILL.md) para escolher
+a stack apropriada.
+
+**Quem decide routing errado**: o `domain-expert` também tem
+a responsabilidade de **auto-detectar** e **sinalizar** quando
+a issue tem tipo que não passa por ele (ver
+[`domain-expert.template.md`](./domain-expert.template.md) e a
+skill [`domain-refinement`](../skills/domain-refinement/SKILL.md)).
+
 ### 4.2. Exemplos práticos
 
 **Issue #1 — "Bootstrap do hello-service"** (puramente técnica):
@@ -428,6 +556,9 @@ hermes skills install harness/skills/twelve-factor.md
 hermes skills install harness/skills/github-pr-workflow.md
 hermes skills install harness/skills/github-issues.md
 hermes skills install harness/skills/github-code-review.md
+hermes skills install harness/skills/nuxt-ui-patterns/SKILL.md
+hermes skills install harness/skills/ux-design-best-practices/SKILL.md
+hermes skills install harness/skills/domain-refinement/SKILL.md
 
 # Gerar SOUL.md a partir do arquivo de persona
 # (resumindo identidade + responsabilidades + limites)

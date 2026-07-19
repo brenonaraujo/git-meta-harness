@@ -5,6 +5,106 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - 2026-07-18
+
+### Added — Cerca Técnica (espelho da Cerca de Design) + skill `domain-refinement` (ADR-0018)
+
+**Context**: The domain-expert was being called to refine **purely
+technical** issues (Helm chart config, PostgreSQL index, Trivy action
+SHA) and was directing implementation ("`gorm.Model`", "PostgreSQL",
+"Redis TTL 5min", "OAuth2 + PKCE"). The team-manager was also routing
+`type/technical` / `type/infra` / `type/tech-debt` / `type/docs` /
+`type/ui` issues to the domain-expert — issues that **should skip**
+domain-expert (no business rule to refine).
+
+**Skill added** (in `harness/skills/`):
+- `domain-refinement/SKILL.md` (9.7KB) — for the `domain-expert`:
+  - **Cerca #0**: Você é o **POR QUÊ**, não o **COMO** (camadas
+    Negócio → Design → Arquitetura → Implementação)
+  - **Cerca #1**: Domínio fala em **comportamento**, técnico fala
+    em **mecanismo** (tabela de transformação completa)
+  - **Cerca #2**: Quando o tipo é `type/technical`, `type/infra`,
+    `type/tech-debt`, `type/docs`, `type/ui` você **NÃO** é acionado
+  - **Cerca #3**: Não mencione personas pelo nome
+  - **Cerca #4**: Não feche issues, não crie branches, não escreva
+    código
+  - **Teste "e se a stack mudar?"** — toda AC deve sobreviver à
+    troca de stack (Go → Rust, Nuxt → React, PostgreSQL → MongoDB,
+    REST → GraphQL)
+  - **Checklist pré-post** com 9 itens verificáveis
+
+### Added — Cerca Técnica no `domain-expert.template.md`
+
+Domain-expert now **fences itself** from technology (symmetric to
+the Design fence added in v1.7.0):
+
+- ❌ NEVER specifies endpoints, payloads, JSON schema
+- ❌ NEVER specifies frameworks (Vue, Pinia, Nuxt UI, Go, Gin)
+- ❌ NEVER specifies ORM/bank/queue (`gorm.Model`, PostgreSQL,
+  Redis, SQS, Kafka)
+- ❌ NEVER specifies auth (OAuth2, JWT, mTLS, HMAC-SHA256)
+- ❌ NEVER specifies CI actions (Trivy SHA, CODEQL, golangci-lint)
+- ❌ NEVER specifies performance infra (índices compostos, réplicas,
+  HPA)
+- ✅ Always describes **domain behavior** ("persist the user") or
+  **SLO/SLA** ("listing efficient for 10k records, p95 ≤ 200ms")
+
+**Transformation table** (selected):
+
+| ❌ Anti-pattern (tech) | ✅ Correct (behavior) |
+|---|---|
+| "POST /api/v1/users with payload `{ name, email }`" | "Create user with name and email" |
+| "Save in PostgreSQL with `gorm.Model`" | "Persist the user durably and uniquely" |
+| "Cache with Redis and TTL 5min" | "Results consistent for up to 5 minutes" |
+| "OAuth2 + PKCE + refresh token rotation" | "Secure login without exposing credentials" |
+| "Helm chart with 3 replicas and HPA 70% CPU" | "Support 1,000 concurrent users" |
+| "Composite index (tenant_id, created_at DESC)" | "Listing efficient for 10k records, p95 ≤ 200ms" |
+| "Trivy action SHA-pinned" | "Vulnerability scan before merge" |
+
+### Added — §4.1.2 in `team-manager.md` — Technical fence + rerouting
+
+Team-manager now detects tech leaking in **two axes**:
+
+- **(a) Wrong issue type** — if `type/technical` / `type/infra` /
+  `type/tech-debt` / `type/docs` / `type/ui` is routed to
+  domain-expert, **immediate reroute** (bash script + reassign
+  to the correct persona).
+- **(b) Tech leaking inside ACs of a domain issue** — return to
+  domain-expert for reformulation in **behavior** or **SLO/SLA**.
+
+Includes a **template response** with 5 examples of
+anti-pattern → correct pattern.
+
+### Added — Invariante 20 in AGENTS.md
+
+Codifies the **2 symmetric fences** (Design + Technical) + the
+"e se a stack mudar?" test as a non-violable invariant of the
+meta-harness.
+
+### Changed — `domain-expert.template.md` frontmatter
+
+- Now lists **5 cercas** (POR QUÊ, Comportamento, Tipo apropriado,
+  Sem nome de personas, Sem ação de orquestração).
+- References the new skill
+  [`../skills/domain-refinement/SKILL.md`](../skills/domain-refinement/SKILL.md)
+  in the "Referências" section.
+- "Limites" section now includes "Não direciona implementação
+  técnica" + "Não é acionado para issues puramente técnicas".
+
+### Changed — `team-manager.md` §5.3
+
+`hermes skills install` list now includes the 3 new skills
+(`nuxt-ui-patterns`, `ux-design-best-practices`,
+`domain-refinement`).
+
+### Fixed — `cli/cmd/sync.go` pre-existing `Sprintf` arg mismatch
+
+`buildSyncPRBody` had 21 format placeholders but only 19 args
+(bug introduced in v1.6.1, undetected because `go test ./...`
+was not run in CI for the CLI). `go vet` failed. Added 2 `bt`
+args for the `See docs/HOWTO.md and harness/stack/versions.md`
+trailing placeholders.
+
 ## [1.7.0] - 2026-07-18
 
 ### Added — UI/UX skills + design cercas (ADR-0017)

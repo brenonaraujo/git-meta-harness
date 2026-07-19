@@ -238,7 +238,8 @@ See %sdocs/HOWTO.md%s and %sharness/stack/versions.md%s for details.`,
 		res.Added, res.Modified, res.Deleted, conflicts, bt, bt,
 		bt, bt,
 		bt, bt, bt, bt,
-		bt, bt, bt, bt)
+		bt, bt, bt, bt,
+		bt, bt)
 }
 
 func readLocalVersion(cwd string) string {

@@ -322,6 +322,39 @@ make compose-down
     Sensor [`09-verify-after-build`](./sensors/09-verify-after-build.md)
     codifica o protocolo. Ver §11 do
     [`personas/team-manager.md`](./personas/team-manager.md).
+20. **`domain-expert` fala em comportamento, não em UI nem em
+    tecnologia** (cercas duplas, v1.8.0).
+    - **Cerca de Design (v1.7.0)**: `domain-expert` **NÃO**
+      especifica componentes de UI (modal, botão, card, sidebar,
+      tab, dropdown, toast, slideover, drawer). Fala em
+      **comportamento do usuário** ("confirmar exclusão"), nunca
+      em **componente** ("clicar no modal"). Ver
+      [`personas/domain-expert.template.md`](./personas/domain-expert.template.md)
+      §"Cerca de Design" + skill
+      [`ux-design-best-practices`](./skills/ux-design-best-practices/SKILL.md).
+    - **Cerca Técnica (v1.8.0)**: `domain-expert` **NÃO**
+      especifica tecnologia (linguagem, framework, ORM, banco,
+      fila, protocolo, action de CI, índice de banco, Helm
+      chart). Fala em **comportamento de domínio** ("persistir
+      o usuário") ou em **SLO/SLA esperado** ("listagem
+      eficiente para 10k registros, p95 ≤ 200ms"), nunca em
+      **stack específica** ("PostgreSQL com `gorm.Model`"). ACs
+      devem sobreviver à troca de stack. Ver §"Cerca Técnica"
+      do `domain-expert.template.md` + skill
+      [`domain-refinement`](./skills/domain-refinement/SKILL.md).
+    - **Routing errado**: `domain-expert` é acionado **somente**
+      para `type/feature`, `type/bug` (de negócio) ou
+      `type/spike` (escopo de domínio). Para `type/technical`,
+      `type/infra`, `type/tech-debt`, `type/docs` ou `type/ui`
+      o `team-manager` deve **reroute imediato** (ver
+      §4.1.2 do `team-manager.md`). A skill
+      `domain-refinement` codifica a tabela de tipos e o
+      template de reroute.
+    - **Teste que toda AC deve passar**: "Se eu trocar a stack
+      inteira (Go → Rust, Nuxt → React, PostgreSQL → MongoDB,
+      REST → GraphQL, GHCR → ECR), essa AC ainda faz sentido?"
+      SIM → AC de comportamento. NÃO → AC acoplada a tech,
+      reformular.
 
 ---
 

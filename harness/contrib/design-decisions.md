@@ -1934,3 +1934,186 @@ Adicionar uma **CLI `gmh`** (git-meta-harness):
 - Mudar para outro framework = atualizar a skill
   `nuxt-ui-patterns` (e renomear) — as regras de design
   permanecem as mesmas.
+
+---
+
+## ADR-0018 — Cercas (técnica + design) + skill `domain-refinement` (v1.8.0)
+
+> **Status:** Aceito (2026-07-18).
+> **Contexto:** Mandaí v2 (jul/2026), validação do meta-harness.
+> **Decisão:** `domain-expert` fala em **comportamento de
+> domínio**, **NUNCA** em UI nem em tecnologia. **2 cercas
+> simétricas** (Design v1.7.0 + Técnica v1.8.0) + skill
+> dedicada `domain-refinement` que codifica o teste
+> "e se a stack mudar?".
+
+### Contexto
+
+Em jul/2026, durante calibração do meta-harness com Mandaí v2,
+identificamos **2 modos de falha complementares** do
+`domain-expert`:
+
+1. **Vazamento de design** (já tratado em v1.7.0, ADR-0017):
+   o `domain-expert` direcionava UI no refinamento ("clicar
+   no modal de confirmação", "drop-down com X, Y, Z",
+   "toast verde"), prendendo o frontend-engineer num padrão
+   ruim antes do design pensar. Cerca de Design adicionada
+   em v1.7.0.
+
+2. **Vazamento de tecnologia** (este ADR, v1.8.0): o
+   `domain-expert` foi acionado para refinar issues
+   **puramente técnicas** e direcionou implementação:
+   - Issue #A ("configurar Helm chart de staging") —
+     domain-expert escreveu "Helm chart com 3 réplicas
+     e HPA 70% CPU" em vez de "suportar X usuários
+     simultâneos no checkout".
+   - Issue #B ("criar índice composto no PostgreSQL") —
+     domain-expert escreveu "índice composto
+     (tenant_id, created_at DESC)" em vez de "listagem
+     eficiente para 10k pedidos, p95 ≤ 200ms".
+   - Issue #C ("atualizar Trivy action para SHA pinned") —
+     domain-expert escreveu "Trivy action SHA-pinned em
+     `aquasecurity/trivy-action@<sha-de-v0.35.0>`" em
+     vez de "scan de vulnerabilidades antes do merge".
+
+3. **Routing errado**: o `team-manager` estava acionando
+   `domain-expert` para `type/technical` / `type/infra` /
+   `type/tech-debt` / `type/docs` / `type/ui`. Não há
+   regra de negócio a refinar nessas issues.
+
+### Decisão
+
+**3 movimentos coordenados**:
+
+#### 1. Cerca Técnica no `domain-expert.template.md`
+
+Espelha a Cerca de Design (v1.7.0) com regra simétrica:
+
+> **Se a frase que você está escrevendo tem nome de tecnologia
+> (linguagem, framework, ORM, banco, fila, protocolo, action
+> de CI) → reformule para descrever o COMPORTAMENTO de
+> domínio ou o SLO/SLA esperado, não a implementação.**
+
+**Tabela de transformação (resumo)**:
+
+| ❌ Vazou (tech) | ✅ Certo (comportamento) |
+|---|---|
+| "Endpoint POST /api/v1/users" | "Permitir criar usuário" |
+| "PostgreSQL com `gorm.Model`" | "Persistir o usuário" |
+| "Redis TTL 5min" | "Resultados consistentes por 5min" |
+| "OAuth2 + PKCE" | "Login seguro sem expor credenciais" |
+| "Índice composto (a, b DESC)" | "Listagem eficiente para 10k (p95 ≤ 200ms)" |
+| "3 réplicas + HPA 70% CPU" | "Suportar 1k usuários simultâneos" |
+| "Trivy action SHA-pinned" | "Scan de vulnerabilidades antes do merge" |
+
+#### 2. Skill `harness/skills/domain-refinement/SKILL.md`
+
+Skill dedicada para o `domain-expert` (9.7KB) que codifica:
+
+- **Cerca #0** — Você é o POR QUÊ (não o COMO). Camadas:
+  Negócio (você) → Design (frontend) → Arquitetura
+  (solutions-architect) → Implementação (builders).
+- **Cerca #1** — Domínio fala em comportamento, técnico
+  fala em mecanismo. Tabela completa de transformação.
+- **Cerca #2** — Quando o tipo é `type/technical`,
+  `type/infra`, `type/tech-debt`, `type/docs`, `type/ui`
+  você **NÃO** é acionado (sinalizar ao `team-manager`).
+- **Cerca #3** — Não mencione personas pelo nome (você
+  descreve **o que precisa acontecer**, não **quem faz**).
+- **Cerca #4** — Não feche issues, não crie branches, não
+  escreva código.
+- **Teste do "e se a stack mudar?"** — toda AC deve
+  sobreviver à troca de stack (Go → Rust, Nuxt → React,
+  PostgreSQL → MongoDB, REST → GraphQL).
+- **Checklist pré-post** com 9 itens (ACs em
+  comportamento, sem personas, sem tech, etc).
+
+#### 3. §4.1.2 no `team-manager.md` — detecção + rerouting
+
+Team-manager agora detecta tech vazando em DOIS eixos:
+
+- **(a) Tipo errado da issue**: `type/technical`,
+  `type/infra`, `type/tech-debt`, `type/docs`, `type/ui` →
+  reroute imediato (script bash pronto).
+- **(b) Tech vazando em ACs de domínio**: devolve para
+  `domain-expert` reformular em comportamento de
+  domínio ou SLO/SLA.
+
+**Sinais de violação (em ambos eixos)**:
+
+- Endpoints, payloads, JSON schema
+- Frameworks (Vue, Pinia, Nuxt UI, Go, Gin, FastAPI)
+- ORM/banco/queue (`gorm.Model`, PostgreSQL, Redis, SQS)
+- Auth (OAuth2, JWT, mTLS, HMAC-SHA256)
+- CI (Trivy action SHA-pinned, CODEQL, golangci-lint)
+- Performance (índices compostos, réplicas, HPA)
+- Resiliência (circuit breaker, DLQ, retry exponencial)
+  — pode descrever **comportamento** de resiliência, mas
+  não a tech.
+
+#### 4. Invariante 20 na AGENTS.md
+
+Codifica as 2 cercas + teste de stack-agnostic como
+invariante não-violável do meta-harness.
+
+### Consequências
+
+- **+** `domain-expert` mantém foco no domínio. Não
+  compete com `frontend-engineer` (UI) nem com
+  `solutions-architect` (tech).
+- **+** ACs viram **promessas stack-agnostic** que
+  sobrevivem a migrações (PostgreSQL → MongoDB, REST →
+  GraphQL, etc).
+- **+** Histórico de issues não fica desatualizado quando
+  a stack muda.
+- **+** `team-manager` tem ferramenta de detecção em 2
+  eixos (tipo errado + tech vazando).
+- **+** Routing mais enxuto: `type/technical`,
+  `type/infra`, `type/tech-debt`, `type/docs`, `type/ui`
+  pulam `domain-expert` (sem overhead).
+- **+** Skill dedicada dá referência canônica (não
+  precisa decorar — basta consultar).
+- **−** `domain-expert` precisa aprender a falar em
+  comportamento (curva de aprendizado inicial,
+  mitigada pela skill `domain-refinement` + tabela
+  de transformação).
+- **−** `team-manager` precisa detectar tech vazando
+  (mais um sinal para ficar atento, mitigado pelo
+  template de resposta em §4.1.2).
+
+### Reversibilidade
+
+- Reverter = remover a skill `domain-refinement`,
+  reverter a Cerca Técnica do `domain-expert.template.md`,
+  reverter §4.1.2 do `team-manager.md`, reverter
+  invariante 20. ~45 min.
+- Manter a Cerca de Design (v1.7.0) mesmo se reverter
+  esta cerca (são independentes — uma foca em UI, outra
+  em tech).
+- Migrar a skill para outro framework = atualizar
+  apenas os exemplos da tabela de transformação (as
+  regras de "stack-agnostic" permanecem).
+
+### Lições do Mandaí v2 (jul/2026)
+
+| Sintoma observado | Correção |
+|---|---|
+| Domain-expert escreveu "Helm chart 3 réplicas" | "Suportar 1k usuários simultâneos" |
+| Domain-expert escreveu "índice composto (a, b DESC)" | "Listagem eficiente p95 ≤ 200ms" |
+| Domain-expert escreveu "OAuth2 + PKCE" | "Login seguro sem expor credenciais" |
+| Domain-expert escreveu "Trivy action SHA-pinned" | "Scan de vulnerabilidades antes do merge" |
+| Team-manager roteou `type/technical` para domain-expert | Reroute para `solutions-architect` |
+| Domain-expert mencionou "@solutions-architect, valida X" | "A próxima etapa é validar o DoD técnico" |
+
+**Custo evitado**: ~3 retrocessos por mês onde o
+`domain-expert` reescrevia ACs de domínio toda vez que
+a stack mudava (Go 1.22 → 1.25, SQS → Kafka,
+monolith → microservice) — ~4h/mês de retrabalho
+economizado.
+
+**Validação**: aplicado em Mandaí v2 via
+`gmh update --to v1.8.0 --force` (após release).
+`gmh agents sync` deve instalar `domain-refinement`
+skill em `~/.hermes/skills/` e propagar a Cerca Técnica
+para o profile `domain-expert-mandai` (já customizado,
+só atualiza, não sobrescreve).
