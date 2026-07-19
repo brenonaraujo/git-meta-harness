@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.9] - 2026-07-18
+
+### Fixed — `gmh update --to vX.Y.Z` now bumps the local VERSION file even when `harness/` is unchanged
+
+**Bug**: `gmh update --to vX.Y.Z` would report
+`"No changes needed"` and exit early (line 100, before the
+`copyFile(VERSION)` block) when the local `harness/` directory
+already matched the target version. This meant the local
+`VERSION` file would **not** be updated to the target version
+even though the project was now "pinned" to it.
+
+**Workaround documented in v1.6.8 release**: bump VERSION
+manually (`echo 1.6.X > VERSION`) after running `gmh update`.
+
+**Fix**: moved the `VERSION` copy block to **before** the
+no-changes early return. The target version is the source of
+truth for the pin, regardless of whether `harness/` content
+changed. Output now reads:
+`"No changes needed (VERSION bumped to v1.6.X)"`.
+
+`gmh doctor` will no longer report `Out of date by 0 version(s)`
+followed by `Latest: vX.Y.Z / Local: v(W-1)` after a `gmh update`
+that doesn't change `harness/`.
+
 ## [1.6.8] - 2026-07-18
 
 ### Fixed — `cli-release.yml` workflow can now create + populate the release in one step

@@ -95,8 +95,20 @@ Examples:
 			}
 			ui.Info("Diff: %s", d.Summary())
 
+			// Bump VERSION file FIRST — before the no-changes early return.
+			// The target version is the source of truth, regardless of whether
+			// the harness/ directory content already matches.
+			if !dryRun {
+				if err := copyFile(
+					filepath.Join(source.ExtractedRoot(remoteHarness), "VERSION"),
+					filepath.Join(cwd, "VERSION"),
+				); err != nil {
+					ui.Warn("Could not update VERSION file: %v", err)
+				}
+			}
+
 			if d.Added+d.Modified+d.Deleted == 0 {
-				ui.OK("No changes needed")
+				ui.OK("No changes needed (VERSION bumped to %s)", target)
 				return nil
 			}
 
@@ -117,11 +129,6 @@ Examples:
 				ui.Info("Dry run — no changes applied")
 				return nil
 			}
-
-			_ = copyFile(
-				filepath.Join(source.ExtractedRoot(remoteHarness), "VERSION"),
-				filepath.Join(cwd, "VERSION"),
-			)
 
 			ui.OK("Updated: +%d ~%d -%d (skipped: %d)", res.Added, res.Modified, res.Deleted, res.Skipped)
 			if len(res.Conflicts) > 0 {
