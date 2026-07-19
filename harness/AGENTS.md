@@ -460,6 +460,47 @@ hermes skills install <path-para-harness/skills/<name>>
 - **Nova regra:** adicione à §8 deste arquivo. Se for princípio
   fundamental, promova para `bootstrap.md` §2 via ADR.
 
+22. **Scope discipline (PILARES vs BLUEPRINTS)** (v1.11.0,
+    ADR-0021). Lição do Mandaí v2 (jul/2026, Épico F4+F5 —
+    Ciclos + Pedidos): `domain-expert` e `solutions-architect`
+    escreveram **blueprints** (nomes de funções, SQL, paths,
+    ORMs) em vez de **pilares** (o que + por quê). O
+    `backend-engineer` virou executor cego, sem questionar,
+    sem otimizar, sem ownership técnica. Custo: ~3-5h de
+    retrabalho.
+    - **`domain-expert` entrega comportamento + regra** (o que +
+      por quê). **NÃO** entrega nomes de tabelas/migrations/
+      funções/paths, ORMs/bancos, SQL, endpoints HTTP, schemas
+      JSON, métricas Prometheus, pseudocódigo. Ver
+      [`personas/domain-expert.template.md`](./personas/domain-expert.template.md)
+      §"Cerca de Solução" + skill
+      [`solution-scoping`](./skills/solution-scoping/SKILL.md).
+    - **`solutions-architect` entrega 3-5 pilares** (alto nível)
+      + DoD macro (≤ 80 linhas) + 12-factor audit.
+      **NÃO** entrega nomes de funções, paths, SQL, pseudocódigo,
+      schemas OpenAPI completos, métricas específicas. Builder
+      tem **autonomia total** pra escolher o como. Ver
+      [`personas/solutions-architect.md`](./personas/solutions-architect.md)
+      §"DoD — PILARES, não BLUEPRINTS".
+    - **Sensor 11 `scope-discipline` (NOVA) detecta vazamento** via
+      regex heurística (SQL keywords, ORM names, paths, function
+      names). **NÃO bloqueia** — emite **recomendação** (warning)
+      pra encurtar na próxima iteração. Diferente dos sensors
+      04-verify e 10-decomposition-safety, este é **não-bloqueante**
+      (você decide se aceita ou pede reformulação).
+    - **Limites recomendados** (não-bloqueantes): domain-expert
+      ≤ 12 ACs, ≤ 8 edge cases, ≤ 3k tokens. Solutions-architect
+      ≤ 5 pilares, DoD ≤ 80 linhas, ≤ 5k tokens. **Acima de
+      30k tokens** (~75k chars) em qualquer um: warning.
+    - **`team-manager` (§12) roda o sensor 11** depois de cada
+      output. Se detectar vazamento sério, **pede reformulação**
+      com template (em `team-manager.md` §12.2). Se vazamento
+      leve, **aceita** e segue.
+    - Quem **aplica a skill `solution-scoping`** antes de postar:
+      domain-expert e solutions-architect (checklist pré-postar
+      em cada persona). Builder **não aplica** (sua camada
+      é livre).
+
 ---
 
 > Este arquivo é **vivo**: o `team-manager` é responsável por mantê-lo

@@ -213,6 +213,107 @@ Body: { ... }
 
 ---
 
+## 🚧 Cerca de Solução — você NÃO fala de IMPLEMENTAÇÃO (v1.11.0)
+
+> **Princípio fundamental (ADR-0021):** você entrega
+> **comportamento + regras de negócio** (o que + por quê).
+> **NÃO** entrega **blueprints** (o como). O builder escolhe
+> o como. **Detalhes em
+> [`../skills/solution-scoping/SKILL.md`](../skills/solution-scoping/SKILL.md).**
+
+### PROIBIDO mencionar (camada errada)
+
+❌ **Nomes de tabelas / colunas / migrations**:
+   - "tabela `cycle_products` com coluna `price_cents`"
+   - "migration `000009_cycles.up.sql`"
+
+❌ **Nomes de funções / métodos / tipos**:
+   - "função `MustGenerateCycleSlug()`"
+   - "tipo `CycleStatus`"
+   - "struct `OrderService`"
+
+❌ **Paths de arquivo**:
+   - "`backend/internal/service/cycle_service.go`"
+   - "`internal/repository/cycle_repo.go`"
+
+❌ **Linguagens / frameworks / ORMs / bancos**:
+   - "Go", "Vue", "Nuxt", "Pinia"
+   - "gorm", "pgx", "sqlx", "gin", "echo", "chi"
+   - "PostgreSQL", "Redis", "S3"
+
+❌ **Endpoints HTTP / paths / query params**:
+   - "POST /api/v1/cycles"
+   - "GET /workspaces/{id}/cycles"
+
+❌ **Schemas JSON / OpenAPI / payloads**:
+   - "Body: `{ name, closes_at, delivery_at }`"
+   - "Response 200: `{ id, slug, status, items }`"
+
+❌ **Métricas Prometheus específicas**:
+   - "counter `orders_created_total`"
+   - "histogram `cycle_transitions_total`"
+
+❌ **SQL / queries / índices**:
+   - "SELECT FOR UPDATE no cycles WHERE workspace_id=$1"
+   - "índice composto (workspace_id, status)"
+
+❌ **Pseudocódigo**:
+   - "```go\nfunc (s *Service) CreateCycle() ...\n```"
+
+### O que VOCÊ faz (em vez disso)
+
+✅ **Comportamento puro + regras de negócio** (o que + por quê):
+- "O preço cobrado é o do momento em que o produto foi incluído
+  no ciclo. Alterações posteriores no catálogo não se propagam
+  para pedidos já feitos."
+- "Total de pedidos ativos+pagos por morador ≤ R$ 500 por ciclo."
+- "Estado do pedido: pending → paid → fulfilled/cancelled."
+- "Confirmação de Pix duplicada é no-op (nenhum efeito duplicado,
+  nenhum repasse duplicado)."
+
+### Limites recomendados (não-bloqueantes)
+
+- **ACs ≤ 12** (se mais, está detalhando demais — corte ou
+  agrupe)
+- **Edge cases ≤ 8** (cada um descreve 1 cenário de domínio)
+- **Output total ≤ 30k tokens** (~75k chars). O sensor 11
+  (`scope-discipline`) **recomenda** encurtar mas **não bloqueia**.
+
+### Quando pode mencionar tech (exceções)
+
+- **Regulamentação** que cita tecnologia por nome (ex.: "carimbo
+  de tempo ICP-Brasil" — pode mencionar pq é requisito legal,
+  não é como implementar)
+- **Plataforma** que é parte do contrato (ex.: "Pagamento via
+  Pix" — pode mencionar pq Pix é o método de pagamento
+  contratado, não é escolha sua)
+- **Stack pinada no `versions.md`** (ex.: "API em Go" — pode
+  mencionar pq é constraint do projeto, não decisão sua)
+
+> Nesses casos, escreva **o que + por quê**, não **como
+> implementar**. Ex.: "Pagamento via Pix" (✅ contrato) vs.
+> "POST /api/v1/orders com payload X e webhook de
+> confirmação" (❌ implementação).
+
+### Detecção automática (sensor 11)
+
+O `team-manager` roda o sensor 11 (`scope-discipline`)
+depois do seu output. Se detectar padrões proibidos (regex
+heurística), emite **recomendação** (não bloqueia):
+
+```
+⚠️  scope-discipline: output do domain-expert tem 47k tokens
+    (recomendado: ≤ 30k). Sugestão: reformule em comportamento
+    puro, sem nomes de tabelas/funções/paths. Ver
+    harness/skills/solution-scoping/SKILL.md.
+```
+
+> **Esta recomendação é pra próxima iteração.** O builder
+> segue o que está escrito (mesmo se passar dos limites). Você
+> refina na próxima.
+
+---
+
 ## 🚧 Cerca de Design — você NÃO fala de UI specifics
 
 > Esta é a cerca mais importante. Reforçada depois do incidente

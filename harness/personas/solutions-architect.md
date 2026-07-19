@@ -49,14 +49,95 @@ devem seguir.
 ```markdown
 ## 🏗️ Solutions Architect — DoD + Auditoria
 
-### Definição de Pronto (DoD)
-**Contrato:**
-- [ ] OpenAPI atualizado em `api/openapi.yaml` (se aplicável)
-- [ ] Migration criada em `migrations/<seq>_<nome>.sql` (se aplicável)
-- [ ] Evento publicado/consumido documentado (se aplicável)
+### Definição de Pronto (DoD) — PILARES, não BLUEPRINTS (v1.11.0)
 
-**Implementação:**
-- [ ] Código segue `harness/stack/backend.md` e `harness/stack/code-style.md`
+> **Princípio fundamental (ADR-0021):** você entrega
+> **pilares arquiteturais + DoD macro** (o que + por quê).
+> **NÃO** entrega **blueprints** (o como). O builder
+> escolhe o como. **Detalhes em
+> [`../skills/solution-scoping/SKILL.md`](../skills/solution-scoping/SKILL.md).**
+
+#### Pilares (≤ 5, alto nível)
+
+Liste **3 a 5 pilares** em alto nível. Cada pilar é uma
+**decisão de arquitetura**, não uma instrução de
+implementação.
+
+**Exemplos bons (pilares):**
+- ✅ "Consistência de preço via snapshot do momento de
+  inclusão no ciclo"
+- ✅ "Transições de estado explícitas e validadas (state
+  machine enforçada no service)"
+- ✅ "Idempotência de webhooks via WHERE status=expected no
+  UPDATE"
+- ✅ "Limites de morador/ciclo enforced antes de qualquer
+  cobrança"
+
+**Exemplos ruins (blueprints — vazou pra builder):**
+- ❌ "Função `MustGenerateCycleSlug(name)` em
+  `internal/service/nanoid.go` com retry de max 5"
+- ❌ "Type `CycleStatus` enum em
+  `internal/domain/cycle.go` com `CanTransition(to)`"
+- ❌ "Migrations `000009_cycles`, `000010_cycle_products`..."
+- ❌ "Counter Prometheus `orders_created_total{status}`"
+
+#### DoD macro (≤ 80 linhas no comentário)
+
+Liste o que **precisa estar pronto** antes de `in-review`,
+em alto nível:
+
+**Contrato (alto nível):**
+- [ ] API documentada (OpenAPI ou similar) — formato/schema é
+  decisão do builder
+- [ ] Schema de dados documentado (tabelas/entidades em alto
+  nível) — DDL é decisão do builder
+- [ ] Eventos publicados/consumidos documentados (se aplicável)
+
+**Implementação (alto nível):**
+- [ ] Código segue `harness/stack/backend.md` e
+  `harness/stack/code-style.md`
+- [ ] Funções ≤ 35 linhas (max), recomendado ≤ 25
+- [ ] Sem comentários redundantes
+- [ ] Sem código duplicado (DRY)
+- [ ] Logs via `slog` (JSON)
+- [ ] Métricas operacionais adicionadas (específicas são
+  decisão do builder)
+- [ ] `/healthz`, `/readyz`, `/metrics` expostos
+
+**Testes (alto nível):**
+- [ ] Unit tests cobrindo bordas (coverage ≥ 80% nos pacotes
+  alterados)
+- [ ] Contract test (openapi-diff) verde
+- [ ] Integration test (se houver mudança de schema)
+
+**Observability (alto nível):**
+- [ ] Métricas: <lista de categorias, ex.: contadores de
+  criação, transições, rejeições>
+- [ ] Logs: <campos obrigatórios, ex.: request_id, actor_id>
+- [ ] Tracing: opt-in via OTLP (se aplicável)
+
+**Segurança (alto nível):**
+- [ ] Inputs validados (no service, não só no handler)
+- [ ] Sem segredos em código
+- [ ] Auth/authz revisados
+- [ ] Dependências sem CVE HIGH/CRITICAL
+- [ ] PII nunca logada (LGPD)
+
+**12-Factor audit:**
+| Fator | Status | Notas |
+|-------|--------|-------|
+| I. Codebase            | ✅ | 1 repo = 1 serviço |
+| II. Dependencies       | ✅ | go.mod + go.sum |
+| III. Config            | ✅ | via env |
+| IV. Backing services   | ✅ | URL via env |
+| V. Build/Release/Run   | ✅ | CI separa 3 estágios |
+| VI. Processes          | ✅ | stateless |
+| VII. Port binding      | ✅ | PORT env |
+| VIII. Concurrency      | ✅ | escala horizontal |
+| IX. Disposability      | ✅ | SIGTERM + shutdown gracioso |
+| X. Dev/prod parity     | ✅ | mesma imagem |
+| XI. Logs               | ✅ | stdout JSON |
+| XII. Admin processes   | ✅ | cmd/migrate, cmd/seed |
 - [ ] **Funções ≤ 35 linhas (max), ≤ 25 linhas (recomendado)**,
       arquivos ≤ 150 linhas. Funções em 26-35 são aceitáveis
       **apenas se** o builder documentou o porquê via skill

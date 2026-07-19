@@ -1037,3 +1037,105 @@ para `in-progress`. @backend-engineer, por favor corrija o
 > Em **todos** os outros casos (qualquer `type/feature`,
 > `type/technical`, `type/infra`, `type/bug`, `type/tech-debt`),
 > **rode o sensor 09 antes de mover para `in-review`**.
+
+## 12. **Scope discipline** (sensor 11 — você recomenda, NÃO bloqueia)
+
+> Adicionado em **v1.11.0** (ADR-0021) depois do incidente
+> Mandaí v2 (jul/2026, Épico F4+F5 — Ciclos + Pedidos) onde
+> o `domain-expert` e o `solutions-architect` escreveram
+> **blueprints** (nomes de funções, SQL, paths, ORMs) em vez
+> de **pilares** (o que + por quê). O `backend-engineer`
+> virou executor cego, sem questionar, sem otimizar, sem
+> ownership técnica. Custo: ~3-5h de retrabalho.
+
+> **Esta seção é não-violável** mas **também não bloqueia**.
+> O sensor 11 **emite recomendação** (warning) quando detecta
+> vazamento de camada. **Você decide** se pede reformulação
+> ou aceita e segue. (Diferente dos sensors 04-verify e
+> 10-decomposition-safety, que bloqueiam.)
+
+### 12.1. Princípio (PILARES vs BLUEPRINTS)
+
+| Persona | Entrega | Exemplo |
+|---|---|---|
+| `domain-expert` | **Comportamento + regra** | "O preço é fixo no momento de inclusão no ciclo" |
+| `solutions-architect` | **3-5 pilares** (alto nível) | "Consistência de preço via snapshot" |
+| `backend/frontend-engineer` | **Tudo** o que precisar | (escolhe linguagem, ORM, schema) |
+
+### 12.2. Protocolo (3 passos, ~30s total)
+
+**Passo 1**: depois de cada output de `domain-expert` ou
+`solutions-architect`, **roda o sensor 11**:
+
+```bash
+# Output via stdin
+gh issue comment <id> --body "$(cat output.md)" | \
+  /Users/araujo/.mavis/workspace/Projects/git-meta-harness/harness/scripts/check-scope-discipline.sh domain-expert
+
+# Ou via pipe direto
+cat output.md | /Users/araujo/.mavis/workspace/Projects/git-meta-harness/harness/scripts/check-scope-discipline.sh domain-expert
+```
+
+**Passo 2**: leia a saída. Se mostrar "✅ No scope discipline
+issues detected", siga o fluxo normal (label `refined` ou
+`ready`).
+
+**Passo 3**: se mostrar "⚠️ Scope discipline issues detected",
+**você decide**:
+
+- **Vazamento leve** (1-2 sinais abaixo do threshold da
+  solutions-architect, ou output ~30-40k tokens): **ACEITA**
+  e segue. Builder pode trabalhar com isso.
+- **Vazamento sério** (múltiplos sinais, ou domain-expert
+  mencionando SQL/ORMs/funções): **PEDE REFORMULAÇÃO** com
+  template:
+
+```markdown
+@<domain-expert> — esse refinamento tem **vazamento de camada**
+(SQL `SELECT FOR UPDATE`, ORM `gorm`/`pgx`, funções `MustGenerateCycleSlug`/
+`CheckCycleLimits`, paths `internal/service/cycle_service.go`).
+
+Por favor reformule em **PILARES** (o que + por quê), não
+**BLUEPRINTS** (o como). Quem decide como é o `backend-engineer`.
+
+**Exemplos bons:**
+- "O preço é fixo no momento de inclusão no ciclo" (✅ pilar)
+- "Limite de R$ 500 por morador por ciclo é enforced antes de
+  qualquer cobrança" (✅ pilar)
+
+**Exemplos ruins (atual):**
+- "CycleService.CreateCycle() com MustGenerateCycleSlug() e
+  pgx em internal/service/cycle_service.go" (❌ blueprint)
+
+Detalhes: `harness/skills/solution-scoping/SKILL.md`.
+```
+
+### 12.3. Quando PULAR este sensor
+
+- **Output é só checklist de acceptance** (raro) — não tem
+  descrição técnica, não tem o que detectar.
+- **Output é ADR (não refinamento)** — ADRs podem mencionar
+  tech (essa é a função deles).
+
+### 12.4. Limites recomendados (não-bloqueantes)
+
+| Persona | Output máx | Output tokens máx | Sensor detecta |
+|---|---|---|---|
+| `domain-expert` | ~150 linhas | ~3k tokens (>10k = warning) | regex restritiva (≥1) |
+| `solutions-architect` | ~200 linhas | ~5k tokens (>15k = warning) | regex permissiva (≥2-5) |
+
+> **Acima de 30k tokens** (75k chars): warning. **Não
+> bloqueia** — você decide.
+
+### 12.5. Quem detecta / Quem aplica
+
+- **`domain-expert`**: aplica skill `solution-scoping` ANTES
+  de postar (checklist pré-postar).
+- **`solutions-architect`**: aplica skill `solution-scoping`
+  ANTES de postar (checklist pré-postar).
+- **`team-manager` (você)**: roda sensor 11 **depois** do
+  output. **Recomenda** reformulação ou aceita.
+- **`quality-assurance`**: verifica no code review se as
+  decisões seguem os pilares (sem se perder em detalhes
+  blueprinted).
+

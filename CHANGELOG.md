@@ -5,6 +5,90 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.11.0] - 2026-07-19
+
+### Added — Scope Discipline (PILARES vs BLUEPRINTS) (ADR-0021)
+
+**Context**: Mandaí v2's Épico F4+F5 (Ciclos + Pedidos)
+showed the `domain-expert` and `solutions-architect` writing
+**blueprints** (function names, SQL, paths, ORMs) instead of
+**pillars** (what + why). The `backend-engineer` became a
+**blind executor** — followed the blueprint without
+questioning, without optimizing, without technical ownership.
+Cost: ~3-5h of rework per blueprint mistake.
+
+**3 coordinated changes**:
+
+1. **Skill `solution-scoping` (NEW, 12KB)** — codifies the
+   PILARES vs BLUEPRINTS principle with:
+   - 6 categories with good (pillar) vs bad (blueprint) examples:
+     pricing, limits, state machine, idempotency, compliance,
+     slug uniqueness
+   - Per-persona rules (DO vs DON'T)
+   - Detection heuristics (regex patterns)
+   - Recommended limits (non-blocking)
+   - Pre-post checklist (domain-expert + solutions-architect)
+
+2. **Sensor 11 `scope-discipline` (NEW)** +
+   [`harness/scripts/check-scope-discipline.sh`](harness/scripts/check-scope-discipline.sh)
+   (3.7KB):
+   - Detects 10 patterns via regex (SQL keywords, ORM names,
+     paths, function names, migrations, endpoints, prometheus,
+     tokens)
+   - **Non-blocking** (different from sensors 04-verify and
+     10-decomposition-safety which block) — emits
+     **recommendation** (warning) to shorten on next iteration
+   - Per-persona thresholds: `domain-expert` ≥ 1 (zero
+     tolerance for tech), `solutions-architect` ≥ 2-5
+     (more permissive, can mention pinned stack)
+   - **Does NOT truncate** — output passes through unchanged
+   - 4 validated test cases (clean + leaked for both personas)
+
+3. **`team-manager.md` §12 (NEW)** — "Scope discipline" with:
+   - Principle (PILARES vs BLUEPRINTS)
+   - 3-step protocol (run sensor → interpret → decide)
+   - Reformulation template
+   - When to skip (output is just checklist or ADR)
+   - Recommended limits
+   - Who detects / applies
+
+4. **AGENTS.md invariante 22 (NEW)** — scope discipline as
+   non-violable (but non-blocking). Aligned with invariants
+   20/21 (non-violable + blocking) but inverted: non-violable
+   + non-blocking.
+
+5. **Reforced fences** in:
+   - [`harness/personas/domain-expert.template.md`](harness/personas/domain-expert.template.md):
+     added "🚧 Cerca de Solução — você NÃO fala de IMPLEMENTAÇÃO"
+   - [`harness/personas/solutions-architect.md`](harness/personas/solutions-architect.md):
+     replaced DoD with "PILARES, não BLUEPRINTS" + 3-5 pilares + DoD macro
+
+6. **ADR-0021** (full decision documentation with 6 lessons
+   from Mandaí v2's F4+F5 incident).
+
+7. **CHANGELOG + VERSION** (1.10.3 → 1.11.0).
+
+**Non-blocking by design** (per user request): the
+recommendation from sensor 11 is **advisory only** — the
+team-manager decides whether to request reformulation or
+accept. This avoids the "blocker tax" of false positives
+while still surfacing the issue.
+
+**Validated test cases** (4):
+1. Clean `domain-expert` output → ✅ no issues
+2. Leaked `domain-expert` (SQL, ORMs, paths) → ⚠️ 6 signals
+3. Clean `solutions-architect` (4 pillars) → ✅ no issues
+4. Leaked `solutions-architect` (functions, SQL, paths) → ⚠️ 6 signals
+
+**Limits (non-blocking recommendations)**:
+- `domain-expert`: ≤ 12 ACs, ≤ 8 edge cases, ≤ 3k tokens
+- `solutions-architect`: ≤ 5 pillars, DoD ≤ 80 lines, ≤ 5k tokens
+- **>30k tokens** (75k chars): warning (anyone)
+
+**Cost avoided**: ~3-5h/épico × 4 épicos/month = ~12-20h/month
+of rework avoided by giving builder autonomy instead of
+blueprints.
+
 ## [1.10.3] - 2026-07-19
 
 ### Fixed — Hermes desktop UI shows 0 skills (HOTFIX)

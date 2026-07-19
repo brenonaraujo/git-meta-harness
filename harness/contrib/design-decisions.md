@@ -2463,3 +2463,212 @@ deve:
   função ficar > 25
 - QA deve revisar e aprovar com base na skill
   aplicada, não na forma da função
+
+---
+
+## ADR-0021 — Scope Discipline (PILARES vs BLUEPRINTS) (v1.11.0)
+
+> **Status:** Aceito (2026-07-19).
+> **Contexto:** Mandaí v2, Épico F4+F5 (Ciclos + Pedidos),
+> jul/2026.
+> **Decisão:** `domain-expert` e `solutions-architect`
+> entregam **PILARES** (o que + por quê), **NÃO** BLUEPRINTS
+> (o como). Builder tem **autonomia total** pra implementar.
+> **Sensor 11 `scope-discipline` (NOVA) detecta vazamento
+> de camada com regex heurística e emite RECOMENDAÇÃO
+> (warning, não bloqueia) pra encurtar na próxima iteração.
+
+### Contexto
+
+Em jul/2026, durante o refinamento do Épico F4+F5 (Ciclos
+de Compra + Pedidos) do Mandaí v2, o `domain-expert` e o
+`solutions-architect` entregaram **blueprints detalhados**
+em vez de **pilares arquiteturais**:
+
+**`domain-expert` entregou**:
+- 19 ACs (OK, é papel dele)
+- 18 edge cases (OK)
+- **Mas também mencionou**:
+  - "snapshot em `cycle_products.price_cents INTEGER NOT NULL`"
+  - "auto-join via `INSERT em workspace_members (ON CONFLICT
+    DO NOTHING)`"
+  - "máquina de estado (state machine)"
+  - "Idempotência de webhooks (compliance BACEN)"
+
+**`solutions-architect` entregou**:
+- DoD de **150+ linhas**
+- **Code-level decisions** (que são do builder):
+  - Função `MustGenerateCycleSlug(name string) string` com
+    `nanoid(12)` em `internal/service/nanoid.go`
+  - `func (c *Cycle) CanTransition(to CycleStatus) error` em
+    `internal/domain/cycle.go`
+  - `INSERT INTO order_items (order_id, product_id, quantity,
+    unit_price_cents) VALUES (..., cycle_product.price_cents, ...)`
+  - Migrations `000009_cycles.up.sql`, `000010_cycle_products.up.sql`,
+    `000011_orders.up.sql`, `000012_order_items.up.sql`,
+    `000013_audit_log.up.sql`
+  - Counter `orders_created_total{status}`,
+    `cycle_transitions_total{from, to}`,
+    `order_auto_join_total{workspace_id}`,
+    `order_limit_rejections_total{reason}`
+
+**Resultado**:
+- O `backend-engineer` virou **executor cego** — só seguiu
+  o blueprint, sem questionar, sem otimizar, sem ownership
+  técnica.
+- Decisões blueprinted (e.g., "retry de slug com max 5",
+  "snapshot em 2 colunas cycle_products + order_items")
+  estavam **engessadas** — quando o builder percebeu que
+  algumas eram subótimas, ~3-5h de retrabalho.
+- Domínio + arquitetura + implementação ficaram
+  **misturados** num só documento. Impossível evoluir
+  uma camada sem reescrever a outra.
+
+**Causa raiz**:
+1. `domain-expert` e `solutions-architect` não tinham
+   **limites explícitos** de output
+2. Eram incentivados a escrever mais (mais detalhe = "mais
+   completo" do ponto de vista do modelo)
+3. As cercas anteriores (Design v1.7.0, Técnica v1.8.0)
+   focavam em **UI** e **linguagem/banco**, mas não em
+   **pilares vs blueprints**
+
+### Decisão
+
+**3 mudanças coordenadas**:
+
+#### 1. Princípio canônico: PILARES vs BLUEPRINTS
+
+| Camada | Quem | Entrega |
+|---|---|---|
+| **Negócio** | `domain-expert-<x>` | Comportamento + regras + edge cases (≤ 12 ACs, ≤ 8 E-C) |
+| **Arquitetura** | `solutions-architect` | 3-5 **pilares** (alto nível) + DoD macro (≤ 80 linhas) + 12-factor audit |
+| **Implementação** | `backend-engineer` / `frontend-engineer` | **Tudo** o que precisar (escolha livre de linguagem, ORM, schema, query) |
+
+> **PILAR** = decisão de arquitetura em alto nível (ex.:
+> "consistência de preço via snapshot do momento de
+> inclusão"). **BLUEPRINT** = instrução de implementação
+> (ex.: "tabela `cycle_products.price_cents` copia valor
+> para `order_items.unit_price_cents` no INSERT").
+
+#### 2. Skill `solution-scoping` (NOVA, ~12KB)
+
+[`harness/skills/solution-scoping/SKILL.md`](../skills/solution-scoping/SKILL.md)
+codifica:
+- Princípio central (PILARES vs BLUEPRINTS)
+- 6 categorias com exemplos bons (pilares) vs ruins (blueprints):
+  pricing, limites, state machine, idempotência, compliance,
+  slug uniqueness
+- Regras por persona (FAZ vs NÃO FAZ)
+- Detector de vazamento (regex heurística)
+- Limites recomendados (não-bloqueantes)
+- Checklist pré-postar (domain-expert + solutions-architect)
+- Quem detecta / valida
+
+#### 3. Sensor 11 `scope-discipline` (NOVA) + script
+
+[`harness/sensors/11-scope-discipline.md`](../sensors/11-scope-discipline.md)
++ [`harness/scripts/check-scope-discipline.sh`](../scripts/check-scope-discipline.sh)
+(3.7KB).
+
+**Comportamento**:
+- **NÃO bloqueia** (diferente dos sensors 04-verify e
+  10-decomposition-safety que bloqueiam)
+- Detecta 10 padrões via regex:
+  - `sql_keywords` (SELECT, INSERT, UPDATE, DELETE, WHERE,
+    FROM)
+  - `orm_names` (gorm, pgx, sqlx, sqlc, gin, echo, chi,
+    fiber, nestjs, express)
+  - `typeorm_nestjs` (TypeORM, GORM, PGx, etc)
+  - `go_files` (`*.go`)
+  - `internal_paths` (`internal/...`)
+  - `migrations` (`00000N_*.up.sql`)
+  - `endpoints` (`(GET|POST|PUT|PATCH|DELETE) /api`)
+  - `func_names` (PascalCase function declarations)
+  - `prometheus` (`prometheus.NewCounter`, etc)
+  - `tokens` (> 75k chars = ~30k tokens)
+- Thresholds **diferenciados**:
+  - `domain-expert`: ≥ 1 (zero tolerância a tech)
+  - `solutions-architect`: ≥ 2-5 (mais permissivo, pode
+    mencionar stack pinada)
+- **Emite recomendação** (warning) com template de
+  reformulação. Builder **segue o que está escrito** mesmo
+  se passar dos limites.
+
+#### 4. `team-manager.md` §12 (NOVA)
+
+Adiciona §"Scope discipline" com:
+- Princípio (PILARES vs BLUEPRINTS)
+- Protocolo de 3 passos (rodar sensor → interpretar →
+  decidir)
+- Template de reformulação
+- Quando PULAR (output é só checklist ou ADR)
+- Limites recomendados
+- Quem detecta / aplica
+
+#### 5. AGENTS.md invariante 22 (NOVA)
+
+Codifica scope discipline como **não-violável** (mas
+**não-bloqueante**) — alinhado com a invariante 20/21 que
+são não-violáveis + bloqueantes.
+
+### Consequências
+
+- **+** Builder tem **autonomia total** pra implementar —
+  escolhe linguagem, ORM, schema, queries
+- **+** `domain-expert` foca em comportamento (não se perde
+  em SQL/migrations)
+- **+** `solutions-architect` foca em pilares (não se perde
+  em funções específicas)
+- **+** Documentos de refinamento são **menores e mais
+  objetivos** (≤ 5k tokens vs ~10k+ anteriormente)
+- **+** Mudanças de stack não invalidam ACs nem pilares
+  (são stack-agnostic)
+- **+** `team-manager` tem ferramenta pra detectar e
+  recomendar encurtamento (sensor 11)
+- **−** Builder recebe **menos guidance** (precisa pensar
+  mais, questionar mais, ter ownership técnica)
+- **−** `domain-expert` e `solutions-architect` precisam
+  aprender a calibrar (curva de aprendizado)
+- **−** Sensor 11 é **recomendação**, não bloqueante — pode
+  ser ignorado se o team-manager não rodar
+
+### Reversibilidade
+
+- Reverter = remover skill `solution-scoping`, sensor 11,
+  §12 do `team-manager.md`, invariante 22, reforçar cercas
+  do `domain-expert` e `solutions-architect`. ~30 min.
+- **Forward-compatible com v2.0.0**: worktree isolation
+  (cap. 2.0.0) + WIP commits. Builder com autonomia total
+  vai apreciar worktree isolation (trabalha sem afetar
+  outros).
+
+### Worktree isolation (v2.0.0, PLANEJADO, NÃO NESTE ADR)
+
+Limitação conhecida do v1.11.0: builder tem autonomia
+total, mas **compartilha filesystem** com outros builders
+(mesmo `cwd`). Se 2 builders rodam em paralelo (com
+path-scope disjoint), ainda há race condition em `.git/`,
+`go.sum` (se ambos rodam `go mod tidy`), lock files. Worktree
+isolation (`git worktree add ../projeto-#13 feature/13-...`)
+elimina isso.
+
+**Quando**: v2.0.0 (próximo major).
+
+### Lições do Mandaí v2 (jul/2026)
+
+| Sintoma observado | Correção (v1.11.0) |
+|---|---|
+| `domain-expert` escreveu 19 ACs + 18 E-C com SQL/ORMs | Skill obriga comportamento puro (sem tech) |
+| `solutions-architect` escreveu DoD de 150+ linhas com code-level decisions | DoD ≤ 80 linhas + 3-5 pilares |
+| `backend-engineer` virou executor cego | Builder tem autonomia total, é dono da implementação |
+| ~3-5h de retrabalho por blueprint errado | Pilares stack-agnostic não envelhecem |
+
+**Custo evitado**: ~3-5h/épico × 4 épicos/mês = ~12-20h/mês
+de retrabalho evitado.
+
+**Validação**: aplicado em Mandaí v2 via
+`gmh update --to v1.11.0 --force` (após release). Próximo
+épico (F6+) deve ter refinamento + DoD com ≤ 5k tokens
+cada, sem nomes de funções/SQL/paths no output. Sensor 11
+recomenda encurtar se passar.
