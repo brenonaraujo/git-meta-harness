@@ -41,8 +41,11 @@ funcional do projeto (ver §3).
 1. **KISS, DRY, código limpo** — sem esperteza, sem duplicação, sem
    comentários redundantes.
 2. **Twelve-factor** — ver §7. Cada microsserviço deve aderir.
-3. **Funções ≤ 25 linhas, arquivos ≤ 150 linhas** — enforcement via
-   `funlen` no golangci-lint e `max-lines` no ESLint.
+3. **Funções ≤ 35 linhas (max), ≤ 25 linhas (recomendado); arquivos
+   ≤ 150 linhas** — enforcement via `funlen` (limite duro 35) no
+   golangci-lint e `max-lines` no ESLint. **Antes de implementar uma
+   função, pense na abstração**: liste 2-3 decomposições possíveis
+   e justifique (skill `pre-implementation-design`).
 4. **TDD** — teste de borda primeiro, table-driven, `testify`. Sem
    testes, sem merge.
 5. **Spec-first** — OpenAPI define o contrato de API; SQL schema define
@@ -264,7 +267,7 @@ my-app/
 
 | Limite                  | Valor   | Enforcement                                              |
 |-------------------------|---------|----------------------------------------------------------|
-| Linhas por função       | **≤ 25**| `funlen { lines: 25, statements: 20 }` no golangci-lint. |
+| Linhas por função       | **≤ 35 (max) / ≤ 25 (recomendado)** | `funlen { lines: 35, statements: 30 }` no golangci-lint (v1.10.0). |
 | Linhas por arquivo `.go`| **≤ 150**| `lll` (line length) + convenção de revisão; script `wc -l` no CI. |
 | Complexidade ciclomática| **≤ 15** | `gocyclo` no golangci-lint.                              |
 | Comentários             | **0 redundantes** | só comentários de `// TODO(name): ...` ou godoc em exports. |

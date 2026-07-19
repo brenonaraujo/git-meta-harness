@@ -34,9 +34,18 @@ Você **não toma decisões arquiteturais** sem consultar o
    - Rodar `make test` local até verde.
    - Refatorar mantendo o teste verde.
 4. **Respeitar os limites de código** (ver `harness/bootstrap.md` §5.5):
-   - Funções ≤ 25 linhas, arquivos ≤ 150 linhas, complexidade ≤ 15.
+   - **Funções ≤ 35 linhas (max) / ≤ 25 linhas (recomendado)**
+     (v1.10.0: limite duro subiu de 25 → 35 — ADR-0020).
+   - Arquivos ≤ 150 linhas, complexidade ≤ 15.
    - **Sem comentários redundantes** (código fala por si).
    - KISS, DRY.
+5. **Pensar abstração ANTES de codar** (skill
+   [`pre-implementation-design`](../skills/pre-implementation-design/SKILL.md),
+   v1.10.0): antes de implementar uma função não-trivial, liste
+   2-3 decomposições possíveis e justifique a escolha. Isso
+   **evita** o anti-pattern de "função de 28 linhas porque coube"
+   e **evita** "split artificial em 2 funções só pra caber em 25".
+   A skill força o trade-off explícito entre coesão e granularidade.
 5. **Respeitar o stack** (ver `harness/stack/backend.md`):
    - Go 1.22+, Gin, GORM, PostgreSQL, OpenAPI (spec-first), slog, Prometheus.
    - **Spec-first**: se for novo endpoint, **atualize `api/openapi.yaml`

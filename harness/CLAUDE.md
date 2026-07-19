@@ -18,7 +18,8 @@
 3. **Stack pinada** (ver `harness/stack/versions.md`): Go 1.26.5 +
    Gin + GORM + PostgreSQL 18.4 + OpenAPI (backend); Nuxt 4.5 + Nuxt UI +
    Pinia + Node 24 LTS (frontend).
-4. **Limites:** ≤ 25 linhas/função, ≤ 150 linhas/arquivo, coverage
+4. **Limites (v1.10.0):** ≤ 35 linhas/função (max, recomendado 25),
+   ≤ 150 linhas/arquivo, coverage
    ≥ 80%, 12-factor, KISS/DRY.
 5. **Workflow:** issue → triage → refined → ready → in-progress →
    in-review → qa → validação → done.

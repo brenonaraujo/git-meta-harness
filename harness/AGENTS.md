@@ -239,6 +239,16 @@ make compose-down
 7. **Nenhum microsserviço** roda como root no container.
 8. **Nenhum microsserviço** entra em produção sem `govulncheck` verde.
 9. **Nenhum PR** é mergeado sem coverage ≥ 80% nos pacotes alterados.
+9a. **Funções ≤ 35 linhas (max) / ≤ 25 linhas (recomendado)** (v1.10.0,
+    ADR-0020). Limite duro subiu de 25 → 35 para eliminar "split for
+    compliance" (artificial decomposition só pra caber em 25 linhas).
+    Funções em 26-35 são aceitáveis **apenas se** o builder aplicou
+    a skill [`pre-implementation-design`](./skills/pre-implementation-design/SKILL.md)
+    (listou 2-3 decomosições possíveis e justificou a escolha no
+    commit message). Funções > 35 falham `funlen` no golangci-lint.
+    **Antes de implementar função não-trivial, o builder DEVE listar
+    2-3 decomposições possíveis e justificar a escolha** — pular
+    essa etapa é o anti-pattern que a skill foi criada pra eliminar.
 10. **Nenhuma issue** é fechada sem validação do usuário.
 11. **Nenhuma string de usuário é hardcoded** — toda mensagem
     externalizada (erro de API, copy de UI, e-mail, notificação) usa

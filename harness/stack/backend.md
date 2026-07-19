@@ -54,7 +54,7 @@ my-service/
 │   │   └── server.go           # gin engine + middlewares
 │   ├── api/
 │   │   └── openapi.gen.go      # gerado de api/openapi.yaml
-│   ├── handler/                # 1 endpoint = 1 func (max 25 linhas)
+│   ├── handler/                # 1 endpoint = 1 func (max 35 linhas, recomendado 25)
 │   ├── service/                # regras de negócio (puro, sem gin/gorm)
 │   ├── repository/             # interfaces + GORM impls
 │   ├── domain/                 # entidades, erros, value objects
@@ -593,7 +593,7 @@ compose-down:
 - ❌ `log` ou `fmt.Println` em produção (use `slog`).
 - ❌ `os.Exit(1)` no meio de handler.
 - ❌ Comentários redundantes em código.
-- ❌ Funções > 25 linhas.
+- ❌ Funções > 35 linhas (v1.10.0: limite duro subiu de 25 → 35; recomendado: 25).
 - ❌ Arquivos > 150 linhas.
 - ❌ `panic` em código de produção (exceto init).
 - ❌ `interface{}` sem justificativa (use generics ou `any`).

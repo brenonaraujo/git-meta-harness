@@ -559,6 +559,7 @@ hermes skills install harness/skills/github-code-review.md
 hermes skills install harness/skills/nuxt-ui-patterns/SKILL.md
 hermes skills install harness/skills/ux-design-best-practices/SKILL.md
 hermes skills install harness/skills/domain-refinement/SKILL.md
+hermes skills install harness/skills/pre-implementation-design/SKILL.md
 
 # Gerar SOUL.md a partir do arquivo de persona
 # (resumindo identidade + responsabilidades + limites)

@@ -20,7 +20,7 @@
 
 | Métrica                       | Limite            | Enforcement                              |
 |-------------------------------|-------------------|------------------------------------------|
-| Linhas por função             | **≤ 25**          | `funlen` no golangci-lint                |
+| Linhas por função             | **≤ 35 (max) / 25 (recomendado)** | `funlen` no golangci-lint (v1.10.0: limite duro subiu de 25 → 35) |
 | Linhas por arquivo `.go`      | **≤ 150**         | convenção + script `wc -l` no CI         |
 | Linhas por componente Vue     | **≤ 200**         | convenção + `vue-tsc` + reviewer         |
 | Complexidade ciclomática      | **≤ 15**          | `gocyclo`                                |
@@ -116,9 +116,31 @@ func Login(ctx context.Context, email, password string) (string, error) {
 
 ## Funções
 
-### Tamanho
+### Tamanho (v1.10.0)
 
-≤ 25 linhas. Se passar, quebre.
+**Recomendado: ≤ 25 linhas. Máximo: ≤ 35 linhas.**
+
+| Faixa | Status | Ação |
+|---|---|---|
+| 0-25 linhas | ✅ Ideal | Manter assim |
+| 26-35 linhas | ⚠️ Aceitável | Considere se a função é coesa; se for, documente o porquê; se não, decomponha |
+| 36+ linhas | ❌ Erro | `funlen` falha. Refatore OBRIGATORIAMENTE (extraia helpers, decompose por responsabilidade) |
+
+**Antes de implementar** (skill `pre-implementation-design`): liste
+2-3 decomposições possíveis da função que vai implementar e justifique
+a escolha. **Pular essa etapa leva a funções que ficam em 26-35 linhas
+"por acidente" e a abstrações desnecessárias só pra caber em 25.**
+
+**Quando 26-35 é OK**:
+- Função é coesa (1 responsabilidade clara)
+- Helpers extraídos tornariam o código mais difícil de seguir
+- Exemplos: `OnboardRole` (pipeline de criação de user+role+audit),
+  `ProcessPayment` (múltiplas etapas que juntas formam 1 transação)
+
+**Quando 26-35 NÃO é OK**:
+- Função faz 2+ coisas distintas → decompor
+- Tem `for` aninhado, múltiplos `if err != nil` em sequência → extrair
+- Linhas "de glue" (chamadas sequenciais sem lógica) → extrair para helper
 
 ### Parâmetros
 
@@ -399,7 +421,7 @@ feat(auth): implementa login com JWT (Refs #42)
 ## Anti-padrões (resumo)
 
 - ❌ Comentários redundantes.
-- ❌ Funções > 25 linhas.
+- ❌ Funções > 35 linhas (v1.10.0: limite duro subiu de 25 → 35; recomendado: 25).
 - ❌ Arquivos > 150 linhas.
 - ❌ Complexidade > 15.
 - ❌ `panic` em produção.

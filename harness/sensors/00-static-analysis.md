@@ -57,8 +57,10 @@ linters:
     - paralleltest
   settings:
     funlen:
-      lines: 25
-      statements: 20
+      # v1.10.0: limit raised from 25 → 35 (recomendado: 25).
+      # Decisão documentada em ADR-0020.
+      lines: 35
+      statements: 30
     gocyclo:
       min-complexity: 15
     gosec:
@@ -106,7 +108,7 @@ Configuração:
 
 | Métrica                | Limite               |
 |------------------------|----------------------|
-| Linhas por função      | **≤ 25** (`funlen`)  |
+| Linhas por função      | **≤ 35 (max) / ≤ 25 (recomendado)** (`funlen`, v1.10.0) |
 | Linhas por arquivo     | **≤ 150** (convenção + script `wc -l` no CI) |
 | Complexidade ciclomática | **≤ 15** (`gocyclo`) |
 | Duplicação             | **< 5%** (`dupl`)    |
@@ -160,7 +162,7 @@ lint:
 
 | Falha                                     | Como corrigir                                          |
 |-------------------------------------------|--------------------------------------------------------|
-| `Function is too long` (`funlen`)         | Quebrar em funções menores, extrair helpers.           |
+| `Function is too long` (`funlen`)         | v1.10.0: limite 35. Se passou de 25 (recomendado), documente o porquê (skill `pre-implementation-design`). Se passou de 35, refatore OBRIGATORIAMENTE. |
 | `Cyclomatic complexity` (`gocyclo`)       | Extrair `if`s em funções nomeadas (early return).      |
 | `ineffectual assignment` (`ineffassign`)  | Remover a atribuição ou usar a variável.               |
 | `unused`                                  | Deletar ou usar (`_ = x` se for pra silenciar).        |

@@ -57,7 +57,12 @@ devem seguir.
 
 **Implementação:**
 - [ ] Código segue `harness/stack/backend.md` e `harness/stack/code-style.md`
-- [ ] Funções ≤ 25 linhas, arquivos ≤ 150 linhas
+- [ ] **Funções ≤ 35 linhas (max), ≤ 25 linhas (recomendado)**,
+      arquivos ≤ 150 linhas. Funções em 26-35 são aceitáveis
+      **apenas se** o builder documentou o porquê via skill
+      `pre-implementation-design` (mostra que pensou em 2-3
+      decomposições antes de implementar). Funções > 35
+      falham o DoD.
 - [ ] Sem comentários redundantes
 - [ ] Sem código duplicado (DRY)
 - [ ] Logs via `slog` (JSON)

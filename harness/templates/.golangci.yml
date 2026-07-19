@@ -60,8 +60,10 @@ linters:
     - paralleltest
   settings:
     funlen:
-      lines: 25
-      statements: 20
+      # v1.10.0: limit raised from 25 → 35 (recomendado: 25).
+      # Decisão documentada em ADR-0020.
+      lines: 35
+      statements: 30
       ignore-comments: true
     gocyclo:
       min-complexity: 15

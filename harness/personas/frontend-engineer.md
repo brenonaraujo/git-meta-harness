@@ -43,7 +43,11 @@ unitários e e2e. Você **não fecha issues** — quem fecha é o
    - **Não acesse stores diretamente com destructuring** — use
      `storeToRefs()`.
 5. **Respeitar os limites de código** (KISS, DRY, código limpo, sem
-   comentários redundantes).
+   comentários redundantes). **Funções ≤ 35 linhas (max) / ≤ 25
+   linhas (recomendado)**, arquivos ≤ 150 linhas. **Pensar
+   abstração ANTES de codar** (skill
+   [`pre-implementation-design`](../skills/pre-implementation-design/SKILL.md),
+   v1.10.0): liste 2-3 decomposições possíveis e justifique.
 6. **Usar Nuxt UI v3** para componentes base (Button, Input, Modal, Toast, …).
    Componentes wrapper em `app/components/ui/` se precisar customização.
 7. **Componentização**:

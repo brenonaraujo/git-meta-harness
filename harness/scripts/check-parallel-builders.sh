@@ -113,7 +113,11 @@ COUNT=$(echo "$PARSED" | python3 -c 'import json,sys; print(len(json.load(sys.st
 MISSING=$(echo "$PARSED" | python3 -c '
 import json, sys
 data = json.load(sys.stdin)
-print(" ".join(f"#{i[\"number\"]}" for i in data if not i["path_scopes"]))
+missing = []
+for i in data:
+    if not i["path_scopes"]:
+        missing.append("#" + str(i["number"]))
+print(" ".join(missing))
 ')
 
 if [[ "$OUTPUT_JSON" -eq 1 ]]; then
@@ -219,9 +223,11 @@ if [[ "$OVERLAP_COUNT" -gt 0 ]]; then
 import json, sys
 data = json.load(sys.stdin)
 for o in data["overlaps"]:
-    print(f"   #{o[\"a\"]} (path-scope: {o[\"a_glob\"]})")
-    print(f"   #{o[\"b\"]} (path-scope: {o[\"b_glob\"]})")
-    print(f"   → overlapping file(s) possible")
+    a_num = o["a"]; a_glob = o["a_glob"]
+    b_num = o["b"]; b_glob = o["b_glob"]
+    print("   #" + str(a_num) + " (path-scope: " + a_glob + ")")
+    print("   #" + str(b_num) + " (path-scope: " + b_glob + ")")
+    print("   → overlapping file(s) possible")
     print()
 '
   echo "❌ Action required: add depends-on to one of them, or refactor path-scope."

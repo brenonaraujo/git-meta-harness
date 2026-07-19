@@ -2288,3 +2288,178 @@ de branches). Em 4 épicos por mês = ~16h/mês economizado.
 `gmh update --to v1.9.0 --force` (após release).
 Recriação do Épico #12 (em issue de exemplo) deve passar
 o sensor 10 com path-scope corretamente declarado.
+
+---
+
+## ADR-0020 — Limite de função 25→35 + skill `pre-implementation-design` (v1.10.0)
+
+> **Status:** Aceito (2026-07-18).
+> **Contexto:** Mandaí v2, Épico #12 (auth + role switching),
+> jul/2026, refinamento de golangci-lint.
+> **Decisão:** limite duro de função 25 → 35 linhas (recomendado
+> 25 mantido), + skill `pre-implementation-design` que força o
+> builder a **pensar em abstração ANTES de codar**.
+
+### Contexto
+
+Durante o refinamento do Épico #12 (backend #15 user-role,
+jul/2026), o `golangci-lint` reportou:
+
+```
+1 issue — OnboardRole tem 34 linhas (limite 25). Vou ver e
+refatorar quebrando em função auxiliar.
+```
+
+**Resultado da "refatoração"** (relatado pelo builder):
+> "Vou extrair a parte de criação da UserRole para uma função
+> auxiliar."
+
+Essa é uma **má prática clássica** (anti-pattern "split for
+compliance"): uma função coesa de 34 linhas foi quebrada em
+**4 funções coesas + 1 helper que só delega**, adicionando
+**glue code** sem ganho real de leitura, e **mais código,
+mais arquivos, mais imports**.
+
+**Causa raiz**: o limite rígido de 25 linhas (v1.0.0) força
+o builder a fazer **escolhas mecânicas** sobre decomposição
+quando o natural seria manter a função coesa. O builder
+não tem uma heurística para **decidir** entre "uma função
+de 30 linhas" vs "duas de 15 linhas" — ele só tenta caber
+no limite.
+
+**Quem mais sofre com isso**:
+- Builders que estão implementando **transações atômicas**
+  (validate → create → persist → audit) que naturalmente
+  têm 25-35 linhas.
+- Builders que estão implementando **pipelines coesos** onde
+  cada etapa é 1-2 linhas e o todo é legível de cima a
+  baixo.
+- Code review fica mais lento (4 funções pra navegar onde
+  1 bastaria).
+
+### Decisão
+
+**2 mudanças coordenadas**:
+
+#### 1. Limite duro 25 → 35 (recomendado: 25)
+
+`templates/.golangci.yml` (e `sensors/00-static-analysis.md`):
+
+```yaml
+settings:
+  funlen:
+    lines: 35  # era 25
+    statements: 30  # era 20
+    ignore-comments: true
+```
+
+`stack/code-style.md` §"Funções / Tamanho":
+
+| Faixa | Status | Ação |
+|---|---|---|
+| 0-25 linhas | ✅ Ideal | Manter assim |
+| 26-35 linhas | ⚠️ Aceitável | Skill aplicada (justificativa no commit) ou decompor |
+| 36+ linhas | ❌ Erro | `funlen` falha. Refatorar. |
+
+**Recomendação mantida em 25** (não 35) — 35 é o **teto**,
+não o **ideal**.
+
+#### 2. Skill `pre-implementation-design` (NOVA)
+
+[`harness/skills/pre-implementation-design/SKILL.md`](../skills/pre-implementation-design/SKILL.md)
+(8.3KB) força o builder a **listar 2-3 decomposições possíveis
+ANTES de implementar** e **justificar a escolha**:
+
+```markdown
+## Decomposição de `OnboardRole(user, role, tenantID)`
+
+### Opção A — Função única (32 linhas) [escolhida]
+- Coesa: pipeline de 1 transação atômica
+- Glue mínimo
+- Contra: harder to mock intermediate
+
+### Opção B — 4 helpers (rejected)
+- `validateOnboarding()` / `createUserWithRole()` / `auditOnboarding()`
+- Contra: 4 funções pra navegar, glue explícito
+
+### Escolha: A (32 linhas)
+**Por quê**: transação atômica. Helpers de B fragmentariam
+a leitura sem ganho real.
+
+**Quando reverteria**: se `audit` virar compliance de outro
+time (LGPD, BACEN), aí extrair faz sentido.
+```
+
+**Quem aplica**:
+- `backend-engineer` (Go) — sempre que implementar função
+  que pode passar de 25 linhas
+- `frontend-engineer` (Vue/TypeScript) — sempre que implementar
+  composable, helper, ou componente com lógica não-trivial
+
+**Quem valida**:
+- `team-manager` (sensor 09 verify-after-build): re-executa
+  `make lint` e verifica que funções > 25 têm documentação
+  da decisão.
+- `quality-assurance` (sensor 02 unit tests): verifica que
+  testes cobrem pelo menos 1 caso de borda por função > 25
+  linhas.
+
+### Consequências
+
+- **+** Elimina o anti-pattern "split for compliance" —
+  função coesa de 32 linhas pode ficar como está, com
+  justificativa.
+- **+** Força o builder a **pensar em trade-off** (coesão
+  vs granularidade) ANTES de escrever código, evitando
+  ambos os extremos (mega-função E split artificial).
+- **+** Documentação da decisão (commit message com
+  decomposição considerada) é explícita e code-reviewable.
+- **+** Skill é genérica — funciona pra qualquer builder
+  (backend, frontend, futuro mobile, etc).
+- **−** Builder precisa gastar 2-3 min ANTES de implementar
+  função não-trivial. Curva de aprendizado inicial.
+- **−** Commit message fica mais verboso (3 opções + escolha
+  + justificação).
+- **−** Risco: builder pode abusar do limite 35 e criar
+  funções de 35 linhas sem pensar (mitigado pela skill
+  obrigatória, mas não 100%).
+
+### Reversibilidade
+
+- Reverter = baixar funlen pra 25, deletar skill, remover
+  invariante 9a. ~10 min.
+- Skill pode ser **adaptada** (não deletada) se o trade-off
+  for refinado (ex.: split em 2 skills: "pre-impl" e
+  "post-impl review").
+
+### Worktree isolation (v2.0.0, PLANEJADO, NÃO NESTE ADR)
+
+Limite 35 é teto. Casos de funções > 35 que **realmente**
+precisam ser decompostas:
+- Pipeline > 35 linhas → decompor por responsabilidade
+- Múltiplas chamadas sequenciais (glue) → extrair helper
+- Lógica com complexidade > 15 → decompor
+
+### Lições do Mandaí v2 (jul/2026)
+
+| Sintoma observado | Correção (v1.10.0) |
+|---|---|
+| `OnboardRole` 34 linhas → builder "quebrou em helper" (split for compliance) | Skill obriga listar 2-3 decomposições + justificar |
+| Função coesa artificialmente quebrada em 4+ | Limite 35 permite manter coesa se for justificada |
+| Builders sem heurística de decomposição | Skill fornece heurísticas (quando 1 função vs helpers) |
+| Code review lento por navegar 4 funções | Reduz pra 1 função coesa (quando apropriado) |
+
+**Custo evitado**: ~10-15 min/epic de "refatorar
+funções que não precisavam ser refatoradas". Em 4
+épicos por mês = ~40-60 min/mês economizado.
+
+**Validação**: aplicado em Mandaí v2 via
+`gmh update --to v1.10.0 --force` (após release).
+Épico #12 (issues #13-#18 com `OnboardRole` em #15)
+deve:
+- `golangci-lint` passar com funlen=35
+- Commit message do #15 deve incluir "Decomposition
+  considered: A/B/C + Escolha: A (32 linhas)" se
+  função ficar > 25
+- QA deve revisar e aprovar com base na skill
+  aplicada, não na forma da função

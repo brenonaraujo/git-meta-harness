@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.10.0] - 2026-07-18
+
+### Changed — Function limit 25 → 35 lines (recommended: 25)
+
+**Context**: Mandaí v2's Épico #12 backend builder reported
+"OnboardRole has 34 lines (limit 25). I'll refactor by
+extracting to a helper function." This is the classic
+**"split for compliance"** anti-pattern: a cohesive 34-line
+function was mechanically decomposed into 4 functions + 1
+delegating helper, adding glue code without readability
+gain. v1.10.0 raises the hard limit from 25 → 35 lines
+(recommended: 25 unchanged) and adds a new skill to force
+builders to **think about abstraction before coding**.
+
+**Files updated**:
+- [`harness/templates/.golangci.yml`](harness/templates/.golangci.yml):
+  `funlen { lines: 35, statements: 30 }` (was 25/20)
+- [`harness/sensors/00-static-analysis.md`](harness/sensors/00-static-analysis.md):
+  table + remediation updated
+- [`harness/stack/code-style.md`](harness/stack/code-style.md):
+  §"Funções / Tamanho" with 3-band table (0-25/26-35/36+)
+- [`harness/stack/backend.md`](harness/stack/backend.md):
+  handler/ comment + anti-pattern
+- [`harness/bootstrap.md`](harness/bootstrap.md): limits + table
+- [`harness/CLAUDE.md`](harness/CLAUDE.md): limits
+- [`harness/personas/solutions-architect.md`](harness/personas/solutions-architect.md):
+  DoD (25 recommended, 35 max, justification required)
+- [`harness/personas/backend-engineer.md`](harness/personas/backend-engineer.md):
+  §4 (limits) + §5 (new: pre-implementation-design)
+- [`harness/personas/frontend-engineer.md`](harness/personas/frontend-engineer.md):
+  §5 (limits + skill reference)
+- [`harness/team-manager.md`](harness/personas/team-manager.md):
+  §5.3 (hermes skills install — added pre-implementation-design)
+- [`harness/AGENTS.md`](harness/AGENTS.md): invariante 9a
+
+### Added — Skill `pre-implementation-design` (v1.10.0)
+
+[`harness/skills/pre-implementation-design/SKILL.md`](harness/skills/pre-implementation-design/SKILL.md)
+(8.3KB) — forces the builder to **list 2-3 possible
+decompositions BEFORE coding** and justify the choice:
+
+```markdown
+## Decomposition of `OnboardRole(user, role, tenantID)`
+
+### Option A — Single function (32 lines) [chosen]
+### Option B — 4 helpers (rejected)
+### Option C — 2 helpers (rejected)
+
+### Choice: A
+**Why**: atomic transaction. B's helpers would fragment
+reading without real gain.
+
+**When would revert**: if `audit` becomes a separate
+team's compliance (LGPD, BACEN), then extract.
+```
+
+Includes:
+- 🚦 Traffic-light rules (when to apply)
+- 📋 "3 decompositions" protocol (4 steps)
+- 🧠 Heuristics: "1 function" vs "decompose" (4 + 5 scenarios)
+- 🚫 Anti-patterns the skill ELIMINATES:
+  - Split for compliance
+  - Empty helper
+  - Mega-function without abstraction
+
+### Forward-compatible with v2.0.0
+
+- v2.0.0 will add **worktree isolation** (per builder) +
+  **WIP commits** (incremental persistence).
+- v2.0.0+ may add **post-impl review** skill (separate
+  from pre-impl) if needed.
+
 ## [1.9.0] - 2026-07-18
 
 ### Added — Decomposition Safety (path-scope + depends-on + sensor 10) (ADR-0019)
