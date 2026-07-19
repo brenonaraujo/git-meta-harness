@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.8] - 2026-07-18
+
+### Fixed — `cli-release.yml` workflow can now create + populate the release in one step
+
+The old `cli-release.yml` (for tag pushes `v*.*.*`) ran
+`gh release upload $TAG` after building all 5 binaries + checksums.
+The upload always failed with `release not found` because
+pushing a tag does **not** auto-create a release — that
+requires a separate workflow or manual step.
+
+This was worked around manually for v1.6.5, v1.6.6, v1.6.7
+(release was created via `gh release create` and then binaries
+uploaded via `gh release upload --clobber`).
+
+**Fix**: replaced the manual `gh release upload` step with the
+idempotent `softprops/action-gh-release@v2` action. It:
+- creates the release if it doesn't exist
+- uploads files to the existing release if it does
+- works for both `v*.*.*` (framework) and `cli-v*.*.*` (CLI-only) tags
+
+This unblocks end-to-end automated CLI release on every tag push.
+
 ## [1.6.7] - 2026-07-18
 
 ### Fixed — Detection: Trivy supply-chain attack (mar/2026) — `trivy-action` gray-zone warning
