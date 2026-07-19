@@ -5,6 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.10.1] - 2026-07-19
+
+### Fixed — `bin/safe-commit-harness-sync.sh` (HOTFIX)
+
+**Context**: In v1.8.0, v1.9.0, and v1.10.0, `git add -A`
+in main of `mandai-v2` (and other client projects) repeatedly
+captured untracked files from feature branches that `git
+checkout` does NOT remove (only modifies tracked files). This
+polluted harness sync commits with feature work — 3 separate
+incidents, ~15 min of recovery each.
+
+**Root cause**: documenting the rule "don't use `git add -A`"
+didn't prevent the bug (3rd time proved it). The only solution
+is **automation** — a helper that does the right thing
+without manual discipline.
+
+**Added**: [`bin/safe-commit-harness-sync.sh`](bin/safe-commit-harness-sync.sh)
+(6.4KB) — automates `git add` + `git commit` + `git push`
+for harness syncs in main, **without `git add -A`**.
+
+**Behavior**:
+1. ALWAYS stages `harness/` and `VERSION` (framework sync).
+2. Auto-detects whitelisted local customizations
+   (`.golangci.yml`, `.github/workflows/*.yml`,
+   `.markdownlint.json`, `Makefile`, `docker-compose*.yml`,
+   `deploy/*.sh`, `docs/HOWTO*.md`).
+3. **BLOCKS** the commit if there are non-whitelisted
+   modifications/untracked files, with a list of the
+   suspicious files and 3 recovery options (stash,
+   checkout feature, re-evaluate).
+4. Asks for confirmation before committing
+   (`--auto` to skip for CI).
+5. Shows `git diff --cached --stat` before commit.
+
+**Exit codes**:
+- `0` = success (or clean dry-run)
+- `1` = blocked (suspicious files found)
+- `2` = git error
+
+**Usage**:
+```bash
+./bin/safe-commit-harness-sync.sh                    # add + commit + push
+./bin/safe-commit-harness-sync.sh --dry-run          # preview
+./bin/safe-commit-harness-sync.sh --no-push          # only add + commit
+./bin/safe-commit-harness-sync.sh --message "msg"    # custom commit msg
+./bin/safe-commit-harness-sync.sh --auto             # skip confirmations
+```
+
+**Validated** (3 scenarios):
+1. **Happy path** (only `harness/` + `VERSION` changed) → ✅
+   stages 2 paths, proceeds.
+2. **Block** (untracked `web/fake_feature.ts` and
+   `backend/internal/fake/`) → 🛑 exit 1 with 2 file list
+   and recovery options.
+3. **Whitelisted** (`.golangci.yml` modified) → ✅ stages 3
+   paths, `.golangci.yml` auto-added.
+
+**Customizing the whitelist**: edit `WHITELIST_REGEX` in the
+script. Paths outside the whitelist are **blocked**, not
+silently added.
+
+### Changed
+
+- [`harness/bootstrap.md`](harness/bootstrap.md): added §5b
+  "Helper `bin/safe-commit-harness-sync.sh`" with usage and
+  customization guide.
+- [`bin/.gitignore`](bin/.gitignore): added (NEW, ignores
+  `*.local` customizations).
+
 ## [1.10.0] - 2026-07-18
 
 ### Changed — Function limit 25 → 35 lines (recommended: 25)

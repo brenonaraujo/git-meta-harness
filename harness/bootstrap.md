@@ -273,6 +273,47 @@ my-app/
 | Comentários             | **0 redundantes** | só comentários de `// TODO(name): ...` ou godoc em exports. |
 | Cobertura mínima (unit) | **≥ 80%** das branches lógicas (não do LOC). | `go test -coverprofile` + diff coverage no PR. |
 
+### 5b. Helper `bin/safe-commit-harness-sync.sh` (v1.10.1)
+
+> **Lição dos v1.8.0 / v1.9.0 / v1.10.0:** o `git add -A` em
+> main de projeto-cliente capturou 3 vezes arquivos de feature
+> branches (untracked que `git checkout` não remove), poluindo
+> o commit de sync do harness. A solução **NÃO É** documentar
+> o cuidado — é **automatizar**.
+
+[`bin/safe-commit-harness-sync.sh`](../bin/safe-commit-harness-sync.sh)
+automatiza `git add` + `git commit` + `git push` de syncs do
+framework **sem usar `git add -A`**.
+
+**Comportamento**:
+1. SEMPRE adiciona `harness/` e `VERSION` (sync do framework).
+2. Auto-detecta customizações locais modificadas que matcham
+   **whitelist explícita** (`.golangci.yml`, `.github/workflows/*.yml`,
+   `.markdownlint.json`, `Makefile`, `docker-compose*.yml`, etc).
+3. **DETECTA** arquivos modificados/untracked em paths que NÃO
+   estão na whitelist e **BLOQUEIA** o commit com lista explícita
+   + opções de recovery (stash, checkout, re-evaluate).
+4. Pede confirmação antes de commitar (`--auto` para CI).
+5. Mostra `git diff --cached --stat` antes do commit.
+
+**Uso**:
+```bash
+# Sync do framework em projeto-cliente (main)
+./bin/safe-commit-harness-sync.sh                    # add + commit + push
+./bin/safe-commit-harness-sync.sh --dry-run          # preview
+./bin/safe-commit-harness-sync.sh --no-push          # só add + commit
+./bin/safe-commit-harness-sync.sh --message "msg"    # custom commit msg
+./bin/safe-commit-harness-sync.sh --auto             # skip confirmações
+```
+
+**Quando customizar a whitelist**: edite a variável
+`WHITELIST_REGEX` no script. Paths fora da whitelist são
+**bloqueados**, não adicionados silenciosamente.
+
+**Para customizar ainda mais** (ex.: monorepo com paths
+específicos), copie o script e adapte — é o ponto de
+controle único da regra "nunca misturar sync com feature".
+
 ---
 
 ## 6. Workflow de issues, branches, PRs e releases
