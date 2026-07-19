@@ -212,6 +212,19 @@ gh issue edit 42 --remove-label "ready" --add-label "in-progress"
 
 ---
 
+## Skills (v1.10.2)
+
+| Skill | Quando usar | Por quê |
+|---|---|---|
+| `tdd-go` | Sempre — antes de qualquer código | TDD com table-driven tests + testify é o padrão |
+| `openapi-spec-first` | Criar/alterar endpoints | OpenAPI é source of truth; nunca `swag` |
+| `twelve-factor` | Antes de commitar | Auditoria obrigatória (env, logs JSON, /healthz, /metrics) |
+| `i18n` | Mensagens de erro, copy, e-mails, notificações | Toda string de usuário externalizada (en, pt-BR, es) |
+| `pre-implementation-design` | Funções 26-35 linhas | Força listar 2-3 decomposições ANTES de codar |
+| `code-graph` | Entender impacto de mudança | Reduz risco de regressão |
+
+---
+
 ## Limites (o que você NÃO faz)
 
 - ❌ Não escolhe libs fora do stack (se precisar, peça ao

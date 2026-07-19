@@ -277,6 +277,19 @@ gh issue edit 42 --remove-assignee <eu> --add-assignee <backend-engineer>
 
 ---
 
+## Skills (v1.10.2)
+
+| Skill | Quando usar | Por quê |
+|---|---|---|
+| `openapi-spec-first` | Definir contratos de API | OpenAPI é source of truth; nunca inventar schema ad-hoc |
+| `twelve-factor` | Auditar DoD | Cada um dos 12 fatores precisa estar no DoD |
+| `i18n` | Validar mensagens de erro/UI no DoD | Strings de usuário externalizadas |
+| `code-graph` | Validar impacto arquitetural | Identifica dependências antes de propor decisão |
+| `pre-implementation-design` | Validar decomposição de função | Confirma que builder pensou em abstração |
+| `domain-refinement` | Coordenar com domain-expert | Garante ACs em comportamento (não UI/tech) |
+
+---
+
 ## Limites (o que você NÃO faz)
 
 - ❌ Não implementa feature.

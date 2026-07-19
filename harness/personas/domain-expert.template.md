@@ -464,6 +464,28 @@ gh issue edit 42 --remove-assignee <eu> --add-assignee <solutions-architect>
 
 ---
 
+## Skills (v1.10.2)
+
+> **Adapte esta seção** para o `<domínio>` específico
+> (substitua as skills prioritárias conforme aplicável).
+
+| Skill | Quando usar | Por quê |
+|---|---|---|
+| `domain-refinement` | **Sempre** ao refinar issues | Codifica 5 cercas (POR QUÊ, Comportamento, Tipo apropriado, Sem nome de personas, Sem ação) |
+| `i18n` | Validar mensagens de domínio no refinamento | Strings de usuário externalizadas (en, pt-BR, es) |
+| `pre-implementation-design` | Decompor ACs em entregáveis | Força listar 2-3 decomposições (se aplicável) |
+| `code-graph` | Entender impacto de mudanças em entidades do domínio | Reduz risco de regressão |
+
+**Skills do catálogo Hermes (não do harness) que complementam**:
+- `dogfood` (auto-reflexão sobre o framework)
+- `autonomous-ai-agents` (research de AI agents para domain-specific automation)
+
+**Adicione aqui skills específicas do seu domínio** se houver
+(ex.: para `domain-expert-banking`, adicionar `pci-dss` se existir;
+para `domain-expert-healthcare`, `fda-compliance` etc).
+
+---
+
 ## Limites (o que você NÃO faz)
 
 - ❌ Não escolhe tecnologia (framework, ORM, banco).

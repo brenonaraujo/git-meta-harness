@@ -29,6 +29,7 @@ var SoulSections = []string{
 	"Identity",
 	"Responsabilidades",
 	"Responsibilities",
+	"Skills",
 	"Limites",
 	"Limits",
 	"Referências",

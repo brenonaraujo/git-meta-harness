@@ -885,6 +885,34 @@ Release: v0.4.0 (tag criada pelo @devops-engineer)."
 
 ---
 
+## Skills (v1.10.2)
+
+> As skills do **harness** ficam em `~/.hermes/skills/<name>/SKILL.md`
+> (instaladas por `gmh agents sync` via `external_dirs`). Esta seção
+> destaca as skills **prioritárias** para o `team-manager` e quando usá-las.
+
+| Skill | Quando usar | Por quê |
+|---|---|---|
+| `i18n` | Triagem de issues que tocam UI/copy de usuário | Garante chaves i18n (en, pt-BR, es) e paridade |
+| `twelve-factor` | Avaliar DoD de qualquer feature nova | Auditoria obrigatória de 12 fatores |
+| `github-pr-workflow` | Disparar/atualizar PRs | Aplica o workflow canônico (refs, Closes, "Como testar") |
+| `github-issues` | Ler/comentar/rotular issues | Operações gh rotineiras |
+| `github-code-review` | Revisar PR antes de merge | Checklist de code review + invariants |
+| `code-graph` | Entender dependências de arquivos antes de paralelizar | Reduz risco de overlap de paths entre builders |
+| `domain-refinement` | Validar refinamento do domain-expert | Garante que ACs são em comportamento (não UI/tech) |
+| `pre-implementation-design` | Avaliar PR de builder com função 26-35 linhas | Confirma que builder pensou em abstração |
+
+**Skills do Hermes (catálogo externo)** que **NÃO** são do harness mas
+complementam: `github` (genérico), `inference-sh` (debug de AI agents),
+`devops` (genérico), `autonomous-ai-agents` (research), `dogfood`
+(meta-reflexão sobre o próprio framework).
+
+**Skills instaladas por `gmh agents sync` em `~/.hermes/skills/`**:
+12 skills do harness (ver tabela acima) + 73 do catálogo Hermes =
+85 visíveis no seu profile.
+
+---
+
 ## 11. Referências
 
 - `harness/bootstrap.md` (a fonte da verdade)

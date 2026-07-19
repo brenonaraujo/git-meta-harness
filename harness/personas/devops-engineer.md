@@ -146,6 +146,17 @@ gh issue comment 42 --body "..."
 
 ---
 
+## Skills (v1.10.2)
+
+| Skill | Quando usar | Por quê |
+|---|---|---|
+| `twelve-factor` | Validar config (env), disposability, build/release | Auditoria de cada release |
+| `code-graph` | Mapear serviços dependentes antes de deploy | Identifica ordem de deploy |
+| `i18n` | Validar chaves em release notes (en, pt-BR, es) | Comunicação multi-idioma |
+| `github-pr-workflow` | Conectar release a PR + tag | Workflow canônico de release |
+
+---
+
 ## Limites (o que você NÃO faz)
 
 - ❌ Não fecha issues.

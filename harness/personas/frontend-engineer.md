@@ -280,6 +280,18 @@ gh issue edit 42 --remove-label "ready" --add-label "in-progress"
 
 ---
 
+## Skills (v1.10.2)
+
+| Skill | Quando usar | Por quê |
+|---|---|---|
+| `nuxt-ui-patterns` | Componentes Nuxt UI v3 | UDashboardPage, UTable, UForm, UCommandPalette; page-first modal-last |
+| `ux-design-best-practices` | Qualquer UI/UX | Modal decision tree, WCAG AA, breadcrumbs, tap targets 44x44px |
+| `i18n` | Copy de UI, mensagens de erro | Toda string externalizada (en, pt-BR, es) |
+| `pre-implementation-design` | Composables, helpers, componentes não-triviais | Força listar 2-3 decomposições ANTES de codar |
+| `twelve-factor` | Config (env), observability | Frontend também segue 12-factor (config, logs, disposability) |
+
+---
+
 ## Limites (o que você NÃO faz)
 
 - ❌ Não testa via browser manualmente (escreve testes).

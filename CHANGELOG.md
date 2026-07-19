@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.10.2] - 2026-07-19
+
+### Added — `gmh agents sync` writes `config.yaml` with `skills.external_dirs`
+
+**Context**: After v1.10.1, the user reported that profiles
+were seeing only the 12 harness skills (not the 73+ skills from
+the Hermes global catalog). Root cause: Hermes profiles
+created with `hermes profile create` (default) bundle 73+ skills
+but **don't** include the user's `~/.hermes/skills/` directory.
+Profiles that want to see both must have
+`skills.external_dirs: ["~/.hermes/skills"]` in their `config.yaml`.
+
+Previously, `gmh agents sync` only updated `SOUL.md` — it
+didn't touch `config.yaml`. Users had to manually edit each
+profile's `config.yaml` to add `external_dirs`, which was
+error-prone and easy to forget.
+
+**v1.10.2 (hotfix)** automates this:
+
+1. **New functions** in [`cli/internal/hermes/hermes.go`](cli/internal/hermes/hermes.go):
+   - `ReadConfig(profileName)` — reads `config.yaml` (or returns
+     empty `ProfileConfig` if not found).
+   - `WriteConfig(profileName, externalDirs)` — writes `config.yaml`
+     preserving other fields.
+   - `EnsureExternalDirs(profileName, dirs)` — adds dirs to existing
+     `external_dirs` (deduped, preserved order). Idempotent.
+
+2. **`gmh agents sync` now writes `config.yaml`** via
+   `ensureProfileExternalDirs()` after every sync. This is
+   called in **all** sync paths:
+   - Fresh install (no SOUL.md yet)
+   - Stale persona (updated)
+   - Customizations preserved
+   - Skipped (identical)
+   - Aggressive regenerate
+
+3. **`gmh agents install <profile>` now also**:
+   - Runs `hermes profile create <name> --no-skills` (best-effort;
+     warns if hermes not on PATH).
+   - Writes `config.yaml` with `skills.external_dirs: ["~/.hermes/skills"]`.
+
+### Added — `## Skills` section in every persona template
+
+[`harness/personas/`](harness/personas/) (v1.10.2):
+- `team-manager.md` — 8 skills prioritárias
+- `backend-engineer.md` — 6 skills prioritárias
+- `frontend-engineer.md` — 5 skills prioritárias
+- `solutions-architect.md` — 6 skills prioritárias
+- `quality-assurance.md` — 6 skills prioritárias
+- `devops-engineer.md` — 4 skills prioritárias
+- `domain-expert.template.md` — 4 skills prioritárias (adapta
+  por domínio)
+
+Each section has a 3-column table: `Skill | Quando usar | Por quê`.
+
+### Changed — `SoulSections` includes `Skills`
+
+[`cli/internal/soul/soul.go`](cli/internal/soul/soul.go):
+- Added `"Skills"` to `SoulSections` so the new `## Skills`
+  section is included in the generated `SOUL.md`.
+- Existing customizations on `Skills` section are preserved
+  (same as other canonical sections).
+
+### Validated scenario (mandai-v2)
+
+After `gmh agents sync`, every profile's `config.yaml` has
+`skills.external_dirs: ["~/.hermes/skills"]`. Profiles see
+**115 skills** (12 harness + ~103 Hermes global catalog).
+
+## [1.10.1] - 2026-07-19
 ## [1.10.1] - 2026-07-19
 
 ### Fixed — `bin/safe-commit-harness-sync.sh` (HOTFIX)

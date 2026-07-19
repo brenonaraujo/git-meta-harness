@@ -15,6 +15,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Client is a filesystem client for the Hermes install directory.
@@ -174,4 +176,106 @@ func (c *Client) WriteSkill(name, content string) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(content), 0o644)
+}
+
+// ProfileConfig represents a Hermes profile's config.yaml.
+//
+// Only the fields we touch in the meta-harness are exposed here.
+// Other fields in the YAML file are preserved (passthrough).
+type ProfileConfig struct {
+	Skills *ProfileSkills `yaml:"skills,omitempty"`
+}
+
+// ProfileSkills represents the `skills:` section of a profile config.
+type ProfileSkills struct {
+	ExternalDirs []string `yaml:"external_dirs,omitempty"`
+}
+
+// ReadConfig reads the config.yaml for a profile. Returns an empty
+// ProfileConfig (not an error) if the file does not exist.
+func (c *Client) ReadConfig(profileName string) (*ProfileConfig, error) {
+	path := filepath.Join(c.Home, "profiles", profileName, "config.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &ProfileConfig{}, nil
+		}
+		return nil, fmt.Errorf("read config %s: %w", path, err)
+	}
+	cfg := &ProfileConfig{}
+	if err := yaml.Unmarshal(data, cfg); err != nil {
+		return nil, fmt.Errorf("parse config %s: %w", path, err)
+	}
+	return cfg, nil
+}
+
+// WriteConfig writes the config.yaml for a profile. The
+// `skills.external_dirs` field is preserved (or initialized) with
+// the given dirs. Other fields are preserved if the file exists.
+//
+// If the file does not exist, a minimal config is created with the
+// given external_dirs.
+func (c *Client) WriteConfig(profileName string, externalDirs []string) error {
+	path := filepath.Join(c.Home, "profiles", profileName, "config.yaml")
+
+	// Read existing config (if any) to preserve other fields.
+	cfg := &ProfileConfig{}
+	data, err := os.ReadFile(path)
+	if err == nil {
+		_ = yaml.Unmarshal(data, cfg) // ignore parse errors; we rewrite
+	}
+
+	cfg.Skills = &ProfileSkills{ExternalDirs: externalDirs}
+
+	out, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, out, 0o644)
+}
+
+// EnsureExternalDirs ensures the profile's config.yaml has
+// `skills.external_dirs` set to the given dirs. If the profile
+// already has external_dirs, the dirs are added (deduped, preserving
+// order). If the file doesn't exist, it's created.
+//
+// Returns the final list of external_dirs after the operation.
+func (c *Client) EnsureExternalDirs(profileName string, dirs []string) ([]string, error) {
+	cfg, err := c.ReadConfig(profileName)
+	if err != nil {
+		return nil, err
+	}
+	existing := []string{}
+	if cfg.Skills != nil {
+		existing = cfg.Skills.ExternalDirs
+	}
+	merged := mergeUnique(existing, dirs)
+	if err := c.WriteConfig(profileName, merged); err != nil {
+		return nil, err
+	}
+	return merged, nil
+}
+
+// mergeUnique returns the union of two string slices, preserving
+// order (existing first, then new entries appended if not present).
+func mergeUnique(a, b []string) []string {
+	seen := make(map[string]bool)
+	out := make([]string, 0, len(a)+len(b))
+	for _, s := range a {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	for _, s := range b {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }

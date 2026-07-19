@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -394,6 +395,8 @@ func syncProfile(p hermes.Profile, cwd string, aggressive, dryRun bool) profileS
 			if err := writeFile(p.SoulPath, newSoul); err != nil {
 				ui.Warn("    failed: %v", err)
 			}
+			// v1.10.2: also write config.yaml with skills.external_dirs
+			ensureProfileExternalDirs(p, dryRun)
 		}
 		return profileSyncResult{name: p.Name, action: "updated"}
 	}
@@ -402,6 +405,8 @@ func syncProfile(p hermes.Profile, cwd string, aggressive, dryRun bool) profileS
 	d := soul.ComputeDiff(string(currentSoul), newSoul)
 	if d.Summary == fmt.Sprintf("+%d -%d =%d", 0, 0, d.Unchanged) {
 		// Identical
+		// v1.10.2: still ensure external_dirs is set (idempotent)
+		ensureProfileExternalDirs(p, dryRun)
 		return profileSyncResult{name: p.Name, action: "skipped"}
 	}
 
@@ -431,9 +436,12 @@ func syncProfile(p hermes.Profile, cwd string, aggressive, dryRun bool) profileS
 			// no diff, skip. If there's a diff, it's from customizations
 			// the user made — preserve.
 			if len(d.Added) == 0 && len(d.Removed) == 0 {
+				ensureProfileExternalDirs(p, dryRun)
 				return profileSyncResult{name: p.Name, action: "skipped"}
 			}
 			ui.Step("  ~ %s (markers match; customizations preserved)", p.Name)
+			// v1.10.2: still ensure external_dirs (idempotent, harmless)
+			ensureProfileExternalDirs(p, dryRun)
 			return profileSyncResult{name: p.Name, action: "preserved"}
 		}
 
@@ -444,6 +452,7 @@ func syncProfile(p hermes.Profile, cwd string, aggressive, dryRun bool) profileS
 				ui.Warn("    failed: %v", err)
 				return profileSyncResult{name: p.Name, action: "skipped"}
 			}
+			ensureProfileExternalDirs(p, dryRun)
 		}
 		return profileSyncResult{name: p.Name, action: "updated"}
 	}
@@ -456,8 +465,54 @@ func syncProfile(p hermes.Profile, cwd string, aggressive, dryRun bool) profileS
 			ui.Warn("    failed: %v", err)
 			return profileSyncResult{name: p.Name, action: "skipped"}
 		}
+		ensureProfileExternalDirs(p, dryRun)
 	}
 	return profileSyncResult{name: p.Name, action: "updated"}
+}
+
+// ensureProfileExternalDirs ensures the profile's config.yaml has
+// `skills.external_dirs: ["~/.hermes/skills"]` set. This is
+// idempotent — if the dir is already there, no-op. Called by
+// syncProfile so every sync guarantees the profile sees the global
+// skills catalog (v1.10.2+).
+func ensureProfileExternalDirs(p hermes.Profile, dryRun bool) {
+	if dryRun {
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		ui.Warn("    could not determine home: %v", err)
+		return
+	}
+	skillsDir := filepath.Join(home, ".hermes", "skills")
+
+	// Build a Hermes client (zero-value Home would also work since
+	// EnsureExternalDirs uses c.Home for path resolution).
+	c, err := hermes.NewClient("")
+	if err != nil {
+		ui.Warn("    could not create hermes client: %v", err)
+		return
+	}
+	merged, err := c.EnsureExternalDirs(p.Name, []string{skillsDir})
+	if err != nil {
+		ui.Warn("    external_dirs: %v", err)
+		return
+	}
+	ui.Step("    config.yaml: skills.external_dirs = %v", formatDirs(merged))
+}
+
+// formatDirs returns a compact string representation of the dirs
+// slice (replaces home prefix with ~ for readability).
+func formatDirs(dirs []string) string {
+	home, _ := os.UserHomeDir()
+	out := make([]string, 0, len(dirs))
+	for _, d := range dirs {
+		if home != "" && strings.HasPrefix(d, home) {
+			d = "~" + d[len(home):]
+		}
+		out = append(out, d)
+	}
+	return fmt.Sprintf("%v", out)
 }
 
 func agentsInstallCmd() *cobra.Command {
@@ -495,7 +550,35 @@ func agentsInstallCmd() *cobra.Command {
 			if err := hermesClient.WriteSoul(profileName, newSoul); err != nil {
 				return err
 			}
-			ui.OK("Profile %q installed at %s", profileName, hermesClient.Home+"/profiles/"+profileName)
+			ui.OK("SOUL.md written at %s", hermesClient.Home+"/profiles/"+profileName+"/SOUL.md")
+
+			// v1.10.2: also create the profile in Hermes (if not yet)
+			// with --no-skills and write config.yaml with external_dirs.
+			// This way the profile sees the global skills catalog
+			// (~/.hermes/skills/) instead of receiving 73 bundled skills.
+			profilePath := filepath.Join(hermesClient.Home, "profiles", profileName)
+			if _, err := os.Stat(profilePath); os.IsNotExist(err) {
+				ui.Info("Creating Hermes profile (--no-skills)...")
+				// Best-effort: try `hermes profile create`. If hermes
+				// CLI is not on PATH, fall back to manual creation.
+				if err := runHermesProfileCreate(profileName); err != nil {
+					ui.Warn("  could not run `hermes profile create`: %v", err)
+					ui.Warn("  (you can run it manually: hermes profile create %s --no-skills)", profileName)
+				}
+			} else {
+				ui.Info("Profile directory already exists; skipping create.")
+			}
+
+			// Write config.yaml with skills.external_dirs
+			home, _ := os.UserHomeDir()
+			skillsDir := filepath.Join(home, ".hermes", "skills")
+			merged, err := hermesClient.EnsureExternalDirs(profileName, []string{skillsDir})
+			if err != nil {
+				ui.Warn("  external_dirs write: %v", err)
+			} else {
+				ui.OK("config.yaml: skills.external_dirs = %v", formatDirs(merged))
+			}
+
 			ui.Info("")
 			ui.Info("Next: use it with 'hermes -p %s' (or via your client)", profileName)
 			return nil
@@ -506,6 +589,17 @@ func agentsInstallCmd() *cobra.Command {
 }
 
 // helpers
+
+// runHermesProfileCreate runs `hermes profile create <name> --no-skills`
+// to bootstrap a profile without bundling the 73 default skills.
+// Best-effort: returns nil if hermes is not on PATH or fails (we'll
+// warn the user to run it manually).
+func runHermesProfileCreate(name string) error {
+	cmd := exec.Command("hermes", "profile", "create", name, "--no-skills")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
 
 func writeFile(path, content string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

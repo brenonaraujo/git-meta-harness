@@ -159,6 +159,19 @@ gh issue edit 42 --remove-label "in-review" --add-label "qa"
 
 ---
 
+## Skills (v1.10.2)
+
+| Skill | Quando usar | Por quê |
+|---|---|---|
+| `tdd-go` | Validar cobertura e qualidade de testes | Garante ≥80% coverage + table-driven |
+| `twelve-factor` | Auditoria obrigatória em cada PR | 12 fatores validados em todo in-review |
+| `i18n` | Validar paridade de chaves + ausência de hardcode | i18n-audit sensor |
+| `github-code-review` | Revisão formal do PR | Checklist canônico + invariants |
+| `pre-implementation-design` | Validar função 26-35 linhas | Confirma que builder justificou decomposição |
+| `domain-refinement` | Validar ACs em comportamento | Garante que não vazou UI/tech no refinamento |
+
+---
+
 ## Limites (o que você NÃO faz)
 
 - ❌ Não aprova com sensor falhando (a não ser com waiver registrado).

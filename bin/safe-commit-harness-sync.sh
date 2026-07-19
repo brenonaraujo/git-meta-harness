@@ -65,6 +65,11 @@ command -v git >/dev/null 2>&1 || { echo "❌ git not found" >&2; exit 2; }
 # Edite esta lista se seu projeto tem outros paths válidos.
 WHITELIST_REGEX='^(\.github/workflows/.*\.yml|\.github/workflows/.*\.yaml|\.golangci\.yml|\.markdownlint\.json?$|\.eslintrc.*$|\.prettierrc.*$|Makefile|docker-compose.*\.yml$|docker-compose.*\.yaml$|deploy/.*\.sh$|docs/HOWTO.*\.md$)'
 
+# --- Always-stage paths (framework sync core) ---
+# These paths are ALWAYS staged (not just whitelisted) when modified.
+# Add your framework-specific sync paths here.
+ALWAYS_STAGE_PATHS=("harness/" "VERSION" "bin/safe-commit-harness-sync.sh" "bin/.gitignore")
+
 # --- Detect suspicious changes ---
 echo "==> Checking working tree for suspicious changes..."
 echo
@@ -79,7 +84,9 @@ SUSPICIOUS=$(git status --short | awk '
   if (path ~ /^harness\//) next
   if (path == "VERSION") next
   if (path ~ /^\.git/) next
-  if (path ~ /^bin\//) next
+  # Skip other bin/ files but keep bin/safe-commit-harness-sync.sh
+  # (handled separately by ALWAYS_STAGE_PATHS)
+  if (path ~ /^bin\// && path != "bin/safe-commit-harness-sync.sh" && path != "bin/.gitignore") next
   if (path ~ /^\.DS_Store/) next
   # Modified or untracked
   if (status == "M" || status == "??" || status == "A" || status == "D" || status ~ /^R/) {
@@ -114,8 +121,9 @@ fi
 
 # --- Compute what to add ---
 TO_ADD=()
-TO_ADD+=("harness/")
-TO_ADD+=("VERSION")
+for p in "${ALWAYS_STAGE_PATHS[@]}"; do
+  TO_ADD+=("$p")
+done
 
 echo "==> Pre-selecting files to stage..."
 echo
