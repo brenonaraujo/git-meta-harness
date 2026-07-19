@@ -747,11 +747,11 @@ gh issue edit 13 --remove-label "ready" --add-label "in-progress"
 ./harness/scripts/check-parallel-builders.sh --in-progress
 # exit 0
 # Prossegue: dispara backend-engineer
-hermes chat -p backend-engineer -q "Implementar #13 ..."
+hermes -p backend-engineer chat -q "Implementar #13 ..."
 
 # RUIM — pula o sensor
 gh issue edit 13 --remove-label "ready" --add-label "in-progress"
-hermes chat -p backend-engineer -q "Implementar #13 ..."
+hermes -p backend-engineer chat -q "Implementar #13 ..."
 # Risco: #15 pode estar em in-progress com path-scope overlap
 # Resultado: conflito, retrabalho manual
 ```

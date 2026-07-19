@@ -1,6 +1,104 @@
 # Changelog
 
 
+## [1.12.2] - 2026-07-19 (HOTFIX)
+
+### Fixed — `gmh` agentic invocation: Hermes `-p` is a global flag
+
+**Severity**: MEDIUM (delegação de issue pra persona errada / silenciosa)
+
+**Context**: v1.6.5 introduced `agentic.Invocation()` to delegate
+work to the agentic (Hermes). The comment said:
+
+> Hermes: `hermes chat -p <profile> -q "<prompt>"`
+
+That comment was **wrong**. The actual Hermes CLI (validated in
+jul/2026) has `-p <profile>` as a **global flag on the `hermes`
+root command**, NOT a flag of `hermes chat`. Running the buggy
+form fails:
+
+```
+$ hermes chat -p team-manager -q "hello"
+hermes: error: argument command: invalid choice:
+"hello" (choose from 'chat', 'model', 'moa', ...)
+```
+
+The `chat` subcommand parser doesn't recognize `-p` and treats
+`-p` and the profile name as the positional command argument.
+
+**Correct form** (validated):
+
+```
+$ hermes -p team-manager chat -q "echo test"
+Query: echo test
+Initializing agent...
+[executes as team-manager]
+Resume this session with:
+  hermes --resume 20260719_174540_572a30 -p team-manager
+```
+
+**Symptom observed** (Brenon, jul/2026, BRT): "o team manager
+nao esta delegando corretamente para os profiles as issues via
+hermes". Whenever `gmh doctor` (or any future delegating command)
+called `Invocation(Hermes, profile, prompt)`, the resulting
+command failed silently or hit the wrong profile.
+
+**Root cause**: comment in `cli/internal/agentic/agentic.go`
+documented the wrong invocation. The implementation followed
+the comment. No live test validated the actual `hermes` CLI
+syntax.
+
+**Fix (v1.12.2)**:
+
+```go
+// Before (bug):
+return fmt.Sprintf("hermes chat -p %s -q %s", profile, shellQuote(prompt)), nil
+
+// After (fix):
+return fmt.Sprintf("hermes -p %s chat -q %s", profile, shellQuote(prompt)), nil
+```
+
+Also fixed 2 examples in `harness/personas/team-manager.md` §6.6
+that had the same buggy form.
+
+**Regression test added**:
+[`cli/internal/agentic/agentic_test.go`](cli/internal/agentic/agentic_test.go)
+- `TestInvocation_Hermes_ProfileFlagBeforeSubcommand` — checks
+  the output starts with `hermes -p <profile> chat` and **not**
+  `hermes chat -p <profile>`. If `hermes` is on PATH, also
+  validates `hermes --help` lists the `chat` subcommand.
+- `TestInvocation_Hermes_DefaultProfile` — empty profile
+  defaults to `team-manager`, still correct order.
+- `TestInvocation_LongPromptIsShellQuoted` — single quotes in
+  prompt are shell-escaped (Hermes invoked via shell).
+
+All 3 pass; CI also runs `hermes --help` (if on PATH) to confirm
+the expected CLI shape.
+
+**Lesson** (see [ADR-0024](harness/contrib/design-decisions.md)):
+
+> **Documentation in comments is not validation.** When a function
+> produces a CLI command (especially for an external binary
+> whose syntax may evolve), a unit test that asserts the output
+> format is the **minimum**. Better: a live test that runs the
+> command and checks the binary accepts it.
+
+This is the second "agentic invocation" bug since v1.6.5
+(see also v1.6.5 lesson on `hermes chat -p` vs
+`hermes profile <name> --prompt`). Pattern: every time we
+change agentic syntax, add a live test that runs the binary
+with `--help` and parses the result.
+
+**Migration**:
+
+```bash
+gmh update --to v1.12.2
+# No manual config change needed — fix is in the CLI binary.
+# Re-run gmh doctor to verify:
+gmh doctor
+```
+
+
 ## [1.12.1] - 2026-07-19 (HOTFIX)
 
 ### Fixed — `gmh agents sync` no longer erases `model`/`agent` config

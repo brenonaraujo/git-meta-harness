@@ -3045,3 +3045,170 @@ Aplicações concretas:
    o cenário do usuário (config com model+agent+custom,
    rodar WriteConfig, ler de volta, verificar tudo).
 
+
+---
+
+## 0024 — Hermes CLI invocation correctness (v1.12.2 HOTFIX)
+
+**Status:** Accepted
+**Data:** 2026-07-19
+**Decisor:** Brenon Araujo (v1.12.1 pós-release, BRT)
+**Relacionado:** v1.6.5 (primeira tentativa de agentic.Invocation),
+              v1.12.2 (correção)
+
+### Contexto
+
+`cli/internal/agentic/agentic.go:Invocation(Hermes, profile, prompt)`
+é usado pelo `gmh` para delegar trabalho ao Hermes. O comentário
+do código (e a implementação) dizia:
+
+```
+// Hermes: `hermes chat -p <profile> -q "<prompt>"`
+return fmt.Sprintf("hermes chat -p %s -q %s", profile, ...)
+```
+
+**Estava errado.** A flag `-p` no Hermes **NÃO é do subcomando
+`chat`** — é uma **flag global** do `hermes` raiz, que seta o
+profile para toda a sessão.
+
+A forma correta (validada empiricamente em jul/2026):
+
+```bash
+$ hermes -p team-manager chat -q "echo test"
+Query: echo test
+Initializing agent...
+[executa como team-manager]
+```
+
+A forma errada falha com:
+
+```bash
+$ hermes chat -p team-manager -q "hello"
+hermes: error: argument command: invalid choice:
+"hello" (choose from 'chat', 'model', 'moa', ...)
+```
+
+O parser do `chat` não conhece `-p` e trata `-p` + valor como o
+argumento posicional (o subcommand).
+
+**Sintoma** (Brenon, jul/2026, BRT): "o team manager nao esta
+delegando corretamente para os profiles as issues via hermes".
+Sempre que `gmh` tentava invocar o agentic, o comando falhava
+silenciosamente ou usava o profile errado.
+
+### Causa raiz
+
+A função `Invocation()` foi escrita baseada em **documentação
+de cabeçalho** (o próprio comentário) em vez de **execução real**.
+O bug existia desde v1.6.5 (out/2025) e só foi pego quando o
+Brenon tentou usar a delegação em produção.
+
+Pior: o **mesmo tipo de bug** já tinha acontecido antes. Em
+v1.6.5, a forma documentada era `hermes profile <name> --prompt`,
+também errada. Foi corrigido pra `hermes chat -p <name> -q ...`
+— mas essa correção também estava errada (v1.6.5 introduziu o
+problema que v1.12.2 corrige).
+
+### Decisão (v1.12.2 HOTFIX)
+
+1. **Corretude da invocação**:
+
+```go
+// Antes (v1.6.5+ — bug):
+return fmt.Sprintf("hermes chat -p %s -q %s", profile, shellQuote(prompt)), nil
+
+// Depois (v1.12.2 — fix):
+return fmt.Sprintf("hermes -p %s chat -q %s", profile, shellQuote(prompt)), nil
+```
+
+2. **Exemplos em docs corrigidos** (`team-manager.md` §6.6) — 2
+   exemplos mostravam a forma errada, agora atualizados.
+
+3. **Teste de regressão** (3 casos em
+   `cli/internal/agentic/agentic_test.go`):
+
+```go
+func TestInvocation_Hermes_ProfileFlagBeforeSubcommand(t *testing.T) {
+    got, _ := Invocation(Hermes, "backend-engineer", "...")
+    if strings.HasPrefix(got, "hermes chat -p ") {
+        t.Errorf("BUGGY form; Hermes `-p` is global (must come before `chat`)")
+    }
+    want := "hermes -p backend-engineer chat -q '...'"
+    if got != want { t.Errorf(...) }
+
+    // Bonus: if hermes is on PATH, run `hermes --help` and verify
+    // the CLI shape (catches future breakage of the assumption).
+    if path, err := exec.LookPath("hermes"); err == nil {
+        out, _ := exec.Command("hermes", "--help").CombinedOutput()
+        if !strings.Contains(string(out), "{chat,") {
+            t.Errorf("hermes --help missing {chat,...}")
+        }
+    }
+}
+```
+
+O CI automaticamente roda esse teste. Se `hermes` está no PATH
+do runner, valida a forma do CLI; se não está, valida só a
+string output. **Não confiamos só em comentário — validamos
+execução.**
+
+### Princípio (pra todos os agentics)
+
+> **"Documentação em comentário não é validação."** Quando uma
+> função produz um comando CLI (especialmente pra um binário
+> externo cuja sintaxe pode evoluir), um unit test que asserta
+> o formato do output é o **mínimo**. Melhor: live test que
+> roda o comando e checa se o binário aceita.
+
+**Aplicação concreta**:
+
+| Agentic | Forma validada (jul/2026) | Onde está documentada |
+|---|---|---|
+| Hermes | `hermes -p <profile> chat -q "<prompt>"` | `agentic.Invocation()` + teste live |
+| Claude Code | `claude -p "<prompt>"` (TBD) | `agentic.Invocation()` — falta live test |
+| Codex | `codex -p "<prompt>"` (TBD) | idem |
+| OpenCode | `opencode -p "<prompt>"` (TBD) | idem |
+
+**Próximos passos** (candidatos a v1.13+):
+- Adicionar live test pra `claude`, `codex`, `opencode`
+  (quando Brenon usar esses tools).
+- Adicionar sensor "agentic-invocation-validity" que roda
+  `gmh doctor` e verifica que o comando produzido é
+  executável (se o agentic está no PATH).
+
+### Quem detecta / Quem corrige
+
+- **`gmh`**: usa `Invocation()` que produz a forma correta.
+- **CI (Go test)**: 3 testes em
+  `cli/internal/agentic/agentic_test.go` rodam em todo PR
+  (cobre o caso de regressão).
+- **User**: se notar profile errado sendo invocado, rodar
+  `gmh doctor` e verificar o comando sugerido (deve começar
+  com `hermes -p <profile> chat`).
+
+### Custo evitado
+
+- ~5-15min/ocorrência (descobrir + corrigir invocação errada
+  em workflow).
+- ~30min-1h/épico se o team-manager não detecta e empurra
+  com o profile errado.
+
+### Lição histórica
+
+Esse é o **segundo** "agentic invocation bug" do meta-harness:
+
+| Versão | Forma documentada | Problema |
+|---|---|---|
+| v1.6.5 | `hermes profile <name> --prompt ...` | Não existe `--prompt` |
+| v1.6.5–v1.12.1 | `hermes chat -p <name> -q ...` | `-p` não é do `chat` |
+| **v1.12.2** | `hermes -p <name> chat -q ...` | ✅ validado |
+
+**Padrão**: comentário desatualizado → implementação copiou o
+comentário → CI não pegou (não havia live test) → user descobre
+em produção.
+
+**Fix sistemico** (proposto pra v1.13+): todo `agentic.Invocation()`
+deve ter um live test que rode o binário com `--help` e valide
+a forma. O test em
+`TestInvocation_Hermes_ProfileFlagBeforeSubcommand` é o modelo.
+

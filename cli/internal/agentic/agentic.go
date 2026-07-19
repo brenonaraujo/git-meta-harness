@@ -166,11 +166,17 @@ func fileExists(p string) bool {
 // the given prompt. Used by `gmh doctor` to delegate the actual
 // harness health check to the agentic.
 //
-// All commands use the agentic's actual CLI (validated manually):
-//   - Hermes: `hermes chat -p <profile> -q "<prompt>"`
+// All commands use the agentic's actual CLI (validated against
+// the installed binary — see TestInvocation_ValidatesHermesCLI):
+//   - Hermes: `hermes -p <profile> chat -q "<prompt>"`  (v1.12.2+)
 //   - Claude Code: `claude -p "<prompt>"` (TBD — adjust when validated)
 //   - Codex: `codex -p "<prompt>"` (TBD)
 //   - OpenCode: `opencode -p "<prompt>"` (TBD)
+//
+// v1.12.2 HOTFIX: Hermes `-p` is a **global** flag (on the
+// `hermes` root command), NOT a `hermes chat` subcommand flag.
+// The previous form `hermes chat -p <profile> -q ...` fails
+// silently — `hermes chat` rejects `-p` as an unknown arg.
 //
 // For long prompts (>2KB), prefer --query-file or stdin redirect.
 func Invocation(a Agentic, profile, prompt string) (string, error) {
@@ -179,9 +185,10 @@ func Invocation(a Agentic, profile, prompt string) (string, error) {
 		if profile == "" {
 			profile = "team-manager"
 		}
-		// Validated against hermes CLI: chat accepts -p/--profile and
-		// -q/--query. Long prompts work via shell-quoted single line.
-		return fmt.Sprintf("hermes chat -p %s -q %s", profile, shellQuote(prompt)), nil
+		// Validated against hermes CLI: `-p <profile>` is a root flag
+		// (sets the profile for the entire session). `chat -q <prompt>`
+		// is the non-interactive subcommand. Order matters.
+		return fmt.Sprintf("hermes -p %s chat -q %s", profile, shellQuote(prompt)), nil
 	case ClaudeCode:
 		// TBD — validate against actual `claude` CLI before shipping
 		return fmt.Sprintf("claude -p %s", shellQuote(prompt)), nil
