@@ -141,6 +141,88 @@ Pronto para QA. Movendo label para `in-review`.
 
 ---
 
+## 🚨 Design rules (UI/UX) — invioláveis
+
+> Estas regras vêm da skill
+> [`../skills/ux-design-best-practices/SKILL.md`](../skills/ux-design-best-practices/SKILL.md)
+> e da skill
+> [`../skills/nuxt-ui-patterns/SKILL.md`](../skills/nuxt-ui-patterns/SKILL.md).
+> **Sempre consulte as skills antes de implementar UI.**
+
+### Regra #0 — Página primeiro, modal por último
+
+**Default: página dedicada com breadcrumb.** Modal só quando o
+usuário PRECISA parar tudo para decidir algo.
+
+| Padrão | Quando usar | Exemplo |
+|---|---|---|
+| **Página** (default) | Task > 30s, multi-step, contexto importa | Criar/editar, settings, formulários longos |
+| **Modal** | Confirmação rápida (< 5s), destrutivo, login gate | "Deletar projeto?", "Confirmar upgrade" |
+| **Slideover** | Editar vendo contexto | Edit item enquanto lista é visível |
+| **Drawer** | Navegação, settings sob demanda | Sidebar, painel de filtros |
+| **Toast** | Informar sem bloquear | "Salvo com sucesso" |
+
+**Nunca use modal para**: tasks > 30s, formulários com mais de 2
+campos, multi-step, ou onde o usuário precisa comparar dados da
+página atrás.
+
+### Regra #1 — Breadcrumbs sempre em páginas 2+ níveis
+
+Toda página 2+ níveis deep DEVE ter breadcrumb visível acima do H1.
+
+```vue
+<BreadcrumbHome class="mb-4" />
+```
+
+Use HTML semântico: `<nav aria-label="breadcrumb">` + `<ol>` +
+`aria-current="page"`.
+
+### Regra #2 — Templates oficiais Nuxt UI
+
+Para implementar um dashboard, **comece pelo template oficial**:
+
+```bash
+npx nuxi@latest init my-app -t github:nuxt-ui-templates/dashboard
+```
+
+Templates de referência (sempre consulte):
+- [nuxt-ui-templates/dashboard](https://github.com/nuxt-ui-templates/dashboard) — admin panels
+- [nuxt-ui-templates/saas](https://github.com/nuxt-ui-templates/saas) — landing, pricing, blog
+- [nuxt-ui-templates/lms](https://github.com/nuxt-ui-templates/lms) — learning management
+- [nuxt-ui-templates/minimal](https://github.com/nuxt-ui-templates/minimal) — boilerplate limpo
+
+**Não reinvente a roda**: copie o `UDashboardPage`, `UTable`,
+`UCommandPalette` do template oficial e adapte.
+
+### Regra #3 — Acessibilidade WCAG AA (não-negociável)
+
+- Contraste mínimo 4.5:1 (texto), 3:1 (UI components)
+- Tab navigation funcional (Tab cicla, Esc fecha modal, foco
+  volta pro trigger)
+- Tap targets ≥ 44x44px
+- `aria-label`, `aria-current`, `aria-describedby` onde aplicável
+- Dark mode testado
+- Não use cor como único indicador (sempre combine com ícone/texto)
+
+### Self-check antes de abrir PR de UI
+
+Antes de marcar como `in-review`, verifique:
+
+- [ ] **Zero modais** para tasks > 30s ou com mais de 2 campos
+- [ ] **Breadcrumbs** em todas as páginas 2+ níveis
+- [ ] **Templates Nuxt UI** usados como referência (não código from scratch)
+- [ ] **WCAG AA** — contraste, tab nav, Esc, tap targets
+- [ ] **Dark mode** testado
+- [ ] **Responsive** — 375px, 768px, 1280px+ todos OK
+- [ ] **Loading + empty + error states** em cada lista/form
+- [ ] **URL state** para filtros, paginação, item selecionado
+- [ ] **i18n** — strings em `locales/*.json`, paridade en/pt-BR/es
+
+Se qualquer item falhar, **corrija antes de abrir PR**. PR com UI
+ruim = retrabalho de QA + UX.
+
+---
+
 ## Ferramentas
 
 - `Read`, `Write`, `Edit` — para o código.
@@ -220,3 +302,6 @@ gh issue edit 42 --remove-label "ready" --add-label "in-progress"
 - `harness/personas/team-manager.md`
 - `harness/personas/solutions-architect.md`
 - `harness/personas/quality-assurance.md`
+- **`harness/skills/ux-design-best-practices/SKILL.md`** (sempre consultar)
+- **`harness/skills/nuxt-ui-patterns/SKILL.md`** (sempre consultar)
+- **`harness/skills/i18n.md`**

@@ -1835,3 +1835,102 @@ Adicionar uma **CLI `gmh`** (git-meta-harness):
   pode ser clonado manualmente como antes).
 - Trocar Go por Python = reescrever `cli/` em Python; os
   comandos expostos são os mesmos, então a UX não muda.
+
+
+## ADR-0017 — UI/UX skills + design cercas (v1.7.0)
+
+> **Decisão:** adicionar 2 skills de UI/UX (`nuxt-ui-patterns`,
+> `ux-design-best-practices`) + cercar `domain-expert` para não
+> falar de design + adicionar label `type/ui` para routing puro de
+> UI.
+
+### Contexto
+
+- O **frontend-engineer** estava implementando UIs sem skill
+  estruturada de Nuxt UI / UX best practices → inconsistência
+  (modais onde deveria ser página, breadcrumbs faltando, etc.).
+- O **domain-expert** estava direcionando design no meio do
+  refinamento ("clicar no modal para confirmar exclusão") →
+  desalinhamento entre o que o domínio queria e o que o
+  frontend implementava.
+- Incident concreto: Mandaí v2 (jul/2026) — domain-expert
+  usou "clicar no modal" no AC, frontend implementou modal, mas
+  o design system padrão é **página + breadcrumb**, não modal.
+  Resultado: retrabalho.
+
+### Decisão
+
+#### 1. Skill `nuxt-ui-patterns` (Nuxt UI v3)
+
+- Patterns de Nuxt UI v3.3.6 (UDashboardPage, UTable, UForm, etc.)
+- Templates de referência oficiais:
+  [nuxt-ui-templates/dashboard](https://github.com/nuxt-ui-templates/dashboard),
+  [saas](https://github.com/nuxt-ui-templates/saas),
+  [lms](https://github.com/nuxt-ui-templates/lms)
+- Regra #0: **página primeiro, modal por último**
+- Regra #1: **breadcrumbs sempre** em páginas 2+ níveis
+- Regra #2: **comece pelo template oficial**, não reinvente
+
+#### 2. Skill `ux-design-best-practices` (stack-agnostic)
+
+- Aplica a qualquer framework (Nuxt, React, Vue, mobile)
+- Modais: quando usar (raro), como fazer, a11y
+- Breadcrumbs: estrutura semântica, quando mostrar
+- Forms: inline validation, primary action, multi-step
+- WCAG AA: contraste 4.5:1, tab nav, Esc, tap targets 44x44px
+- Responsive: mobile-first, breakpoints
+- Loading/empty/error states
+- i18n: strings em `locales/*.json`
+
+#### 3. Cerca de design no `domain-expert`
+
+- Domain-expert **NÃO** especifica componentes de UI
+  (modal, botão, card, sidebar, tab, etc.)
+- Domain-expert **FALA** em comportamento (o **o quê** e o
+  **por quê**), nunca em UI (o **como**)
+- Tabela de exemplos:
+
+  | ❌ Anti-pattern (design) | ✅ Correto (comportamento) |
+  |---|---|
+  | "Clicar no modal de confirmação" | "Confirmar exclusão antes de executar" |
+  | "Toast verde de sucesso" | "Notificar o usuário do sucesso" |
+  | "Drop-down de filtro" | "Permitir filtrar resultados por categoria" |
+
+- **Quem decide UI**: `frontend-engineer` consulta as skills
+  e decide o padrão apropriado.
+
+#### 4. Cerca de design no `team-manager`
+
+- Team-manager **detecta** quando o refinamento do domain-expert
+  tem UI embutida (modal, botão, card, etc.)
+- Team-manager **devolve** o refinamento para reformulação
+- Inclui template de resposta no team-manager.md §4.1.1
+
+#### 5. Label `type/ui`
+
+- Para issues **puramente de design** (refatorar dashboard,
+  aplicar design system, etc.) sem refinar regra de negócio
+- Routing: `frontend-engineer` (consulta skills) → `qa` → `devops`
+- **Pula** `domain-expert` e `solutions-architect` (não há domínio
+  ou arquitetura a decidir)
+
+### Consequências
+
+- **+** Frontend-engineer tem skills estruturadas para implementar
+  UIs consistentes.
+- **+** Domain-expert não conflita com frontend-engineer.
+- **+** Team-manager detecta e corrige desalinhamento cedo.
+- **+** Templates oficiais do Nuxt UI aceleram implementação.
+- **+** Acessibilidade WCAG AA garantida (não-negociável).
+- **−** Domain-expert precisa aprender a falar em comportamento
+  (curva de aprendizado inicial).
+- **−** Team-manager precisa detectar design embutido (mais um
+  sinal para ficar atento).
+
+### Reversibilidade
+
+- Reverter = remover as 2 skills, reverter a cerca do
+  domain-expert, remover a label `type/ui`. ~30 min.
+- Mudar para outro framework = atualizar a skill
+  `nuxt-ui-patterns` (e renomear) — as regras de design
+  permanecem as mesmas.

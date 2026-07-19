@@ -257,8 +257,62 @@ gh issue edit <id> --add-assignee <@domain-expert-<x>-username>
 | `type/infra`         | Infraestrutura         | `solutions-architect` (alinha com a stack/harness) → `devops-engineer` (executa) → `qa` valida o resultado. **Pula `domain-expert` e `backend/frontend-engineer`**. |
 | `type/bug`           | Bug                    | `domain-expert-<x>` (se for bug de negócio) ou `solutions-architect` (se for bug técnico) → builder → `qa` → devops. |
 | `type/tech-debt`     | Dívida técnica         | `solutions-architect` → builder → `qa` → devops. **Pula `domain-expert`**.                  |
+| `type/ui`            | UI/UX design (puro)   | `frontend-engineer` (com skills `nuxt-ui-patterns` e `ux-design-best-practices`) → `qa` → devops. **Pula `domain-expert`** (não há domínio a refinar — é design). |
 | `type/docs`          | Documentação           | **Apenas você** escreve/revisa, ou atribui a quem propôs. Sem `qa` formal.                  |
 | `type/spike`         | Investigação/Pesquisa  | `solutions-architect` ou `domain-expert-<x>` (depende do escopo). **Não tem DoD formal** — saída é ADR/relatório. |
+
+### 4.1.1. Cerca de design — não deixe `domain-expert` especificar UI
+
+> Adicionado em **v1.7.0** depois do incidente Mandaí v2 (jul/2026)
+> onde o domain-expert direcionou design ("clicar no modal para
+> confirmar exclusão") no meio do refinamento, causando desalinhamento
+> entre o que o domínio queria e o que o frontend implementou.
+
+**Detecção**: ao receber o refinamento do `domain-expert-<x>`,
+verifique se há **componentes de UI nomeados** (modal, botão, card,
+sidebar, tab, accordion, dropdown, tooltip, toast, slideover, drawer).
+Se sim, **devolva para o domain-expert** com pedido de reformulação
+em **comportamento** (ex.: "confirmar exclusão" em vez de "clicar
+no modal").
+
+**Sinais de violação**:
+- ACs com "modal", "botão", "drop-down", "card", "sidebar"
+- Comandos de UI: "clicar", "hover", "drag", "swipe"
+- Tecnologias visuais: "Nuxt UI", "Tailwind", "CSS grid"
+
+**Ação**: pedir reformulação usando o template abaixo, ou aplicar
+você mesmo a reformulação antes de seguir para `solutions-architect`.
+
+```markdown
+@<domain-expert> — esse refinamento tem design embutido. Por favor
+reformule em termos de **comportamento do usuário** (o que precisa
+acontecer) em vez de **componentes de UI** (como vai aparecer).
+Quem decide UI é o `frontend-engineer` + `solutions-architect`,
+com base nas skills `nuxt-ui-patterns` e `ux-design-best-practices`.
+
+Exemplos:
+- ❌ "Clicar no modal de confirmação para deletar"
+- ✅ "Confirmar exclusão antes de executar (irreversível)"
+
+- ❌ "Mostrar toast verde de sucesso"
+- ✅ "Notificar o usuário que a operação foi concluída"
+
+- ❌ "Drop-down de filtro no sidebar"
+- ✅ "Permitir filtrar resultados por categoria"
+
+Quando reformular, mantenha:
+- Persona (Quem se beneficia)
+- Comportamento esperado (O que precisa acontecer)
+- Por que importa (Valor de negócio)
+- Edge cases do domínio
+- Regulamentação
+```
+
+**Quem decide UI**: `frontend-engineer` consulta as skills
+[`ux-design-best-practices`](../skills/ux-design-best-practices/SKILL.md)
+e [`nuxt-ui-patterns`](../skills/nuxt-ui-patterns/SKILL.md) para
+escolher o padrão apropriado (página + breadcrumb, slideover, modal
+de confirmação, etc.).
 
 ### 4.2. Exemplos práticos
 

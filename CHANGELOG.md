@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] - 2026-07-18
+
+### Added — UI/UX skills + design cercas (ADR-0017)
+
+**Context**: The frontend-engineer was building UIs without
+structured guidance on Nuxt UI v3 patterns or UX best practices,
+and the domain-expert was directing design ("click the modal
+to confirm") during refinement, causing misalignment with the
+project's design system (which defaults to page + breadcrumb,
+not modal).
+
+**Skills added** (in `harness/skills/`):
+- `nuxt-ui-patterns/SKILL.md` — Nuxt UI v3 patterns:
+  - UDashboardPage, UDashboardNavbar, UTable, UForm
+  - Reference templates:
+    [nuxt-ui-templates/dashboard](https://github.com/nuxt-ui-templates/dashboard),
+    [saas](https://github.com/nuxt-ui-templates/saas),
+    [lms](https://github.com/nuxt-ui-templates/lms)
+  - Rule #0: **Page first, modal last** (decision tree)
+  - Rule #1: **Breadcrumbs always** on 2+ level pages
+- `ux-design-best-practices/SKILL.md` — stack-agnostic UX:
+  - When to use modal/page/slideover/drawer/toast
+  - Breadcrumb patterns (semantic HTML, ARIA)
+  - Form patterns (inline validation, primary action)
+  - WCAG AA: contrast 4.5:1, tab nav, Esc, tap targets 44x44px
+  - Responsive, loading/empty/error states, i18n
+
+### Added — Design fence in `domain-expert`
+
+Domain-expert now **fences itself** from design:
+- ❌ NEVER specifies UI components (modal, button, card, sidebar, tab)
+- ✅ Always describes **behavior** (what + why), never **UI** (how it looks)
+- Reformulation table with 5+ practical examples
+- Updated `Limites` section to include design
+
+### Added — `type/ui` label + routing
+
+- New label `type/ui` for pure UI/UX work (no business logic)
+- Routing: `frontend-engineer` (consults skills) → `qa` → `devops`
+- **Skips** `domain-expert` and `solutions-architect`
+- Added to team-manager §4.1 routing table
+
+### Added — Design detection in `team-manager`
+
+Team-manager now **detects** when domain-expert refinement has
+UI specifics (modal, button, card, sidebar) and returns it
+for reformulation. Includes a response template in
+team-manager.md §4.1.1.
+
+### Changed
+
+- `frontend-engineer.md`: added "Design rules (UI/UX) — invioláveis"
+  section with references to both new skills
+- `domain-expert.template.md`: added "Cerca de Design" section with
+  examples, reformulation table, gold rule
+- `team-manager.md`: added `type/ui` to routing table and §4.1.1
+  Design detection with response template
+- New ADR-0017 documenting the decision
+
 ## [1.6.10] - 2026-07-18
 
 ### Fixed — `gmh doctor` no longer false-flags "CI drift" for legitimate customizations
