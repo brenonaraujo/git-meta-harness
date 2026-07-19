@@ -2876,3 +2876,172 @@ Esta versão (v1.12.0) ataca **as 3 causas raiz simultaneamente**:
 
 **Total**: ~100KB de framework. **Custo evitado**: ~30h/ano.
 
+
+---
+
+## 0023 — Agent config preservation (v1.12.1 HOTFIX)
+
+**Status:** Accepted
+**Data:** 2026-07-19
+**Decisor:** Brenon Araujo (v1.12.0 pós-release, BRT)
+**Relacionado:** v1.10.2 (gmh agents sync writes config.yaml), v1.12.0
+              release, hotfix v1.12.1
+
+### Contexto
+
+A v1.10.2 introduziu `gmh agents sync` que escreve
+`skills.external_dirs: ["~/.hermes/skills"]` no `config.yaml` de
+cada profile. A v1.12.0 reaproveitou esse mecanismo pra propagar
+o mesmo em todos os caminhos (`fresh/stale/preserved/skipped`).
+
+A implementação original:
+
+```go
+type ProfileConfig struct {
+    Skills *ProfileSkills `yaml:"skills,omitempty"`
+}
+
+func (c *Client) WriteConfig(profileName string, externalDirs []string) error {
+    cfg := &ProfileConfig{}
+    data, _ := os.ReadFile(path)
+    yaml.Unmarshal(data, cfg)               // só lê campos conhecidos
+    cfg.Skills = &ProfileSkills{ExternalDirs: externalDirs}
+    out, _ := yaml.Marshal(cfg)             // só escreve campos conhecidos
+    os.WriteFile(path, out, 0o644)
+}
+```
+
+**Bug**: o `ProfileConfig` struct só conhece `skills`. Quando o
+YAML é unmarshalado nele, `model.default`, `model.provider`,
+`agent.reasoning_effort`, e qualquer outra chave custom são
+**silenciosamente descartadas**. O `yaml.Marshal` então escreve
+só `skills` de volta, **apagando** o resto.
+
+**Sintoma observado** (Mandaí v2, jul/2026, pós-v1.12.0):
+
+| Profile | Estado antes | Estado depois de `gmh agents sync` |
+|---|---|---|
+| `team-manager` | tinha `model` + `agent` | **ambos apagados** ❌ |
+| `solutions-architect` | tinha `model` + `agent` | **ambos apagados** ❌ |
+| `quality-assurance` | tinha `model` + `agent` | **ambos apagados** ❌ |
+| `devops-engineer` | tinha `model` + `agent` | **ambos apagados** ❌ |
+| `backend-engineer` | tinha `model` + `agent` | preservados (não re-sincronizado) |
+| `frontend-engineer` | tinha `model` + `agent` | preservados (não re-sincronizado) |
+
+O Hermes CLI recusava iniciar os 4 profiles afetados com erro
+"missing required field: model.default".
+
+**Custo**: ~30min para diagnosticar + restaurar manualmente 4
+profiles. Risco de repetição em qualquer projeto que tenha
+sofrido `gmh update` → v1.12.0 (todos os 5+ projetos com
+meta-harness instalado).
+
+### Causa raiz
+
+A classe de bug é "**struct round-trip erasure**":
+
+1. Ferramenta lê arquivo do usuário (config.yaml, package.json,
+   .env, etc).
+2. Ferramenta usa struct tipada (Go) / dataclass (Python) /
+   interface (TS) com **subconjunto** dos campos.
+3. Ferramenta escreve de volta.
+4. **Qualquer campo fora do subset é apagado**.
+
+Isso é diferente de "ler todos os campos e preservar" — que é o
+que o usuário espera de uma ferramenta "não-destrutiva".
+
+### Decisão (v1.12.1 HOTFIX)
+
+`WriteConfig` agora usa `map[string]interface{}` (Go) / `dict`
+(Python) em vez de struct tipada. O resultado é:
+
+1. **Read**: unmarshal em `map[string]interface{}` → todos os
+   campos são preservados em memória.
+2. **Modify**: altere **apenas** `skills.external_dirs`.
+3. **Write**: marshal de volta → todos os campos originais
+   (incluindo futuros que o agent adicionar) sobrevivem.
+
+```go
+// v1.12.1 — fix
+func (c *Client) writeConfigPreserveAll(profileName string, externalDirs []string) error {
+    root := map[string]interface{}{}
+    data, _ := os.ReadFile(path)
+    if err := yaml.Unmarshal(data, &root); err != nil {
+        // Não perder dados em parse error — backup + erro
+        backup := path + ".bak-" + fmt.Sprintf("%d", os.Getpid())
+        os.WriteFile(backup, data, 0o644)
+        return fmt.Errorf("parse config %s: %w (backup at %s)", path, err, backup)
+    }
+
+    skills, _ := root["skills"].(map[string]interface{})
+    if skills == nil {
+        skills = map[string]interface{}{}
+    }
+    skills["external_dirs"] = mergeUniqueGeneric(skills["external_dirs"], externalDirs)
+    root["skills"] = skills
+
+    out, _ := yaml.Marshal(root)
+    os.WriteFile(path, out, 0o644)
+}
+```
+
+**Garantias**:
+
+1. **Preserva `model`, `agent`, e qualquer outra chave**.
+2. **Não duplica** `external_dirs` (mergeUnique dedupa).
+3. **Backup em parse error** (não sobrescreve config corrompido).
+4. **Teste de regressão**:
+   [`cli/internal/hermes/hermes_test.go`](../cli/internal/hermes/hermes_test.go)
+   `TestWriteConfigPreservesModelAgent` (com 4 fields + custom key
+   + 3 external_dirs, verifica que TODOS sobrevivem).
+
+### Princípio (pra todos os tools)
+
+> **"A ferramenta nunca deve apagar dados do usuário ao
+> re-escrever arquivo que ela não possui."**
+
+Aplicações concretas:
+
+| Ferramenta | Arquivo | Implementação |
+|---|---|---|
+| `gmh` (Go) | `~/.hermes/profiles/*/config.yaml` | `map[string]interface{}` (v1.12.1) |
+| `gmh` (Go) | `package.json` (futuro) | `map[string]interface{}` + known-keys merge |
+| `gmh` (Go) | `.github/workflows/*.yml` | `map[string]interface{}` |
+| Edit de `pyproject.toml` | python | `tomllib` + `tomli_w` com merge key-by-key |
+| Edit de `Cargo.toml` | rust | `toml` crate com merge key-by-key |
+
+### Quem detecta / Quem corrige
+
+- **`gmh`**: usa `writeConfigPreserveAll` internamente.
+- **`team-manager`**: roda `gmh doctor` no PR review — se um
+  profile perdeu `model.default`, **bloqueia** o merge.
+- **`quality-assurance`**: roda `gmh doctor --strict` antes de
+  aprovar qualquer update de framework.
+- **User**: se notar profile quebrado, **backup** primeiro
+  (`cp ~/.hermes/profiles/<name>/config.yaml{,.bak}`), depois
+  investigar.
+
+### Custo evitado
+
+- **Por ocorrência**: ~30min (diagnóstico + restore manual).
+- **Por release** (que toca o agent): ~5-10 projetos × 30min =
+  ~2.5-5h.
+- **Por ano** (12 releases): ~30-60h/ano.
+
+### Lições
+
+1. **Nunca use struct tipada pra round-trip de arquivo do
+   usuário.** Use `map`/`dict`/`interface{}` (Go), `dict`
+   (Python), `Record<string, unknown>` (TS).
+2. **Parse error = backup + error, não silent overwrite.**
+   O `writeConfigPreserveAll` faz `path + ".bak-" + pid` antes
+   de retornar erro.
+3. **Documente o invariante**: "framework não mexe em config
+   do agent sem preservar campos do usuário". Esse é o tipo de
+   coisa que precisa estar no `AGENTS.md` invariante
+   (candidata a #24 em v1.13+).
+4. **Teste de regressão é mandatório pra round-trip.** Não
+   confie em "deve funcionar" — escreva o teste que reproduz
+   o cenário do usuário (config com model+agent+custom,
+   rodar WriteConfig, ler de volta, verificar tudo).
+

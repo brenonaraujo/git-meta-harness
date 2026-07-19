@@ -1,6 +1,111 @@
 # Changelog
 
 
+## [1.12.1] - 2026-07-19 (HOTFIX)
+
+### Fixed — `gmh agents sync` no longer erases `model`/`agent` config
+
+**Severity**: HIGH (configuração do agent era sobrescrita em todo sync)
+
+**Context**: v1.12.0 added `gmh agents sync` writing
+`skills.external_dirs` to each profile's `config.yaml`. The
+implementation unmarshaled the existing YAML into a typed struct
+(`ProfileConfig`) that only knew about `skills`, then marshaled
+it back, **silently erasing any other field the user had set**
+(`model.default`, `model.provider`, `agent.reasoning_effort`,
+custom keys, etc).
+
+**Symptom**: After running `gmh agents sync` (which happens on
+every `gmh update` to v1.12.0+), 4 of Brenon's profiles
+(`team-manager`, `solutions-architect`, `quality-assurance`,
+`devops-engineer`) lost their `model` and `agent` blocks. The
+Hermes CLI then refused to start the profile (`missing required
+field: model.default`).
+
+**Root cause**: `WriteConfig` in
+`cli/internal/hermes/hermes.go` used a typed struct (yaml.v3
+`ProfileConfig`) for unmarshal **and** marshal. Any field not in
+the struct was dropped on the way out.
+
+**Fix (v1.12.1)** — `WriteConfig` now uses a generic
+`map[string]interface{}` for both read and write. Only
+`skills.external_dirs` is touched; everything else (model,
+agent, custom keys, future fields) is preserved.
+
+```go
+// Before (bug):
+cfg := &ProfileConfig{}
+yaml.Unmarshal(data, cfg)  // only reads known fields
+cfg.Skills = &ProfileSkills{ExternalDirs: externalDirs}
+yaml.Marshal(cfg)          // writes back ONLY known fields
+                           // → silently erases model/agent!
+
+// After (fix):
+root := map[string]interface{}{}
+yaml.Unmarshal(data, &root)  // reads ALL fields as map
+skills := root["skills"].(map[string]interface{})
+skills["external_dirs"] = merged
+yaml.Marshal(root)            // writes ALL fields back
+                              // → preserves model/agent!
+```
+
+**Regression test added**:
+[`cli/internal/hermes/hermes_test.go`](cli/internal/hermes/hermes_test.go)
+(`TestWriteConfigPreservesModelAgent`, `TestWriteConfigCreatesWhenMissing`,
+`TestWriteConfigIdempotent` — all 3 pass).
+
+**Validation**:
+- ✅ 3 unit tests pass (preserves model/agent, creates when missing,
+  idempotent)
+- ✅ Restored 4 profiles (manual edit) on Brenon's machine — all
+  preserved through a real `gmh agents sync` run
+- ✅ All 6 framework-controlled profiles (`team-manager`,
+  `backend-engineer`, `frontend-engineer`, `solutions-architect`,
+  `quality-assurance`, `devops-engineer`) keep their `model` and
+  `agent` blocks
+
+**Migration**:
+
+```bash
+# 1. Pull hotfix
+cd your-project
+gmh update --to v1.12.1
+
+# 2. (If you were on v1.12.0) restore your model/agent config
+#    manually — `gmh doctor` will warn if a profile is missing
+#    `model.default`. Example config:
+#
+#    # ~/.hermes/profiles/team-manager/config.yaml
+#    agent:
+#      reasoning_effort: max
+#    model:
+#      default: MiniMax-M3
+#      provider: minimax-oauth
+#    skills:
+#      external_dirs:
+#      - ~/.hermes/skills
+#
+# 3. Re-run `gmh agents sync` to confirm config is preserved
+gmh agents sync
+cat ~/.hermes/profiles/team-manager/config.yaml   # model still there ✅
+```
+
+**Lesson** (see [ADR-0023](harness/contrib/design-decisions.md)):
+
+> When a tool writes back to a file the user owns (config.yaml,
+> `.env`, `package.json`, `SOUL.md`, anything that was hand-edited
+> or set by the tool itself), **always use a generic map
+> representation**, never a typed struct with a subset of fields.
+> A typed struct is fine for *reading*, but the moment you
+> *write*, you've committed to knowing every field — and a new
+> field added by the agent later will silently nuke user data.
+
+This bug class has a name: **"struct round-trip erasure"**. It
+also affected `package.json`, `Cargo.toml`, `pyproject.toml`,
+`.env`, etc in many tools. The fix is universal: marshal via
+a generic map, not a typed struct.
+
+
 ## [1.12.0] - 2026-07-19
 
 ### Added — Frontend Public Skills + Cold-Start Polish (ADR-0022)

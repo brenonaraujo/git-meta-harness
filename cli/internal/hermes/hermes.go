@@ -200,8 +200,16 @@ func (c *Client) WriteProfileSkill(profileName, skillName, content string) error
 
 // ProfileConfig represents a Hermes profile's config.yaml.
 //
-// Only the fields we touch in the meta-harness are exposed here.
-// Other fields in the YAML file are preserved (passthrough).
+// IMPORTANT (v1.12.1 hotfix): ProfileConfig only describes the
+// fields this package READS. WriteConfig must NEVER marshal a
+// ProfileConfig back to disk directly — that would erase
+// `model`, `agent`, and any other field the user configured.
+// Instead, WriteConfig uses a generic map[string]interface{} so
+// all fields (including unknown ones) are preserved.
+//
+// This struct is retained for backward compatibility with existing
+// callers (ReadConfig) but should NOT be extended. New code should
+// use the map-based path.
 type ProfileConfig struct {
 	Skills *ProfileSkills `yaml:"skills,omitempty"`
 }
@@ -229,25 +237,51 @@ func (c *Client) ReadConfig(profileName string) (*ProfileConfig, error) {
 	return cfg, nil
 }
 
-// WriteConfig writes the config.yaml for a profile. The
-// `skills.external_dirs` field is preserved (or initialized) with
-// the given dirs. Other fields are preserved if the file exists.
+// writeConfigPreserveAll writes the config.yaml for a profile while
+// preserving ALL fields (model, agent, custom keys, etc).
 //
-// If the file does not exist, a minimal config is created with the
-// given external_dirs.
-func (c *Client) WriteConfig(profileName string, externalDirs []string) error {
+// The hotfix (v1.12.1) replaced the previous WriteConfig, which
+// marshaled a typed ProfileConfig struct and silently erased any
+// field not in the struct. That bug wiped `model.default`,
+// `model.provider`, and `agent.reasoning_effort` on every
+// `gmh agents sync`, breaking profiles that the user had
+// configured by hand.
+//
+// This implementation uses a generic map[string]interface{}, so
+// unknown fields are read, modified (only `skills.external_dirs`
+// if needed), and rewritten. Field order may differ from the
+// original file (yaml.v3 sorts map keys alphabetically) but
+// the content is preserved.
+func (c *Client) writeConfigPreserveAll(profileName string, externalDirs []string) error {
 	path := filepath.Join(c.Home, "profiles", profileName, "config.yaml")
 
-	// Read existing config (if any) to preserve other fields.
-	cfg := &ProfileConfig{}
+	// Read existing config (if any) as a generic map.
+	root := map[string]interface{}{}
 	data, err := os.ReadFile(path)
-	if err == nil {
-		_ = yaml.Unmarshal(data, cfg) // ignore parse errors; we rewrite
+	if err == nil && len(data) > 0 {
+		if err := yaml.Unmarshal(data, &root); err != nil {
+			// Don't silently lose data on parse error — back up and
+			// return an error so the user can intervene.
+			backup := path + ".bak-" + fmt.Sprintf("%d", os.Getpid())
+			_ = os.WriteFile(backup, data, 0o644)
+			return fmt.Errorf("parse config %s: %w (backup at %s)", path, err, backup)
+		}
 	}
 
-	cfg.Skills = &ProfileSkills{ExternalDirs: externalDirs}
+	// Update only the `skills.external_dirs` field, preserving
+	// everything else (model, agent, custom keys).
+	skills, _ := root["skills"].(map[string]interface{})
+	if skills == nil {
+		skills = map[string]interface{}{}
+	}
+	// Build the new external_dirs list (deduped, preserving order)
+	// while leaving the user's order of OTHER keys untouched.
+	existingDirs, _ := skills["external_dirs"].([]interface{})
+	merged := mergeUniqueGeneric(existingDirs, externalDirs)
+	skills["external_dirs"] = merged
+	root["skills"] = skills
 
-	out, err := yaml.Marshal(cfg)
+	out, err := yaml.Marshal(root)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
@@ -258,20 +292,74 @@ func (c *Client) WriteConfig(profileName string, externalDirs []string) error {
 	return os.WriteFile(path, out, 0o644)
 }
 
+// mergeUniqueGeneric returns the union of an existing []interface{}
+// (loaded from yaml) and a new []string, preserving order (existing
+// first, then new entries appended if not present).
+func mergeUniqueGeneric(existing []interface{}, add []string) []interface{} {
+	seen := make(map[string]bool)
+	out := make([]interface{}, 0, len(existing)+len(add))
+	for _, v := range existing {
+		s, ok := v.(string)
+		if !ok {
+			continue
+		}
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	for _, s := range add {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 // EnsureExternalDirs ensures the profile's config.yaml has
 // `skills.external_dirs` set to the given dirs. If the profile
 // already has external_dirs, the dirs are added (deduped, preserving
 // order). If the file doesn't exist, it's created.
 //
+// v1.12.1 hotfix: now uses writeConfigPreserveAll so model/agent
+// fields are preserved across `gmh agents sync` runs.
+//
+// Returns the final list of external_dirs after the operation.
+
+// WriteConfig writes the config.yaml for a profile while preserving
+// ALL fields the user has set (model.default, model.provider,
+// agent.reasoning_effort, custom keys, etc).
+//
+// v1.12.1 hotfix: the previous implementation unmarshaled into a
+// typed ProfileConfig struct that only knew about `skills`, then
+// marshaled it back, silently erasing any other field. This broke
+// profiles whenever `gmh agents sync` ran. The fix uses a generic
+// map[string]interface{} (writeConfigPreserveAll) so all fields
+// round-trip safely.
+func (c *Client) WriteConfig(profileName string, externalDirs []string) error {
+	return c.writeConfigPreserveAll(profileName, externalDirs)
+}
+
 // Returns the final list of external_dirs after the operation.
 func (c *Client) EnsureExternalDirs(profileName string, dirs []string) ([]string, error) {
-	cfg, err := c.ReadConfig(profileName)
-	if err != nil {
-		return nil, err
+	// Read the existing config as a generic map to learn what's
+	// already in external_dirs (we need to return the merged list).
+	path := filepath.Join(c.Home, "profiles", profileName, "config.yaml")
+	root := map[string]interface{}{}
+	data, err := os.ReadFile(path)
+	if err == nil && len(data) > 0 {
+		_ = yaml.Unmarshal(data, &root)
 	}
-	existing := []string{}
-	if cfg.Skills != nil {
-		existing = cfg.Skills.ExternalDirs
+	var existing []string
+	if skills, ok := root["skills"].(map[string]interface{}); ok {
+		if d, ok := skills["external_dirs"].([]interface{}); ok {
+			for _, v := range d {
+				if s, ok := v.(string); ok {
+					existing = append(existing, s)
+				}
+			}
+		}
 	}
 	merged := mergeUnique(existing, dirs)
 	if err := c.WriteConfig(profileName, merged); err != nil {
