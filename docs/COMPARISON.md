@@ -237,3 +237,232 @@ If you are already doing SPDD with a single agent, the
 meta-harness will give you **role separation, automated gates,
 and audit trail** without forcing you to abandon your existing
 spec.
+
+---
+
+## 6. Meta-Harness Implementations Compared (2026)
+
+In 2026, **four parallel implementations** of "meta-harness"
+emerged. They are **complementary, not competitive** — each
+solves a different layer of the meta-harness problem.
+
+### 6.1 Quick reference
+
+| Aspect | **Stanford IRIS** (paper) | **SuperagenticAI** (code) | **Towards AI** (article) | **git-meta-harness** (this) |
+|--------|---------------------------|---------------------------|--------------------------|------------------------------|
+| **Type** | Academic research | Open-source code | Concept article | Operational framework |
+| **What it does** | Optimizes harnesses via LLM | Builds 1 Python backend | Explains the why | Governs any project |
+| **Substrate** | Python files | Python files | Article (text) | GitHub issues + PRs + Actions |
+| **Tool** | Claude Code (proposer) | Custom Python runtime | n/a | Multi-tool (7) |
+| **Stars** | 1.3k⭐ (127 forks) | 146⭐ (17 forks) | n/a (article) | n/a (newer, jul/2026) |
+| **License** | MIT | Custom | n/a | MIT |
+| **Self-optimizes** | ✅ YES (LLM proposer+verifier) | ❌ NO | n/a | ❌ NO (yet) |
+| **Multi-tool** | ❌ NO (Claude only) | ❌ NO (custom) | n/a | ✅ YES (7 tools) |
+| **Validation** | Paper (TACL-style) | Demo + repo | Concept only | **mandai-v2 (50+ issues, 4+ epics)** |
+| **Year** | 2026 (arXiv:2603.28052) | v0.4.0 jun/2026 | jul/2026 article | v1.14.0 jul/2026 |
+| **Authors** | Lee, Nair, Zhang, Lee, Khattab, Finn | SuperagenticAI | Abhishek Pan | Brenon Araujo + community |
+
+### 6.2 What each does — and does NOT do
+
+#### Stanford IRIS Lab (`stanford-iris-lab/meta-harness`)
+
+> "Reference code for the Meta-Harness paper" — Yoonho Lee
+> et al, arXiv:2603.28052, 2026.
+
+**Focus**: research. Uses LLM-as-optimizer (proposer +
+verifier) to **automatically generate and improve model
+harnesses** for specific tasks (text classification, terminal-
+bench-2, etc).
+
+**Workflow**:
+1. Read `ONBOARDING.md` + start conversation with proposer.
+2. Proposer (Claude Code) generates `domain_spec.md`.
+3. Verifier validates the spec against the task.
+4. Harness is iterated until quality threshold met.
+
+**What it does well**:
+- Scientific rigor (1.3k stars, paper, MIT).
+- Self-improving harness (the only one of the 4).
+- Reusable across tasks (text_classification,
+  terminal_bench_2 examples).
+
+**What it does NOT do**:
+- No multi-tool support (Claude Code only).
+- No GitHub-native governance (operates on Python files
+  in a research repo).
+- No validation in production (research benchmark, not
+  shipped product).
+
+**Complementary to us**: Stanford IRIS could **optimize
+git-meta-harness personas** in the future (LLM proposes
+new domain-expert templates; verifier validates against
+mandai-v2 issues).
+
+#### SuperagenticAI/metaharness
+
+> "Meta Harness Implementation" — v0.4.0 "Omnigent
+> Backend", jun/2026.
+
+**Focus**: implementation. A **concrete Python backend**
+that runs a multi-agent system with a "harness" layer
+above agents.
+
+**Workflow**:
+1. `pip install metaharness` (or clone).
+2. Define agents in Python.
+3. Backend orchestrates them with the harness rules.
+
+**What it does well**:
+- Concrete, runnable (146⭐, 17 forks, v0.4.0 tagged).
+- Custom license (proprietary flavor — not MIT).
+- Python-native (single ecosystem).
+
+**What it does NOT do**:
+- No GitHub-native governance (Python runtime, not
+  GitHub substrate).
+- No multi-tool (Python only).
+- No validation in production (demo, not shipped
+  product).
+
+**Complementary to us**: SuperagenticAI's "Omnigent
+Backend" could become **one of the agentic runtimes**
+that git-meta-harness materializes to (alongside
+Hermes, Claude Code, Codex, etc).
+
+#### Towards AI (Abhishek Pan article)
+
+> "What Is Meta-Harness for AI Agents and Why Now?" —
+> jul/2026, 12.84 min read.
+
+**Focus**: concept. Explains **why** meta-harness is
+unavoidable in 2026, with the "Payal" fintech-engineer
+narrative.
+
+**Key quote**:
+
+> "No gate stops it. No budget notices. No log can
+> later tell her which agent touched what, with whose
+> credentials, against which branch. On a weekend
+> project, that is a funny story. In a regulated
+> bank... it is a security incident."
+
+**Pillars emphasized** (per the article's structure):
+- **Governance**: who decides what an agent can do?
+- **Audit**: what did each agent touch, with what
+  credentials, against which branch?
+- **Control plane**: single layer above all agents
+  (not another agent, but governance).
+
+**What it does well**:
+- Articulates the problem crisply (3.3k words, 12.84 min).
+- Uses concrete scenario (Payal at fintech, 9 AM, 5
+  terminals).
+- Quotes real practitioners (ex-Amazon, Databricks).
+
+**What it does NOT do**:
+- Not a product (it's an article, paywalled after
+  preview).
+- Doesn't propose a concrete implementation.
+
+**Complementary to us**: Towards AI **describes the
+problem space**; git-meta-harness is **one operational
+answer** (multi-tool, GitHub-native, validated). The
+"governance + audit + control plane" pillars are
+exactly what our 13 sensors + 24 invariants + ADRs +
+per-issue comments provide.
+
+#### git-meta-harness (this project)
+
+> Operational framework — multi-tool, GitHub-native,
+> validated in mandai-v2.
+
+**Focus**: governance. Provide a **GitHub-native
+control plane** above any agentic tool.
+
+**Workflow**:
+1. `gmh install` or `gmh adopt` (project init).
+2. Issues + PRs + comments are the substrate.
+3. 13 sensors + 24 invariants run in CI and locally.
+4. ADRs + per-issue comments provide audit trail.
+5. `gmh doctor --json` provides health score.
+6. `gmh metrics` provides dashboard.
+
+**What it does well**:
+- **Multi-tool** (7 agentics: Hermes, Claude Code, Codex,
+  OpenCode, Copilot, Cursor, Devin).
+- **GitHub-native** (issues + PRs + Actions — no custom
+  runtime needed).
+- **Validated in production** (mandai-v2, 50+ issues, 4+
+  epics, 4 lessons applied as features).
+- **Greenfield AND in-progress** (v1.14.0 adds
+  `gmh adopt` for existing projects).
+- **Spec → TODO** (v1.14.0 adds `gmh new --spec`).
+- **Health score + metrics** (v1.14.0).
+
+**What it does NOT do**:
+- No LLM self-optimization (yet — could integrate with
+  Stanford IRIS proposer in v2.0.0).
+- Custom Python backend (we orchestrate via GitHub +
+  agentic CLIs, not Python runtime).
+
+### 6.3 Quadrant view
+
+```mermaid
+quadrantChart
+    title "Meta-Harness Implementations (2026)"
+    x-axis "Optimize" --> "Govern"
+    y-axis "Concept" --> "Operational"
+    quadrant-1 Operational + Govern
+    quadrant-2 Operational + Optimize
+    quadrant-3 Concept + Govern
+    quadrant-4 Concept + Optimize
+    "git-meta-harness": [0.85, 0.9]
+    "SuperagenticAI": [0.2, 0.85]
+    "Stanford IRIS": [0.85, 0.45]
+    "Towards AI": [0.15, 0.2]
+```
+
+**Interpretation**:
+- **git-meta-harness** is operational + governs (high
+  on both).
+- **SuperagenticAI** is operational but doesn't govern
+  (no audit, no sensors).
+- **Stanford IRIS** is research (concept-ish) + optimizes
+  (its core competence).
+- **Towards AI** is concept + governance talk (no
+  implementation).
+
+### 6.4 What we can learn from each
+
+| From | Lesson we could apply (future) |
+|------|--------------------------------|
+| **Stanford IRIS** | LLM-as-optimizer to auto-generate `domain-expert-<novo-domínio>` from spec. Verifier validates against mandai-v2 issues. |
+| **SuperagenticAI** | Their "Omnigent Backend" could become an **alternative agentic** alongside Hermes. We orchestrate; they run. |
+| **Towards AI** | The "Payal narrative" is a great test case. We could add `gmh adopt --scenario fintech` that pre-configures the harness for regulated industries. |
+
+### 6.5 What others can learn from us
+
+- **Multi-tool orchestration** (Hermes + Claude Code +
+  Codex + OpenCode + Copilot + Cursor + Devin) — Stanford
+  IRIS and SuperagenticAI both lock to one runtime. Our
+  `AGENTS.md`-as-universal-contract pattern is portable.
+- **Sensors as enforcement** (13 sensors, 11 BLOCKING in
+  v1.13.0) — research repos and Python backends don't have
+  this kind of pre-merge gate.
+- **Feature flow enforcement** (v1.13.0, sensor 13) —
+  team-manager MUST go through domain-expert → architect
+  → builder. No skip.
+- **Per-issue audit trail** (ADRs + comments + labels) —
+  full traceability from spec → epic → sub-issue → PR → release.
+- **Validated in production** (mandai-v2, jul/2026) —
+  not a paper, not a demo. Real 50+ issues, 4+ epics, 5
+  lessons applied as features.
+
+### 6.6 See also
+
+- [`docs/ECOSYSTEM.md`](ECOSYSTEM.md) — full ecosystem
+  map with diagrams, complements, and bridges.
+- [Stanford IRIS paper (arXiv:2603.28052)](https://arxiv.org/abs/2603.28052).
+- [SuperagenticAI/metaharness](https://github.com/SuperagenticAI/metaharness).
+- [Towards AI article](https://pub.towardsai.net/what-is-a-meta-harness-in-ai-2af40e788c2e).
+

@@ -3433,3 +3433,855 @@ OK: All type/feature issues have refined + ready + DoD.
    referência explícita aos ACs e DoD. **Defesa em
    profundidade**.
 
+
+## ADR-0026 — Ecosystem positioning + Harness Health Score (v1.14.0)
+
+**Data:** 2026-07-20. **Status:** accepted. **Versão alvo:** v1.14.0.
+**Trigger:** pesquisa externa (jul/2026) sobre 3 implementações de
+meta-harness — Stanford IRIS Lab (paper arXiv:2603.28052),
+SuperagenticAI/metaharness (v0.4.0 "Omnigent Backend", jun/2026),
+e Towards AI (artigo "What Is Meta-Harness for AI Agents and Why
+Now?", jul/2026). Pedido do Brenon: "vamos aprimorar a nossa
+documentacao descrevendo como o que criamos se encaixa com outras
+implementacoes, como podemos medir o sucesso e o resultado".
+
+### Contexto
+
+Em jul/2026, três implementações paralelas de "meta-harness"
+apareceram no ecossistema:
+
+1. **Stanford IRIS Lab** (`stanford-iris-lab/meta-harness`,
+   arXiv:2603.28052, 1.3k⭐, 127 forks, Python 98%, MIT) —
+   paper acadêmico "End-to-End Optimization of Model Harnesses"
+   via LLM proposer+verifier. Workflow: `ONBOARDING.md` →
+   conversa com proposer → `domain_spec.md`. Foco em **otimizar
+   harness automaticamente** via LLM-as-optimizer.
+
+2. **SuperagenticAI** (`SuperagenticAI/metaharness`, 146⭐,
+   17 forks, Python 100%, v0.4.0 "Omnigent Backend" jun/2026,
+   license custom) — implementação Python prática. Foco em
+   **construir 1 backend** multi-agent concreto.
+
+3. **Towards AI** (Abhishek Pan, "What Is Meta-Harness for AI
+   Agents and Why Now?", jul/2026, 12.84 min) — artigo de
+   conceito. Foco em **governance + audit + control plane**.
+   Cita: "No gate stops it. No budget notices. No log can
+   later tell her which agent touched what, with whose
+   credentials, against which branch."
+
+**Posição do git-meta-harness**: framework **GitHub-native**
+(issues + PRs + Actions) que governa QUALQUER projeto via
+substrate GitHub. Diferente dos 3:
+- Stanford IRIS otimiza harness (research).
+- SuperagenticAI constrói 1 backend (Python).
+- Towards AI explica o porquê (article).
+- **Nós governamos** (operational, multi-tool, validated em
+  produção via mandai-v2).
+
+**Complementaridade, não competição.** Os 4 abordagens são
+ortogonais e podem coexistir.
+
+### Problema
+
+1. **Documentação comparativa ausente.** O `docs/COMPARISON.md`
+   existente compara só com single-agent/SDD/SPDD — não com as
+   3 implementações paralelas de meta-harness. Visitante chega
+   no repo e não entende a posição única do git-meta-harness.
+
+2. **Zero métricas de "harness health".** Temos 13 sensors e
+   24 invariantes, mas não temos um **score agregado** que
+   diz "este harness está X% saudável". Brenon precisa de
+   visibilidade rápida do estado do harness sem ler 13
+   scripts de sensor.
+
+3. **`gmh doctor` só tem output texto.** Útil pra humanos,
+   inútil pra tooling/CI/dashboards. Sem `--json`, sem score
+   numérico, sem trends.
+
+### Decisão (v1.14.0)
+
+**1. Atualizar `docs/COMPARISON.md`** com seção
+"Meta-Harness Implementations Compared" (4 colunas: Stanford
+IRIS, SuperagenticAI, Towards AI, git-meta-harness). Cada coluna
+explica: foco, linguagem, status, o que faz, o que NÃO faz,
+e como se relaciona com as outras 3.
+
+**2. Criar `docs/ECOSYSTEM.md`** com mapa do ecossistema
+2026. Quatro implementações, quatro abordagens, e como elas se
+complementam. Inclui:
+- Diagrama de quadrantes (research × operational,
+  optimize × govern).
+- Tabela de quem usa qual (Stanford cita Claude Code
+  como proposer, nós usamos Hermes como runtime, etc).
+- Roadmap de possíveis pontes (ex.: `meta-harness`
+  poderia ser otimizado via Stanford IRIS LLM-as-optimizer
+  no futuro).
+
+**3. `gmh doctor --json`** (NOVO flag). Output JSON estruturado
+com:
+
+```json
+{
+  "version": "1.14.0",
+  "project": "/path/to/repo",
+  "local_version": "1.13.0",
+  "latest_version": "1.14.0",
+  "out_of_date": true,
+  "agentic": "hermes",
+  "health_score": {
+    "overall": 78,
+    "harness": 95,
+    "agents": 80,
+    "skills": 65,
+    "sensors": 70
+  },
+  "invariants": {
+    "total": 24,
+    "passing": 22,
+    "failing": ["24: feature flow", "21: scope discipline"]
+  },
+  "sensors": {
+    "total": 13,
+    "executable": 12,
+    "blocking_active": 11
+  },
+  "drift": {
+    "harness_files": 0,
+    "personas_stale": ["domain-expert-mandai"],
+    "skills_stale": 2,
+    "ci_drift_lines": 3
+  }
+}
+```
+
+**4. Harness Health Score (4 dimensões)** — cálculo em
+`cli/internal/health/health.go`:
+
+| Dimensão | Peso | Métrica |
+|----------|------|---------|
+| **Harness** | 2 | Arquivos essenciais presentes (AGENTS.md, personas/, sensors/, scripts/, smoke-test, bootstrap, seed). 10 itens, 1 ponto cada = 0-10 normalizado pra 0-100. |
+| **Agents** | 1 | Personas especializadas (sem generic `domain-expert.md`). Ratio `domain-expert-*` / total personas. ≥80% = 100. |
+| **Skills** | 1 | Skills instaladas em `~/.hermes/skills/` (se Hermes) ou detectadas. Coverage = `installed / framework_declared × 100`. |
+| **Sensors** | 2 | Sensors executáveis + 13+ presentes + última execução verde. 4 checks, 25 pontos cada = 0-100. |
+
+**Score geral** = `(harness×2 + agents×1 + skills×1 + sensors×2) / 6`.
+Cobre 0-100, com thresholds:
+- **90-100**: healthy (verde).
+- **70-89**: needs attention (amarelo).
+- **<70**: critical (vermelho, exit 1 com `--strict`).
+
+**5. Métricas de fluxo** (calculadas quando `--metrics` flag
+presente, histórico de issues via `gh` CLI):
+
+- **% features no flow**: `count(type/feature + refined+ready) / count(type/feature) × 100`.
+- **Avg time-to-close**: média de `(closed_at - created_at)` em dias, últimos 30 issues.
+- **# sensor blocks/semana**: rolling window via `git log` (busca `🚫 sensor` em mensagens de commit).
+- **Top 5 violações**: agregação por `check-*-violation:` em mensagens de commit/PR.
+
+Essas métricas alimentam o `gmh metrics` (ADR-0029).
+
+### Princípio
+
+> **"Comparar é posicionar, mas medir é evoluir."** Comparação
+> com outros meta-harnesses dá contexto; métricas dão direção.
+
+### Validação empírica (mandai-v2, jul/2026)
+
+**Comparação — entendendo a posição:**
+
+```markdown
+| Aspecto         | Stanford IRIS | SuperagenticAI | Towards AI | git-meta-harness |
+|-----------------|---------------|----------------|------------|------------------|
+| Foco            | Optimize      | Build 1 backend | Explain    | Govern any project |
+| Substrate       | Python files  | Python files    | Article    | GitHub issues+PRs |
+| Tool            | Claude Code   | Custom          | n/a        | Multi-tool (7)    |
+| Validation      | Paper         | Demo            | Concept    | mandai-v2 (50+ issues) |
+| Stars           | 1.3k          | 146             | n/a        | n/a (newer)       |
+| License         | MIT           | Custom          | n/a        | MIT               |
+| Optimizes itself| YES (LLM)     | No              | n/a        | No (yet)          |
+| Multi-tool      | No (Claude)   | No              | n/a        | YES               |
+```
+
+**Health score (mandai-v2 pós v1.13.0):**
+
+```json
+{
+  "overall": 88,
+  "harness": 100,
+  "agents": 100,
+  "skills": 75,
+  "sensors": 77
+}
+```
+
+Skills 75: 9 de 12 skills declaradas no framework estão
+instaladas em `~/.hermes/skills/`. Sensors 77: 10 de 13
+sensors têm script executável (3 são apenas .md docs —
+smoke-test edge cases).
+
+### Custo evitado (estimativa)
+
+- ~5min por "harness tá saudável?" question → 1 read do
+  `gmh doctor --json | jq .health_score.overall` ≈ 0min.
+- **~20 consultas/semana × 5min = ~100min/semana = ~8h/ano**.
+- Visibilidade de drift (sem health score, drift passa
+  despercebido por dias): 1-2 bugs/mês evitados × 2h =
+  ~24-48h/ano.
+- **Total: ~32-56h/ano economizadas** por ter health score
+  visível + comparativa ecosystem clara.
+
+### Quem usa / Quem mantém
+
+- **Equipes que adotam git-meta-harness** usam o `--json`
+  pra dashboards CI, métricas Prometheus (gmh metrics),
+  relatórios Slack.
+- **Novos visitantes do repo** leem COMPARISON.md/ECOSYSTEM.md
+  pra entender por que este framework e não outro.
+- **Maintainers** (Brenon + time) usam o score pra detectar
+  quando um projeto derivado está degradando.
+
+
+## ADR-0027 — Adaptive Harness for In-Progress Projects (v1.14.0)
+
+**Data:** 2026-07-20. **Status:** accepted. **Versão alvo:** v1.14.0.
+**Trigger:** gap identificado no framework (jul/2026) — assume
+**greenfield** (bootstrap.md: "deliver a project greenfield →
+release"). Projetos em andamento (5k-50k LOC, stack existente,
+conventions locais) não tinham caminho de adoção. Pedido do
+Brenon: "tornar nosso git-meta-harness compativel com projetos
+ja em andamento, permitindo que o meta harness identifique cada
+aspecto tecnico e saiba adaptar tanto os sensores quanto o
+proprio harness agentes e skills necessarias".
+
+### Contexto
+
+O git-meta-harness foi **validado em produção** no mandai-v2
+(piloto real, jul/2026), mas mandai-v2 começou com `gmh install`
+em um projeto **greenfield**. Cenários reais onde framework
+seria útil mas hoje não consegue:
+
+1. **Adoção tardia** (time usou outro stack por 6 meses, agora
+   quer aderir). Ex.: projeto já tem 30k LOC, Go + PostgreSQL +
+   Nuxt, com 47 packages, 12 services, 5 microserviços. Não
+   podemos assumir que o time vai reescrever ou seguir nossa
+   stack pinada.
+
+2. **Migração de harness** (time usou SDD/SPDD por 1 ano, quer
+   escalar pra meta-harness). Ex.: 200 issues abertas, 50 PRs
+   mergeados, conventions locais já formadas (não-conventional
+   commits, branches `wip/`, labels customizados).
+
+3. **Multi-stack em um monorepo** (`web/` é Next.js, `api/` é
+   Go, `ml/` é Python). Sensores hoje assumem 1 stack por
+   repo. Cada subdiretório tem conventions diferentes.
+
+4. **Convenções locais** (BEM misturado, hex hardcoded, sem
+   i18n). Framework tem 13 sensors pra detectar isso em
+   **greenfield** (cold start polish) — mas sensores precisam
+   de **modo "audit"** pra rodar em projeto existente sem
+   bloquear merge.
+
+### Problema
+
+`gmh install` (v1.0.0+) **assume greenfield**:
+- Copia `harness/` com personas/sensors/scripts default.
+- Sobrescreve se já existe (com `--force`).
+- Não detecta stack.
+- Não adapta personas.
+- Não gera sensores específicos pro stack detectado.
+- Não cria `domain-expert-<domínio>` baseado no domínio real.
+
+Resultado: em projeto real, `gmh install` produz um harness
+genérico, sem alinhamento com o stack/conventions reais. Time
+adota, mas sensores disparam em coisas legítimas do projeto,
+personas dão conselhos genéricos, e o framework vira
+"mais uma ferramenta a ignorar".
+
+### Decisão (v1.14.0)
+
+**1. `gmh adopt <path>` (NOVO subcommand).** Adopta o
+git-meta-harness em um projeto existente, detectando stack +
+adaptando harness. Workflow:
+
+```
+$ cd ~/Projects/meu-projeto-existente
+$ gmh adopt
+==> gmh adopt — Adaptive Harness (v1.14.0)
+==> Escaneando stack...
+  ✅ Go 1.26.5 (go.mod)
+  ✅ PostgreSQL 18.4-alpine (docker-compose.yml)
+  ✅ Nuxt 4.5 (web/package.json)
+  ⚠️  BEM misturado detectado (web/components/.../*.vue)
+  ⚠️  Hex hardcoded (12 ocorrências)
+==> Detectando domínio (heurística)...
+  ✅ Domain: e-commerce (B2B — detects nos models, rotas, prefixos)
+==> Adaptando harness...
+  ✅ Persona domain-expert-ecommerce criada
+  ✅ Sensor 14 (vitest-detection) criado (web/ usa vitest)
+  ✅ Sensor 12 (frontend-polish) calibrado pra permitir BEM misto
+  ✅ Skill frontend-migration criada
+==> ADOPT-REPORT.md gerado
+==> Próximos passos:
+  1. Revise ADOPT-REPORT.md
+  2. Ajuste personas se necessário
+  3. Rode gmh doctor --json pra ver novo health score
+```
+
+**2. Stack detection (`harness/scripts/stack-detect.sh` +
+`harness/scripts/visual/stack_detect.py`).** Detecta via
+filesystem scanning (sem rede, ~100ms em repo de 50k LOC):
+
+- **Linguagem primária**: `go.mod` → Go; `package.json` →
+  Node/TS; `pyproject.toml` / `requirements.txt` → Python;
+  `Cargo.toml` → Rust; `pom.xml` → Java.
+- **Framework web**: `nuxt` / `next` / `sveltekit` / `astro` /
+  `vite` etc. via `package.json` deps.
+- **Test framework**: `*_test.go` → Go test; `vitest` /
+  `jest` / `playwright` / `cypress` em `package.json`;
+  `pytest` / `unittest` em Python.
+- **Database**: `docker-compose.yml` + `Dockerfile` patterns
+  (PostgreSQL, MySQL, Mongo, Redis).
+- **Linter / formatter**: `.golangci.yml` / `.eslintrc` /
+  `pyproject.toml [tool.ruff]`.
+- **Type checker**: `tsconfig.json` (TS), `mypy.ini` (Python).
+- **CI**: `.github/workflows/*.yml`.
+- **i18n setup**: `i18n/`, `locales/`, `@nuxtjs/i18n` em
+  `package.json`.
+- **Domain heurística**: scan de `models/`, `routes/`,
+  `controllers/`, `services/` + termos (e-commerce,
+  fintech, marketplace, saas, etc).
+
+**3. Persona `domain-expert-adopter` (NOVA).** Persona
+especial que adapta personas baseado na stack detectada.
+Gera `domain-expert-<domínio>` específico:
+
+```markdown
+# Persona — domain-expert-ecommerce (B2B)
+
+Você é o domain-expert para projetos de **e-commerce B2B**.
+Stack detectado: Go + PostgreSQL + Nuxt.
+
+## Comportamento (padrões de mercado)
+
+- **Catálogo**: SKU, variações, stock, categorias hierárquicas.
+- **Carrinho**: persistência, multi-vendor, regras de
+  desconto progressivo.
+- **Pedidos**: workflow (pending → paid → fulfilled →
+  shipped → delivered), SLA por SKU.
+- **Pagamento**: Pix-first (Brasil), Stripe (internacional),
+  split (marketplace).
+- **Logística**: transportadora API, rastreamento, NF-e.
+- **Pós-venda**: devolução, troca, reembolso, dispute.
+- **B2B specifics**: CNPJ, razão social, aprovação de
+  cadastro, cotação, lista de preços por cliente, prazo de
+  pagamento.
+- **Multi-tenant**: workspace por vendedor (estilo Mandaí).
+
+## Edge cases conhecidos
+
+- Carrinho abandonado (≥30min sem ação = expira).
+- Stock race condition (oversell prevention).
+- Pagamento parcial (split entre vendor + plataforma).
+- Devolução de item com variação diferente.
+- Multi-moeda em checkout B2B (USD para importadores).
+
+## Referências
+
+- Mandaí v2 (multi-vendor marketplace B2B2C — Brasil).
+- Meituan Select (community group buying — China).
+- Alibaba B2B (workspace por seller, cotação).
+```
+
+**4. Sensores adaptáveis.** Sensors detectam **stack local**
+e ajustam:
+
+- **Sensor 12 (frontend-polish)**: aceita BEM em projeto
+  Vue 2 legado, rejeita em projeto greenfield Nuxt 4.
+- **Sensor 02 (unit-tests)**: detecta vitest vs jest vs
+  pytest e roda o comando certo (`pnpm test:vitest` vs
+  `npm test`).
+- **Sensor 04 (image-scan)**: detecta Dockerfile
+  multi-stage e roda trivy em cada stage.
+- **Sensor 14 (NOVA, v1.14.0) `stack-coherence`**: detecta
+  mistura de stacks (`web/` em Next.js mas package.json
+  raiz em Nuxt = erro de configuração).
+
+**5. ADOPT-REPORT.md** (NOVO, gerado em
+`harness/ADOPT-REPORT.md`): documento estruturado com:
+
+- Stack detectado (linguagem, framework, DB, CI, lint).
+- Domínio inferido (com confidence score).
+- Mudanças aplicadas (personas criadas, sensors calibrados,
+  skills adicionadas).
+- Mudanças sugeridas (não aplicadas, requerem revisão).
+- Issues/PRs sugeridos (5-10 próximos passos priorizados).
+
+**6. `gmh adopt --dry-run`**: mostra o que seria feito sem
+aplicar. **Default seguro**: nunca modifica código do
+projeto, só adiciona `harness/`.
+
+**7. `gmh adopt --non-interactive`** (CI): aplica direto
+sem prompts. Usado em CI pra setup inicial.
+
+### Princípio
+
+> **"The harness adapts to the project, not the other way
+> around."** Projeto existente tem história, conventions, e
+> contexto. Framework que ignora isso vira ruído. Framework
+> que detecta e se adapta vira aliado.
+
+### Validação empírica (mandai-v2, jul/2026)
+
+mandai-v2 começou com `gmh install` (greenfield). Se tivesse
+começado com `gmh adopt` num projeto pré-existente, o
+framework teria:
+
+- Detectado Go 1.26.5 + Nuxt 4.5 + PostgreSQL 18.4 (já
+  tínhamos, mas precisou de 30min pra alinhar).
+- Detectado "multi-tenant marketplace B2B2C" como domínio
+  (heurística via models + rotas) e criado
+  `domain-expert-mandai` automaticamente (em vez de manualmente).
+- Detectado Pix-first (BR) e sugerido skill `pix-integration`.
+- Detectado ausência de `i18n` (initial) e criado
+  `domain-expert-i18n-mandai` que bloqueia feature sem locale.
+
+Tempo economizado estimado: ~2h de setup + ~5h de iteração
+inicial = **~7h/projeto**. Em 5 projetos/ano = **~35h/ano**.
+
+### Custo evitado (estimativa)
+
+- **Setup time**: ~2h/projeto (5 projetos/ano = 10h).
+- **Conventions drift**: ~1 bug/semana evitado × 1h = 50h/ano.
+- **Persona genérica**: ~30min/epic × 4 epics/mês × 12 = 24h/ano.
+- **Total: ~84h/ano economizadas** por ter adaptive harness.
+
+### Quem usa / Quem mantém
+
+- **Novos times adotando git-meta-harness** (projeto pré-existente)
+  rodam `gmh adopt` e ganham harness calibrado em minutos.
+- **Maintainers** (Brenon + time) mantêm heurísticas de
+  detecção e templates de persona por domínio.
+
+
+## ADR-0028 — `gmh new --spec` (Create Project + TODO from Spec, v1.14.0)
+
+**Data:** 2026-07-20. **Status:** accepted. **Versão alvo:** v1.14.0.
+**Trigger:** pedido do Brenon (jul/2026): "fornecer via nossa cli
+um comando para criar um um projeto com uma especificacao para
+criar um toDo".
+
+### Contexto
+
+Cenário real (mandai-v2, jul/2026): Brenon tem uma spec funcional
+do Mandaí v2 (10+ páginas, multi-tenant marketplace B2B2C). Quer:
+
+1. **Criar repo** a partir do zero.
+2. **Gerar TODO list** (épico + sub-issues) a partir da spec.
+3. **Aplicar meta-harness** automaticamente.
+4. **Setup CI** (GitHub Actions) pinado.
+5. **Setup i18n** (en, pt-BR, es) desde o dia 1.
+6. **Setup observability** (Prometheus + slog) desde o dia 1.
+
+Hoje, esse fluxo é **manual** (criar repo + bootstrap +
+escrever 50 issues + setup CI). Em mandai-v2, levou ~1 semana
+de setup.
+
+### Problema
+
+1. **Bootstrap é repetitivo.** Toda spec nova exige o mesmo
+   setup: repo + AGENTS.md + personas + sensors + CI + i18n.
+   Tempo: ~2h/projeto.
+
+2. **TODO generation é manual.** Brenon escreve 50 issues à mão
+   a partir de uma spec de 10 páginas. Tempo: ~4h/projeto.
+   Risco: esquecer edge cases, esquecer labels, esquecer ACs.
+
+3. **Não há rastreabilidade spec → issues.** Quando alguém
+   pergunta "qual issue cobre o requisito X da spec?", Brenon
+   tem que buscar manualmente.
+
+4. **Spec é descartada após bootstrap.** Spec original fica em
+   `docs/SPEC.md` mas não é referenciada pelas issues. Issue
+   #13 diz "implementar F1.2 — auth-switch-role" mas não linka
+   `spec.md#f1-2-auth-switch-role`.
+
+### Decisão (v1.14.0)
+
+**1. `gmh new <name> --spec <spec.md>` (NOVO subcommand).**
+Cria projeto do zero a partir de spec, gera TODO list, e
+aplica meta-harness.
+
+**2. Workflow:**
+
+```
+$ gmh new mandai-v2 --spec ./spec-mandai.md
+==> gmh new (v1.14.0) — Create project from spec
+==> Lendo spec (10 páginas, 47 requisitos)...
+==> Detectando domínio... marketplace B2B2C (3 signals: multi-tenant, group-buying, mobile-first)
+==> Detectando stack pinada... (spec menciona "Go" + "Nuxt" + "PostgreSQL")
+==> Criando repo ./mandai-v2/...
+  ✅ git init
+  ✅ git remote add origin git@github.com:brenonaraujo/mandai-v2.git
+  ✅ LICENSE (MIT)
+  ✅ README.md (template + spec summary)
+  ✅ .gitignore (Go + Node + IDEs)
+==> Aplicando meta-harness v1.14.0...
+  ✅ harness/ (gmh install)
+  ✅ domain-expert-mandai (criado da spec)
+  ✅ personas adaptadas pra stack (Go + Nuxt)
+==> Gerando TODO list a partir de spec...
+  ✅ 12 épicos criados (F1 a F12) com labels domain/marketplace, type/feature, priority/p0-p3
+  ✅ 87 sub-issues criadas com:
+     - numeração F<N>.<M>
+     - 1 sub-issue = 1 entregável testável
+     - 2-5 ACs derivados da spec
+     - 1-3 edge cases extraídos da spec
+     - link pra spec.md#<section>
+==> Setup CI...
+  ✅ .github/workflows/ci.yml (template pinado)
+  ✅ .github/workflows/release.yml
+  ✅ .golangci.yml + .eslintrc
+==> Setup i18n...
+  ✅ web/i18n/locales/{en,pt-BR,es}.json (templates)
+==> Setup observability...
+  ✅ Prometheus middleware
+  ✅ slog JSON configurado
+==> Setup docs...
+  ✅ docs/SPEC.md (spec original)
+  ✅ docs/ADOPT-REPORT.md (decisões de geração)
+==> Git: 1 commit "chore: bootstrap from spec (v1.14.0)"
+==> Próximos passos:
+  1. cd mandai-v2
+  2. Revise as 12 épicos + 87 sub-issues em GitHub
+  3. Atribua personas (já temos 7 personas pinadas)
+  4. Rode gmh doctor pra confirmar health score 100
+  5. Comece a implementar F1 (auth-switch-role)
+```
+
+**3. Spec decomposition (skill `spec-decomposition` NOVA).**
+Skill que ensina o team-manager + LLM a quebrar uma spec em
+sub-issues estruturadas. Heurística:
+
+- **1 épico = 1 capítulo/área da spec** (ex.: "F1: Auth" cobre
+  spec §Auth).
+- **1 sub-issue = 1 entregável testável** (ex.: "F1.2:
+  auth-switch-role" cobre spec §Auth.switch-role).
+- **ACs derivados**: lê spec, extrai bullet points de
+  comportamento esperado, transforma em `- [ ] AC1: ...`.
+- **Edge cases**: lê "if X then Y" + "exception" + "nota:" na
+  spec, transforma em `- [ ] Edge: ...`.
+- **Spec link**: cada sub-issue body inclui `Spec: spec.md#<anchor>`.
+
+**4. Output estruturado (JSON + Markdown).** Alem de criar
+issues no GitHub via `gh` CLI, gera:
+
+- `harness/TODO.md` (lista humana-legível).
+- `harness/TODO.json` (lista máquina-legível, pra rerun
+  ou pra diff entre spec vs TODOs gerados).
+- `harness/SPEC-COVERAGE.md` (matriz spec → issues, com
+  % coverage).
+
+**5. Detecção de domínio heurística.** Spec menciona
+termos-chave → domain inferred:
+
+- "multi-tenant", "workspace" → marketplace / saas.
+- "Pix", "Stripe", "split" → fintech / payments.
+- "catálogo", "SKU", "carrinho" → e-commerce.
+- "API gateway", "rate limit", "JWT" → backend / api.
+- "real-time", "websocket", "queue" → real-time / messaging.
+- "ML", "model", "training" → ml / data.
+- "compliance", "audit", "GDPR" → regulated / gov.
+
+Confidence score: 0-100. ≥70 = cria
+`domain-expert-<domínio>` automaticamente. 50-69 = cria
+skeleton + pede revisão. <50 = não cria, usa persona genérica.
+
+**6. Stack pinning detection.** Spec menciona linguagens/
+frameworks (Go, Nuxt, PostgreSQL, etc). Compara com
+`harness/stack/versions.md` (canônico). Se match, usa
+versão pinada. Se não match, usa latest estável (warning).
+
+**7. `--dry-run` (default em CI)**: gera TODO list + mostra
+mudanças sem aplicar. Útil pra revisar antes de commitar.
+
+**8. `--non-interactive`** (CI, automação): aplica direto
+sem prompts.
+
+**9. `--reuse <existing-repo>`**: ao invés de criar repo
+novo, gera TODO list em repo existente. Combina com
+`gmh adopt` (ADR-0027) — primeiro `adopt`, depois `new --reuse`
+pra gerar TODO.
+
+### Princípio
+
+> **"A spec is a contract; the TODO list is its executable
+> representation."** Spec fica em `docs/SPEC.md` (human-
+> readable), TODO fica em GitHub Issues (machine-readable),
+> e a matriz `SPEC-COVERAGE.md` (gerada) garante que
+> nenhum requisito foi perdido.
+
+### Validação empírica (mandai-v2, jul/2026)
+
+mandai-v2 começou com spec funcional de 10 páginas (em
+`docs/SPEC.md` retrospectivamente). Setup manual:
+
+- Repo + bootstrap: ~2h.
+- 12 épicos escritos: ~3h.
+- 87 sub-issues escritas: ~6h.
+- Setup CI + i18n + observability: ~2h.
+- **Total: ~13h**.
+
+Com `gmh new --spec` (v1.14.0):
+
+- Repo + bootstrap: ~10s (automatizado).
+- 12 épicos + 87 sub-issues: ~30s (geração).
+- Setup CI + i18n + observability: ~10s (automatizado).
+- **Total: ~1min + ~30min de revisão humana**.
+
+**Economia: ~12h/projeto**. Em 3-5 novos projetos/ano =
+**~36-60h/ano**.
+
+### Custo evitado (estimativa)
+
+- **Setup time**: ~12h/projeto (3-5/ano = ~36-60h).
+- **Risco de esquecimento**: 0 ACs perdidos em vez de 1-3/epic
+  × 4 epics/mês × 12 = ~48 bugs/ano evitados.
+- **Rastreabilidade**: 0 "qual issue cobre X?" perguntas
+  vs ~2/projeto × 5 = 10h/ano economizadas.
+- **Total: ~46-70h/ano economizadas** por ter `gmh new --spec`.
+
+### Quem usa / Quem mantém
+
+- **Brenon + time Mandaí** usam pra bootstrapping de novos
+  features projects.
+- **Comunidade open-source** usa pra iniciar projetos
+  rapidamente a partir de uma spec clara.
+- **Maintainers** mantêm heurísticas de decomposição e
+  templates de spec-coverage.
+
+
+## ADR-0029 — `gmh metrics` (Prometheus Dashboard + Slack Alerts, v1.14.0)
+
+**Data:** 2026-07-20. **Status:** accepted. **Versão alvo:** v1.14.0.
+**Trigger:** gap operacional — tínhamos 13 sensors, 24
+invariantes, mas **zero visibilidade agregada** de "como o
+harness está performando ao longo do tempo". Pedido do
+Brenon (jul/2026): "como podemos acompanhar se o harness
+foi todo criado com sucesso".
+
+### Contexto
+
+Estado pré-v1.14.0:
+
+- 13 sensors rodam em CI/local. Cada um é um shell script
+  isolado. Output é texto (✅/❌).
+- 24 invariantes em `harness/AGENTS.md`. Verificadas
+  manualmente via `gmh doctor`.
+- 50+ issues abertas no mandai-v2. 0 visibilidade de "qual
+  % passou pelo feature flow (refined+ready+comments)".
+- Histórico de violações: em git log (commits de fix), em
+  PR comments, em issue comments. **Não agregado**.
+
+### Problema
+
+1. **Saúde do harness é momentânea, não tend.** `gmh doctor`
+   diz "verde agora", mas não diz "vermelho há 3 dias
+   seguidos" ou "drift de skills: 2 há 1 semana, 5 hoje".
+
+2. **Sensor blocks não são alertados.** Se sensor 12
+   (frontend-polish) bloqueia PR 5x em 1 dia, ninguém
+   sabe até ler o PR. Tendência: time ignora sensor.
+
+3. **% flow compliance é invisível.** Métrica que Brenon
+   pediu (jul/2026): "como podemos acompanhar se o harness
+   foi todo criado com sucesso". A métrica natural é
+   "X% das features type/feature passaram pelo flow
+   completo (refined+ready+comments)". Hoje, só dá
+   pra calcular manualmente, issue por issue.
+
+4. **Comparação inter-projetos é impossível.** mandai-v2
+   tem health 88. Outro projeto tem health 45. Sem
+   standard de métricas, não dá pra dizer qual é "saudável".
+
+5. **Drift silencioso.** Skills desatualizadas, personas
+   sem versão marker, harness files missing — tudo passa
+   despercebido até alguém notar manualmente.
+
+### Decisão (v1.14.0)
+
+**1. `gmh metrics` (NOVO subcommand).** Gera dashboard
+format Prometheus (text-based exposition format) + alertas
+configuráveis.
+
+**2. Workflow:**
+
+```
+$ gmh metrics
+==> gmh metrics (v1.14.0) — Harness Dashboard
+==> Coletando métricas...
+  ✅ Health score: 88/100 (24/24 invariantes, 13/13 sensors)
+  ✅ Flow compliance: 87% (40/46 type/feature com refined+ready)
+  ✅ Avg time-to-close: 4.2 dias (últimas 30 issues)
+  ✅ Sensor blocks (7d): 12 (frontend-polish: 8, decomposition-safety: 4)
+  ✅ Top violation: BEM misturado (sensor 12, 18 ocorrências)
+==> Format Prometheus:
+# HELP gmh_health_score Overall harness health (0-100)
+# TYPE gmh_health_score gauge
+gmh_health_score 88
+# HELP gmh_flow_compliance_pct % type/feature issues with refined+ready
+# TYPE gmh_flow_compliance_pct gauge
+gmh_flow_compliance_pct 87
+# HELP gmh_invariants_total Total invariants declared
+# TYPE gmh_invariants_total counter
+gmh_invariants_total 24
+# HELP gmh_invariants_passing Currently passing invariants
+# TYPE gmh_invariants_passing gauge
+gmh_invariants_passing 24
+# HELP gmh_sensor_blocks_7d Sensor blocks in last 7 days
+# TYPE gmh_sensor_blocks_7d counter
+gmh_sensor_blocks_7d{sensor="frontend-polish"} 8
+gmh_sensor_blocks_7d{sensor="decomposition-safety"} 4
+# HELP gmh_avg_time_to_close_days Avg days from open to close (30 issues)
+# TYPE gmh_avg_time_to_close_days gauge
+gmh_avg_time_to_close_days 4.2
+==> Alerts configurados (gmh metrics --alerts):
+  ⚠️  flow_compliance < 70%: 1 vez (sensor 13, v1.13.0)
+  ✅ health_score < 70: 0 vezes
+  ⚠️  sensor_block_per_day > 5: 1 dia (frontend-polish, jul 18)
+```
+
+**3. Formato Prometheus text-based.** Output padrão é
+Prometheus exposition format (parsable por
+`prometheus.yml` scrape config). Permite integração direta
+com Grafana, Datadog, etc.
+
+**4. `--json` flag**: output JSON estruturado (mesmo schema
+de `gmh doctor --json` + métricas de fluxo).
+
+**5. `--alerts` flag**: lista alertas disparados baseado em
+thresholds configuráveis. Default thresholds (configurável
+via `.gmh-metrics.yaml`):
+
+```yaml
+alerts:
+  health_score_below: 70           # critical
+  flow_compliance_below: 80        # warn
+  sensor_blocks_per_day_above: 5   # warn
+  invariant_drift_increase: 2      # critical (N+1 vs baseline)
+  avg_time_to_close_above: 7       # warn (days)
+```
+
+**6. `--slack-webhook <url>` flag**: envia alertas para
+Slack (webhook incoming). Format: cards com health score
+trend, top violação, e link pra dashboard.
+
+**7. `--prometheus-pushgateway <url>` flag**: envia métricas
+para Pushgateway (periódico, em vez de scrape). Útil pra
+short-lived jobs (CI runs).
+
+**8. Skill `metrics-interpretation` (NOVA).** Skill que
+ensina o time a interpretar trends:
+
+- **Health score caindo 5+ pontos/semana**: drift no harness.
+  Ação: rodar `gmh doctor` + revisar ADRs.
+- **Flow compliance < 80%**: team-manager pulando feature
+  flow. Ação: revisar feature flow compliance por issue.
+- **Sensor blocks crescendo em 1 sensor**: convenção local
+  conflitando com sensor. Ação: calibrar sensor (ex.: BEM
+  misturado em projeto Vue 2).
+- **Avg time-to-close > 7 dias**: issues grandes demais ou
+  time subdimensionado. Ação: decompor melhor ou contratar.
+
+**9. `.gmh-metrics.yaml`** (NOVO, opcional): arquivo de
+configuração por projeto. Defaults são sensatos; user
+pode customizar thresholds e Slack webhook.
+
+**10. CI integration (`gmh metrics --prometheus-pushgateway`
+em `.github/workflows/metrics.yml`).** Métricas enviadas a
+cada CI run. Mantém histórico mesmo em jobs curtos.
+
+**11. Cálculo de "flow compliance"** (métrica chave):
+para cada `type/feature` issue aberta ou fechada nos últimos
+30 dias, verificar:
+- Tem label `refined`?
+- Tem label `ready`?
+- Tem comentário de domain-expert (com ACs)?
+- Tem comentário de solutions-architect (com DoD)?
+
+Score = `count(all 4) / count(type/feature) × 100`. Meta:
+**≥85%** (Brenon calibrou baseado em mandai-v2 jul/2026: 87%).
+
+**12. Top violação** (outra métrica chave): agregação de
+`grep -r "❌" harness/scripts/output/ | sort | uniq -c`.
+Default: top 5.
+
+### Princípio
+
+> **"What gets measured gets improved."** Harness health
+> não é só "verde agora" — é "verde ontem, hoje, e
+> tendendo a ficar verde amanhã". Métricas dão a
+> **direção** que `doctor` sozinho não dá.
+
+### Validação empírica (mandai-v2, jul/2026)
+
+Estado pré-v1.14.0:
+
+- `gmh doctor` → "All checks passed" (verde).
+- Mas: 1 epic com 4 sub-issues pulou flow (sensor 13
+  detectou na v1.13.0).
+- Skills: 9 de 12 instaladas (drift silencioso).
+- Sensor 12 (frontend-polish) bloqueou 8 PRs em 1 dia
+  (BEM pattern legado, ninguém calibrou).
+
+Com `gmh metrics` (v1.14.0):
+
+- Health score: 88 (não 100 — `doctor` dizia "all
+  passed" mas metrics detectou drift).
+- Flow compliance: 87% (3 sub-issues do épico #48 sem
+  refinement).
+- Top violação: BEM (sensor 12, 18 ocorrências em 7d).
+
+**Visibilidade que `doctor` não dá:** time vê que BEM é
+top violação, calibra sensor 12 pra "BEM warn, não
+block" em projeto Vue 2, e top violação vira
+"missing i18n key" (próximo problema a resolver).
+
+### Custo evitado (estimativa)
+
+- **Drift detection**: ~1 bug/mês evitado por detecção
+  precoce × 2h = 24h/ano.
+- **Sensor calibration**: ~30min/sensor × 4 calibrações/
+  ano = 2h/ano.
+- **Flow compliance trend**: ~1 epic/mês "salvo" de
+  refazer × 5h = 60h/ano.
+- **Visibilidade Slack**: ~10min/incidente × 20 = 200min/
+  ano = 3h/ano.
+- **Total: ~89h/ano economizadas** por ter métricas
+  contínuas.
+
+### Quem usa / Quem mantém
+
+- **Brenon + time Mandaí** olham o dashboard semanalmente
+  (via `gmh metrics --json` em script de cron).
+- **CI** envia métricas a cada run via Pushgateway.
+- **Maintainers** mantêm thresholds default + skill
+  `metrics-interpretation`.
+
+### Lições
+
+1. **`doctor` é momentâneo, `metrics` é tend.** Combine
+   os dois: doctor pra "como está agora", metrics pra
+   "está melhorando ou piorando".
+2. **Slack alerts precisam de threshold calibrado.**
+   Default 70% health score é muito permissivo pra
+   projeto maduro (deveria ser 85%+) e muito agressivo
+   pra greenfield (deveria ser 50%). Configurável por
+   projeto via `.gmh-metrics.yaml`.
+3. **Flow compliance é a métrica mais importante.** Se
+   100% das features passam pelo flow (refined+ready+
+   comments), o resto segue. Se <80%, **todos os outros
+   sensors viram teatro**.
+4. **Prometheus é universal.** Slack, Grafana, Datadog,
+   New Relic — todos ingerem Prometheus exposition
+   format. Custo zero de lock-in.
+

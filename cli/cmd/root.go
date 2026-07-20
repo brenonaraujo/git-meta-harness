@@ -45,20 +45,27 @@ func newRootCmd() *cobra.Command {
 ` + color.New(color.FgYellow).Sprint("Usage:") + ` gmh <command> [flags]
 
 ` + color.New(color.FgYellow).Sprint("Common commands:") + `
-  install    Install meta-harness into a project
+  install    Install meta-harness into a project (greenfield)
+  adopt      Adopt meta-harness into an existing project (adaptive, v1.14.0+)
+  new        Create new project from spec (v1.14.0+)
   sync       Sync the local project with the latest version
   update     Update to a specific version
-  doctor     Health check the local project
+  doctor     Health check the local project (--json for structured output)
+  metrics    Harness health metrics dashboard (v1.14.0+)
   skills     Install/list skills
   personas   Install/list personas
   plugins    Install/list plugins
+  agents     Manage agentic profiles
 
 ` + color.New(color.FgYellow).Sprint("Examples:") + `
   gmh install                    # Install latest version into ./harness/
   gmh install --to v1.5.0        # Install specific version
+  gmh adopt                      # Adopt into existing project (adaptive)
+  gmh new my-app --spec spec.md  # Create project from spec
   gmh sync                       # Pull latest version into existing project
   gmh doctor                     # Check project is healthy
-  gmh skills install code-graph  # Add a skill
+  gmh doctor --json              # Health score as JSON
+  gmh metrics                    # Dashboard
 
 ` + color.New(color.FgYellow).Sprint("Docs:") + `  https://github.com/brenonaraujo/git-meta-harness
 `,
@@ -85,9 +92,12 @@ func newRootCmd() *cobra.Command {
 
 	// Add subcommands
 	rootCmd.AddCommand(InstallCmd())
+	rootCmd.AddCommand(AdoptCmd())
+	rootCmd.AddCommand(NewCmd())
 	rootCmd.AddCommand(SyncCmd())
 	rootCmd.AddCommand(UpdateCmd())
 	rootCmd.AddCommand(DoctorCmd())
+	rootCmd.AddCommand(MetricsCmd())
 	rootCmd.AddCommand(AgentsCmd())
 	rootCmd.AddCommand(SkillsCmd())
 	rootCmd.AddCommand(PersonasCmd())

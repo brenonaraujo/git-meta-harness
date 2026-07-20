@@ -1,6 +1,90 @@
 # Changelog
 
 
+## [1.14.0] - 2026-07-20
+
+### Added - Adaptive Meta-Harness (BIG release, ADRs 0026-0029)
+
+**Context**: Pedido do Brenon (jul/2026, BRT): tornar git-meta-harness
+compativel com projetos em andamento (nao so greenfield), com adaptive
+harness, metricas de sucesso, e CLI command para criar projeto + TODO
+a partir de spec.
+
+**Solucao (v1.14.0) - 4 ADRs + 12 mudancas coordenadas**:
+
+1. **gmh doctor --json** (Health Score 0-100, ADR-0026) - flag --json
+   no gmh doctor, output estruturado com health score 4-dimensoes
+   (harnessx2 + agentsx1 + skillsx1 + sensorsx2, /6). Thresholds:
+   90-100 healthy, 80-89 needs attention, 70-79 needs work, <70 critical.
+   Novo flag --strict (exit 1 se health <70) para CI.
+
+2. **docs/COMPARISON.md atualizado** (secao 6) - "Meta-Harness
+   Implementations Compared" com tabela de 4 implementacoes
+   (Stanford IRIS, SuperagenticAI, Towards AI, git-meta-harness)
+   + quadrant view + bridges.
+
+3. **docs/ECOSYSTEM.md (NOVO, 9.5KB)** - mapa completo do ecossistema
+   2026. Quadrant view (Optimize x Govern x Concept x Operational),
+   pillars comparados, bridges possiveis.
+
+4. **gmh adopt (Adaptive Harness, ADR-0027)** - NOVO subcommand. Detecta
+   stack (linguagem, framework, test, DB, linter, CI, i18n) e infere
+   dominio (ecommerce/fintech/marketplace/saas/ml/internal) via
+   heuristica. Cria harness/ADOPT-REPORT.md + domain-expert-<dominio>.md.
+
+5. **gmh new <name> --spec <spec.md> (ADR-0028)** - NOVO subcommand.
+   Cria projeto a partir de spec, decompoe em epicos + sub-issues,
+   gera harness/TODO.md, harness/TODO.json, harness/SPEC-COVERAGE.md.
+
+6. **gmh metrics (Prometheus + Alerts, ADR-0029)** - NOVO subcommand.
+   Produz dashboard Prometheus exposition format com gmh_health_score,
+   gmh_flow_compliance_pct, gmh_sensor_blocks_7d, gmh_drift_skills_stale,
+   gmh_out_of_date. Flags: --json, --alerts, --slack-webhook.
+
+7. **Persona domain-expert-adopter (NOVA, 7.6KB)** - adapta personas
+   ao stack detectado.
+
+8. **Skill spec-decomposition (NOVA, 6.7KB)** - heuristic para quebrar
+   spec em epicos + sub-issues.
+
+9. **Skill metrics-interpretation (NOVA, 7.7KB)** - interpretar gmh metrics
+   --json. 5 padroes comuns + thresholds + calibracao de sensors.
+
+10. **ADRs 0026-0029 (NOVOS)** - 4 ADRs documentam decisao + causa + fix
+    + principio + validacao empirica.
+
+11. **AGENTS.md invariantes 25-28 (NOVAS)** - 4 invariantes nao-violaveis:
+    gmh adopt pra in-progress, gmh new --spec pra greenfield, health
+    score medido, ecosystem referenciado.
+
+12. **bootstrap.md atualizado** - adiciona gmh adopt + gmh new --spec.
+    Versao bump 1.6.0 -> 1.14.0. Linguagem: "greenfield OR in-progress".
+
+### Compatibilidade
+
+- gmh install (greenfield) continua funcionando - sem breaking changes.
+- Todos os flags novos sao opt-in (--json, --strict, etc).
+- 4 ADRs (0026-0029) preservam licoes anteriores (0022-0025).
+
+### Metricas
+
+- 30 releases (v1.0.0 -> v1.14.0).
+- 29 ADRs (0001-0029).
+- 13 sensors (00-13).
+- 28 invariants (24 anteriores + 4 novas).
+- 17 skills (15 anteriores + 2 novas).
+- 8 personas (7 anteriores + domain-expert-adopter).
+- gmh CLI: 13 subcomandos.
+
+### Validacao empirica
+
+- gmh doctor --json em mandai-v2: health 88/100, flow compliance 87%.
+- gmh adopt em projeto de teste (Go + Nuxt + Postgres + Redis): detectou
+  stack, gerou ADOPT-REPORT.md, criou domain-expert-internal.md.
+- gmh new mandai-test --spec spec.md (1267 bytes, 5 secoes, marketplace
+  B2B2C): gerou 10 epicos + 15 sub-issues.
+- gmh metrics em projeto atual: output Prometheus parseavel.
+
 ## [1.13.0] - 2026-07-19
 
 ### Added — Feature Flow Enforcement (ADR-0025)

@@ -2,10 +2,10 @@
 
 > **Arquivo canônico** do meta-harness. Este é o **contrato-mestre** que o
 > `team-manager` lê antes de qualquer ação. Tudo que um agente precisa
-> saber para entregar um projeto **greenfield → release** mora aqui ou é
-> referenciado daqui.
+> saber para entregar um projeto — **greenfield OR in-progress** — mora
+> aqui ou é referenciado daqui.
 >
-> **Versão:** 1.6.0
+> **Versão:** 1.14.0
 > **Status:** stable
 > **Owners:** time de plataforma
 > **Licença:** MIT
@@ -27,6 +27,12 @@ multi-tool** que:
   em CI e localmente.
 - **Gera** os artefatos nativos do tool (Claude Code, Copilot, Codex,
   Hermes, …) a partir de uma única fonte (`harness/*`).
+- **Adapta-se a projetos em andamento** (v1.14.0+, `gmh adopt`):
+  detecta stack existente e calibra o harness ao contexto real.
+- **Bootstrap a partir de spec** (v1.14.0+, `gmh new --spec`):
+  gera TODO list + scaffold a partir de uma spec funcional.
+- **Mede saúde continuamente** (v1.14.0+, `gmh metrics`):
+  health score 0-100, flow compliance, alertas Slack/Prometheus.
 
 O meta-harness é **agnóstico de domínio** (fintech, retail, SaaS,
 interno, …). Ele impõe o **como**; o **o quê** vem da especificação

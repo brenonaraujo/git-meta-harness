@@ -1,12 +1,12 @@
 # git-meta-harness
 
-> **Plug-and-play multi-agent orchestration framework for greenfield → production
-> software delivery**, materializable on demand from a functional specification
-> into any agentic CLI (Claude Code, Copilot, Codex, OpenCode, Devin, Hermes
-> Agent, Cursor).
+> **Plug-and-play multi-agent orchestration framework for greenfield **and**
+> in-progress projects → production software delivery**, materializable
+> on demand from a functional specification into any agentic CLI
+> (Claude Code, Copilot, Codex, OpenCode, Devin, Hermes Agent, Cursor).
 >
-> **Version:** [1.13.0](./VERSION) · **License:** [MIT](./LICENSE) ·
-> **Status:** stable · **27 releases** · **Validation and test case:** ✅
+> **Version:** [1.14.0](./VERSION) · **License:** [MIT](./LICENSE) ·
+> **Status:** stable · **30 releases** · **Validation and test case:** ✅
 > [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)
 
 ---
@@ -15,12 +15,12 @@
 
 | Version | Type | What it does |
 |---|---|---|
+| **v1.14.0** | **FEATURE** | **Adaptive Meta-Harness (BIG, 4 ADRs)** — `gmh adopt` (in-progress projects, detects stack + adapts), `gmh new --spec` (creates project + TODO from spec), `gmh doctor --json` (health score 0-100, 4 dimensions), `gmh metrics` (Prometheus dashboard + Slack alerts). 4 ADRs (0026-0029). `docs/ECOSYSTEM.md` maps 4 implementations (Stanford IRIS, SuperagenticAI, Towards AI, us). |
 | **v1.13.0** | FEATURE | **Feature flow enforcement** — `sensor 13 feature-flow` (BLOCKING) + canonical comment templates + builder reads-all-comments rule. Prevents the team-manager from skipping `domain-expert`/`solutions-architect` on `type/feature` issues. ADR-0025. |
 | **v1.12.2** | HOTFIX | **`hermes -p` flag order** — `agentic.Invocation()` now produces `hermes -p <profile> chat -q '<prompt>'` (the `-p` is a **global** flag, not a `chat` subcommand flag). ADR-0024. |
 | **v1.12.1** | HOTFIX | **Agent config preservation** — `gmh agents sync` no longer erases `model.default`, `model.provider`, `agent.reasoning_effort` from profile `config.yaml`. Fixed `struct round-trip erasure` bug. ADR-0023. |
-| **v1.12.0** | FEATURE | **Frontend public skills + cold-start polish** — registry workflow (`npx skills find`), `sensor 12 frontend-polish` (BLOCKING, 10 anti-pattern categories), 3 Nuxt UI templates (`landing/dashboard/auth-form`), Playwright screenshot scripts. ADR-0022. |
 
-See [`CHANGELOG.md`](./CHANGELOG.md) for the full history (27 versions).
+See [`CHANGELOG.md`](./CHANGELOG.md) for the full history (30 versions).
 
 ---
 
@@ -36,7 +36,7 @@ harnesses: the unit it delivers is not "one configured agent" but
 "one orchestrated team, with process, gates, and audit trail". The user
 pastes a spec into an agentic CLI; the `team-manager` decomposes the spec
 into routed issues, dispatches them to specialized personas, gates the
-work with 13 sensors + 24 invariants, and produces a PR ready for human
+work with 13 sensors + 28 invariants, and produces a PR ready for human
 validation. **The user does not configure anything.** Full vision:
 [`docs/CONCEPT.md`](./docs/CONCEPT.md). Comparison with SDD/SPDD:
 [`docs/COMPARISON.md`](./docs/COMPARISON.md). Origin story:
@@ -63,7 +63,7 @@ flowchart LR
     EPIC["📋 Issue-mãe #1<br/>(épico)"]
     SUB["📋 Sub-issues<br/>(type/*, domain/*)"]
     GH[("🗂️ GitHub<br/>Issues + PRs + Actions")]
-    P["👥 7 personas<br/>(smart routing<br/>by type/*)"]
+    P["👥 8 personas<br/>(smart routing<br/>by type/*)"]
     CG["🔎 Code graph<br/>(optional)"]
     PR["📬 Pull Request"]
     QA["🔍 QA (13 sensors)"]
@@ -108,7 +108,7 @@ human validates (enforced by branch protection). The
 release is tagged. **Zero configuration by the human** —
 they only provide the spec and validate.
 
-### The team — 7 personas + smart routing
+### The team — 8 personas + smart routing
 
 ```mermaid
 flowchart TB
@@ -189,10 +189,10 @@ tagged Releases. **No new platform** is introduced.
 orchestration layer for a **team of AI agents** that deliver software
 projects from a **functional spec** to a **production release**, with:
 
-- **7 personas** — team-manager, domain-expert (always specialized),
+- **8 personas** — team-manager, domain-expert (always specialized),
   solutions-architect, backend-engineer, frontend-engineer,
   quality-assurance, devops-engineer
-- **13 sensors** (00-12) — automated checks for static analysis, vulnerability,
+- **13 sensors** (00-13) — automated checks for static analysis, vulnerability,
   unit, contract, image scan, smoke, load, 12-factor, i18n, verify-after-build,
   decomposition safety, scope discipline, frontend polish, **feature flow**
 - **5 stack files** — Go 1.26.5 + Gin + GORM + PostgreSQL backend;
@@ -204,12 +204,12 @@ projects from a **functional spec** to a **production release**, with:
   .env.example, issue templates, PR description, 3 locales, 3 Nuxt UI
   templates (landing/dashboard/auth-form), 2 canonical comment templates
   (domain-expert + solutions-architect)
-- **15 skills** — github-pr-workflow, github-issues, github-code-review,
+- **17 skills** — github-pr-workflow, github-issues, github-code-review,
   tdd-go, openapi-spec-first, twelve-factor, i18n, code-graph, nuxt-ui-patterns,
   ux-design-best-practices, domain-refinement, pre-implementation-design,
   solution-scoping, frontend-public-skills, tailwind-only-patterns, visual-polish
-- **24 invariants** in `AGENTS.md` §8 — non-negotiable contracts
-- **25 ADRs** in `contrib/design-decisions.md` — every architectural
+- **28 invariants** in `AGENTS.md` §8 — non-negotiable contracts
+- **29 ADRs** in `contrib/design-decisions.md` — every architectural
   decision documented
 - **9+ scripts** in `harness/scripts/` — smoke-test, check-stack-versions,
   check-i18n, check-parallel-builders, check-scope-discipline,
@@ -225,13 +225,13 @@ structure (not a "single agent does everything" anti-pattern).
 
 | Without meta-harness                | With meta-harness                              |
 |-------------------------------------|------------------------------------------------|
-| One agent does everything → drift   | 7 personas with explicit roles & interactions  |
+| One agent does everything → drift   | 8 personas with explicit roles & interactions  |
 | No domain knowledge → generic AI    | Specialized `domain-expert-<domain>` per project |
-| No tests, no CI gates               | 13 sensors, 24 invariants, smoke test pre-flight |
+| No tests, no CI gates               | 13 sensors, 28 invariants, smoke test pre-flight |
 | Stack drift (Go 1.22 vs 1.26)       | `versions.md` + `check-stack-versions.sh`     |
 | CI runs everything every time       | `dorny/paths-filter` → 5-10x faster PRs        |
 | Vendor lock-in (Claude Code only)   | Multi-tool via `AGENTS.md` (Claude/Copilot/Codex/OpenCode/Devin/Hermes/Cursor) |
-| No audit trail of decisions         | ADRs + 24 invariants + per-issue briefings     |
+| No audit trail of decisions         | ADRs + 28 invariants + per-issue briefings     |
 | No i18n → debt later                | i18n first-class (en, pt-BR, es)               |
 | Team-manager skips domain/architect | Sensor 13 `feature-flow` **BLOCKS** in-progress without refinement+DoD |
 | Builder receives only 1-paragraph desc | Builder reads ALL comments (refinement + DoD) before coding |
@@ -336,13 +336,13 @@ Swarm, and local deployment.
 
 ## Architecture overview
 
-### The team (7 personas) and the 13 sensors
+### The team (8 personas) and the 13 sensors
 
 ```mermaid
 flowchart TB
     TM["🤖 team-manager<br/><i>orchestrator</i>"]
 
-    subgraph PERSONAS["7 personas"]
+    subgraph PERSONAS["8 personas"]
         DE["🎯 domain-expert-&lt;x&gt;<br/><i>specialized per project</i>"]
         SA["📐 solutions-architect<br/><i>DoD, 12-factor, ADRs</i>"]
         BE["⚙️ backend-engineer<br/><i>Go · tests · local pre-flight</i>"]
@@ -351,7 +351,7 @@ flowchart TB
         DO["🚀 devops-engineer<br/><i>CI/CD · Docker · observability</i>"]
     end
 
-    subgraph SENSORS["13 sensors (automated gates, v1.13.0)"]
+    subgraph SENSORS["13 sensors (automated gates, v1.14.0+)"]
         S1["00 lint"]
         S2["01 vuln"]
         S3["02 unit"]
@@ -381,7 +381,7 @@ flowchart TB
 ```
 
 **Reading the diagram:** `team-manager` is the orchestrator. The
-7 personas do the work. The QA persona runs the 13 sensors as
+8 personas do the work. The QA persona runs the 13 sensors as
 automated gates. Smart routing (shown above in "The team"
 section) decides which personas run for which `type/*` issue.
 
@@ -597,19 +597,19 @@ git-meta-harness/
 ├── templates/                   # CI workflow, .golangci.yml
 ├── bin/                         # safe-commit-harness-sync.sh (v1.10.1+)
 └── harness/
-    ├── AGENTS.md                # multi-tool contract + 24 invariants
+    ├── AGENTS.md                # multi-tool contract + 28 invariants
     ├── CLAUDE.md                # Claude Code adapter
     ├── bootstrap.md             # 13 princípios canônicos
     ├── smoke-test.md            # spec do smoke test
-    ├── personas/                # 7 personas + examples/
-    ├── sensors/                 # 13 sensors (00-13)
+    ├── personas/                # 8 personas + examples/
+    ├── sensors/                 # 14 sensors (00-13, v1.14.0: sensor 13 feature-flow documented)
     ├── workflow/                # 7 workflow docs (00-06)
     ├── stack/                   # backend, frontend, observability,
     │                            #   docker, code-style, versions
     ├── templates/               # 16+ templates (Dockerfile, ci.yml,
     │                            #   locales, nuxt-ui/, comments/)
-    ├── skills/                  # 15 skills
-    ├── contrib/                 # design-decisions.md (25 ADRs)
+    ├── skills/                  # 17 skills
+    ├── contrib/                 # design-decisions.md (29 ADRs)
     ├── examples/                # domain-expert-* + README
     ├── seed/                    # meta-harness-seed.md
     └── scripts/                 # 9+ scripts (smoke-test, check-*, visual/)

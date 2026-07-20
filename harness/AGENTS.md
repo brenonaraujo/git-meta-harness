@@ -595,3 +595,77 @@ hermes skills install <path-para-harness/skills/<name>>
 
 > Este arquivo é **vivo**: o `team-manager` é responsável por mantê-lo
 > sincronizado com `bootstrap.md` e os artefatos nativos do tool em uso.
+
+---
+
+## 11. Adaptive harness + métricas (v1.14.0, ADRs 0026-0029)
+
+> **Filosofia (v1.14.0+):** "The harness adapts to the project,
+> not the other way around." O meta-harness agora suporta
+> projetos em andamento (`gmh adopt`), bootstrap a partir de
+> spec (`gmh new --spec`), e mede saúde continuamente
+> (`gmh metrics`).
+
+### 25. **`gmh adopt` para projetos em andamento** (NOVA,
+    v1.14.0+, não-violável + bloqueante)
+
+- Projetos pré-existentes (com stack, conventions, 1k-50k+ LOC)
+  **devem usar `gmh adopt`** em vez de `gmh install`. `gmh install`
+  assume greenfield; `gmh adopt` detecta stack e adapta.
+- `gmh adopt` gera `harness/ADOPT-REPORT.md` com stack detectado
+  + adaptações aplicadas. Nunca modifica código do projeto.
+- Persona `domain-expert-adopter` (NOVA) orquestra a adaptação
+  (cria `domain-expert-<domínio>.md` calibrado, sugere skills,
+  documenta edge cases).
+- Em CI: `gmh adopt --non-interactive` (sem prompts) é o modo
+  default.
+- **Bloqueante**: se `harness/ADOPT-REPORT.md` não existe em
+  projeto que não tem `harness/AGENTS.md` E tem >30 arquivos
+  source, sensor 14 (futuro, v1.15.0) bloqueia.
+
+### 26. **`gmh new --spec` para greenfield** (NOVA, v1.14.0+,
+    não-violável + bloqueante)
+
+- Projetos novos (greenfield) **devem usar `gmh new <name>
+  --spec <spec.md>`** em vez de bootstrap manual.
+- `gmh new` gera: `docs/SPEC.md`, `harness/TODO.md`,
+  `harness/TODO.json`, `harness/SPEC-COVERAGE.md`,
+  `harness/ADOPT-REPORT.md`, e estrutura básica de diretório.
+- Spec decomposition segue a skill `spec-decomposition`
+  (1 épico = 1 capítulo, 1 sub-issue = 1 entregável testável,
+  ACs derivados, edge cases extraídos, SpecRef linkando).
+- Coverage check: `harness/SPEC-COVERAGE.md` deve mostrar 100%
+  (toda seção da spec → ≥1 épico). Se <100%, **bloqueante**
+  (sensor 15 futuro, v1.15.0).
+
+### 27. **Health score é medido e versionado** (NOVA, v1.14.0+,
+    não-violável)
+
+- `gmh doctor --json` produz `health_score` 0-100 (4 dimensões:
+  harness × 2, agents × 1, skills × 1, sensors × 2).
+- Thresholds: 90-100 healthy, 80-89 needs attention, 70-79
+  needs work, <70 critical.
+- `gmh metrics` produz dashboard Prometheus + alertas
+  configuráveis (saúde caindo, flow compliance, drift).
+- Em CI: `--strict` (exit 1 se health <70) é o modo
+  recomendado para projetos maduros.
+- **Não-violável**: health score **deve** ser consultado
+  semanalmente (review do time). Não seguir = não detectar
+  drift até quebrar.
+
+### 28. **Comparação com ecossistema 2026 é referenciada** (NOVA,
+    v1.14.0+, informativa)
+
+- 4 implementações de meta-harness em 2026:
+  Stanford IRIS (research, otimiza), SuperagenticAI
+  (código, backend Python), Towards AI (artigo, explica),
+  git-meta-harness (operacional, governa).
+- [`docs/ECOSYSTEM.md`](./../docs/ECOSYSTEM.md) tem o mapa
+  completo + 3 possíveis "bridges" (Stanford IRIS LLM-as-optimizer
+  → otimizar personas; SuperagenticAI → runtime alternativo;
+  Towards AI → scenarios fintech/healthtech).
+- **Não-violável**: visitantes que perguntam "qual a diferença?"
+  são apontados para `docs/COMPARISON.md` e `docs/ECOSYSTEM.md`.
+- **Informativa**: bridges não são obrigatórias, mas estão
+  mapeadas para v2.0.0.
+

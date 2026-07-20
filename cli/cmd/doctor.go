@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/agentic"
+	"github.com/brenonaraujo/git-meta-harness/cli/internal/health"
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/prompt"
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/source"
 	"github.com/brenonaraujo/git-meta-harness/cli/internal/ui"
@@ -30,6 +32,8 @@ func DoctorCmd() *cobra.Command {
 		agentName string
 		apply     bool
 		noPrompt  bool
+		jsonOut   bool
+		strict    bool
 	)
 
 	cmd := &cobra.Command{
@@ -40,14 +44,22 @@ correctly set up with the meta-harness framework.
 
 By default, runs quick local checks (15+) and prints a summary.
 
+With --json, prints a structured JSON report with health score
+(0-100, 4 dimensions: harness/agents/skills/sensors). Suitable
+for tooling, CI, and dashboards (gmh metrics).
+
 With --agent, generates a prompt for the team-manager of the
 specified agentic (e.g., 'hermes', 'claude-code', 'codex',
 'opencode') to perform a deep health check.
 
 With --apply, runs sync/update automatically if drift is detected.
 
+With --strict, exits 1 if health score < 70 (critical).
+
 Examples:
   gmh doctor                         # Quick local checks
+  gmh doctor --json                  # Structured JSON + health score
+  gmh doctor --strict                # Exit 1 if health < 70
   gmh doctor --agent hermes          # Generate deep-check prompt for Hermes
   gmh doctor --agent hermes --apply  # Run sync if drift detected
   gmh doctor --fix                   # Auto-fix common issues`,
@@ -55,6 +67,27 @@ Examples:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd := getCwd(cmd)
 			harnessDir := filepath.Join(cwd, "harness")
+
+			// --json: short-circuit to structured JSON output
+			// (v1.14.0+, ADR-0026). Health score, invariants,
+			// sensors, drift.
+			if jsonOut {
+				src := source.NewClient("")
+				latest, _ := src.ResolveVersion("latest")
+				rep, err := health.Calculate(cwd, Version, readLocalVersion(cwd), latest)
+				if err != nil {
+					return err
+				}
+				b, err := json.MarshalIndent(rep, "", "  ")
+				if err != nil {
+					return err
+				}
+				fmt.Println(string(b))
+				if strict && rep.HealthScore.Overall < 70 {
+					return fmt.Errorf("health score %d < 70 (critical)", rep.HealthScore.Overall)
+				}
+				return nil
+			}
 
 			// Quick local checks
 			report := runLocalChecks(cwd, harnessDir, verbose)
@@ -192,6 +225,10 @@ Examples:
 		"Auto-apply sync/update if drift is detected")
 	cmd.Flags().BoolVar(&noPrompt, "no-prompt", false,
 		"Just print the prompt (don't suggest how to invoke)")
+	cmd.Flags().BoolVar(&jsonOut, "json", false,
+		"Output structured JSON with health score (v1.14.0+, ADR-0026)")
+	cmd.Flags().BoolVar(&strict, "strict", false,
+		"Exit 1 if health score < 70 (critical, v1.14.0+)")
 
 	return cmd
 }
