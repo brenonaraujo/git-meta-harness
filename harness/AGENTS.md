@@ -669,3 +669,45 @@ hermes skills install <path-para-harness/skills/<name>>
 - **Informativa**: bridges não são obrigatórias, mas estão
   mapeadas para v2.0.0.
 
+
+---
+
+## 12. **NUNCA forçar stack ou história** (v1.14.1+, NÃO-VIOLÁVEL + BLOQUEANTE)
+
+> **Lição do gap (v1.14.0):** ao detectar stack, framework
+> **NUNCA** deve forçar o projeto a mudar de framework/database.
+> Se detectou React, não sugere Nuxt. Se detectou Firebase, não
+> sugere PostgreSQL. Personas adaptadas **respeitam a história**
+> do projeto (não inventam terminologia regional — Pix-first só
+> se BR; Stripe se internacional).
+
+### 29. **`gmh adopt` NUNCA força; sempre pergunta** (NOVA,
+    v1.14.1+, não-violável + bloqueante)
+
+- **NUNCA** sobrescrever o stack detectado. Adicionar APOIO,
+  não substituir.
+- **NUNCA** recomendar skills que não existem em `harness/skills/`.
+- **NUNCA** aplicar "Pix-first" / "BR" / "Stripe" sem evidência
+  (locale, deps, or domain).
+- **SEMPRE** consultar `harness/skill-matrix.yaml` antes de
+  recomendar (declarativo, editável, não hardcoded em Go).
+- **SEMPRE** exibir confiança por adaptação em ADOPT-REPORT.md
+  (≥70%: aplica; 50-69%: pede confirmação; <50%: NÃO aplica,
+  apenas sugere).
+- **SEMPRE** gerar ADOPT-REPORT.md com seção "Adaptações NÃO
+  aplicadas" listando o que **não** foi feito (e por quê).
+- **Bloqueante**: se `gmh adopt --json` mostra
+  `applied_calibrations_with_low_confidence > 0`, sensor 14
+  (v1.15.0) bloqueia.
+
+### 30. **Skill matrix é a fonte da verdade** (NOVA, v1.14.1+,
+    não-violável)
+
+- Stack → skills é mapeado em `harness/skill-matrix.yaml`,
+  NUNCA hardcoded em Go code.
+- Personas consultam a skill matrix; nunca inventam.
+- Adicionar nova stack = 1 entrada na skill matrix, não 50
+  linhas de Go.
+- Editável pelo time: mudanças no YAML são versionadas com o
+  harness.
+

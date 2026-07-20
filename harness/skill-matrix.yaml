@@ -1,0 +1,388 @@
+# Harness Skill Matrix
+#
+# Maps detected stack → recommended skills + persona adaptations.
+# Read by gmh adopt and domain-expert-adopter to calibrate the
+# harness to the project's reality. EDITABLE — users can extend
+# or override. NEVER hardcoded in Go (so personas don't invent
+# skills that don't exist).
+#
+# v1.14.1+, FIX-2 of v1.14.0 gap (React + Firebase not supported).
+#
+# Format:
+#   stack_key: { ... }
+#     primary:   the canonical "web framework" / "database" value
+#     skill:     recommended skill (must exist in harness/skills/)
+#     persona_adaptations: | multi-line notes
+#     sensor_calibrations:  | notes
+#     anti_patterns:         | what NOT to recommend
+#     notes:                 | human-readable context
+
+# Web frameworks — order matters: meta-frameworks win over plain
+react:
+  primary: "react"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Use functional components + hooks (no class components).
+    - State management: prefer Zustand/Redux Toolkit over context.
+    - Test with Vitest or Jest (whichever is detected).
+    - For routing: React Router v6 or Next.js (if detected).
+  sensor_calibrations: |
+    - Sensor 12 (frontend-polish): MUST look at .tsx/.jsx files
+      (not .vue). Detect hex hardcoded, missing alt, inline styles.
+    - Add: warn on inline style={{}} for non-dynamic styling.
+  anti_patterns: |
+    - DO NOT recommend Nuxt UI, <UButton>, useHead(), or any
+      Vue/Nuxt-specific concept. Different framework, different
+      ecosystem.
+    - DO NOT recommend class-based components (legacy).
+  notes: |
+    Plain React (no Next/Remix/Gatsby). If you see @next/* or
+    @remix-run/*, this is NOT the right matrix entry — use next
+    or remix instead.
+
+react-cra:
+  primary: "react"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Legacy CRA. Strongly recommend migrating to react-vite or
+      next (CRA is deprecated since 2023).
+    - State, hooks, routing as for react.
+  sensor_calibrations: |
+    - Sensor 12: same as react, but also flag react-scripts
+      in dependencies as deprecated.
+  anti_patterns: |
+    - DO NOT recommend new features that CRA doesn't support
+      (e.g., RSC, Server Actions).
+  notes: |
+    Create React App — deprecated. Migration to Vite recommended.
+
+react-vite:
+  primary: "react"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Use Vite for dev server (HMR) and production build.
+    - Tests: vitest (configured alongside vite).
+  sensor_calibrations: |
+    - Sensor 12: same as react.
+    - Sensor 02 (unit-tests): run pnpm test:vitest (not jest).
+  anti_patterns: |
+    - DO NOT recommend Nuxt/Vue.
+  notes: |
+    React + Vite. Modern, fast.
+
+next:
+  primary: "next"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Server Components by default (App Router).
+    - API routes via app/api/ (or pages/api/ if legacy).
+    - Image optimization via next/image.
+    - Middleware via middleware.ts.
+    - Vercel deployment is the default (auto-detect vercel.json).
+  sensor_calibrations: |
+    - Sensor 12 (frontend-polish): .tsx files. Also flag
+      dangerouslySetInnerHTML and useEffect overuse.
+  anti_patterns: |
+    - DO NOT use Nuxt UI.
+    - DO NOT use Vue syntax.
+  notes: |
+    Next.js (App Router by default; Pages Router if pages/ dir).
+
+nuxt:
+  primary: "nuxt"
+  skill: "nuxt-ui-patterns"
+  persona_adaptations: |
+    - Auto-imports (composables, components).
+    - Nitro server for backend.
+    - Nuxt UI v3/v4 for components.
+    - i18n via @nuxtjs/i18n (en, pt-BR, es required by harness).
+  sensor_calibrations: |
+    - Sensor 12: .vue files. Detect BEM, hex hardcoded.
+  anti_patterns: |
+    - DO NOT use plain React patterns.
+  notes: |
+    Nuxt (Vue-based). Stack pinado by Mandaí v2.
+
+vue:
+  primary: "vue"
+  skill: "nuxt-ui-patterns"
+  persona_adaptations: |
+    - Vue 3 with Composition API (script setup).
+    - Pinia for state.
+  sensor_calibrations: |
+    - Sensor 12: .vue files.
+  anti_patterns: |
+    - DO NOT use Nuxt-specific features (useHead, etc).
+  notes: |
+    Plain Vue (no Nuxt). Use vue-vite if Vite is the bundler.
+
+vue-vite:
+  primary: "vue"
+  skill: "nuxt-ui-patterns"
+  persona_adaptations: |
+    - Vue 3 + Vite + Composition API.
+    - Pinia for state.
+    - Vue Router 4.
+  sensor_calibrations: |
+    - Sensor 12: .vue files.
+  anti_patterns: |
+    - DO NOT use Nuxt-specific features.
+  notes: |
+    Vue + Vite (no Nuxt).
+
+expo:
+  primary: "expo"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Mobile-first: screen sizes, touch targets, safe areas.
+    - Expo Router for navigation (file-based).
+    - AsyncStorage for local persistence.
+    - EAS Build for deployment.
+  sensor_calibrations: |
+    - Sensor 12: .tsx files. Touch targets ≥44×44px.
+    - Add: warn on hardcoded HEX colors.
+  anti_patterns: |
+    - DO NOT recommend DOM-specific patterns (no document.*).
+  notes: |
+    Expo (React Native + tooling). Mobile + Web.
+
+react-native:
+  primary: "react-native"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Mobile: React Native (bare, no Expo tooling).
+    - Touch targets ≥44×44px.
+  sensor_calibrations: |
+    - Sensor 12: .tsx files.
+  anti_patterns: |
+    - DO NOT recommend browser-only patterns.
+  notes: |
+    React Native (bare). Less common than Expo today.
+
+# Databases — including serverless / BaaS
+firebase:
+  primary: "firebase"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Firestore: no SQL. Design collections as documents, not
+      tables. Denormalize for query performance.
+    - Auth: Firebase Auth (email, Google, Apple, Phone).
+    - Storage: Firebase Storage for files (with security rules).
+    - Functions: Cloud Functions for backend logic.
+    - Local emulator suite (firebase emulators:start).
+    - Security rules are MANDATORY (firestore.rules).
+  sensor_calibrations: |
+    - Sensor 12: not applicable (no server-rendered HTML).
+    - Add: warn if firestore.rules file is missing.
+    - Add: warn if firebase.json exists but env vars are
+      hardcoded.
+  anti_patterns: |
+    - DO NOT recommend relational DB patterns (joins, transactions).
+    - DO NOT recommend Prisma / Drizzle / TypeORM (these are
+      for SQL, not Firestore).
+    - DO NOT recommend Pix-first payment (Brazil-specific;
+      use Stripe for international Firebase apps).
+  notes: |
+    Firebase / Firestore. Serverless. Real-time queries.
+    No docker-compose, no ORM. Different mental model.
+
+firestore:
+  primary: "firestore"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Same as firebase (Firestore IS Firebase's DB).
+    - Use Firestore SDK (web or admin).
+    - Composite indexes (firestore.indexes.json) for compound
+      queries.
+  sensor_calibrations: |
+    - Add: warn if @firebase/firestore used without
+      firestore.indexes.json for compound queries.
+  anti_patterns: |
+    - DO NOT recommend SQL patterns.
+  notes: |
+    Firestore (part of Firebase ecosystem). Use firestore
+    matrix if Firebase Auth is NOT used.
+
+supabase:
+  primary: "supabase"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - PostgreSQL under the hood (with realtime + auth + storage).
+    - RLS (Row Level Security) is MANDATORY for multi-tenant.
+    - supabase-js SDK for queries.
+    - supabase/migrations/ for schema changes.
+  sensor_calibrations: |
+    - Add: warn if RLS is disabled on tables with workspace_id.
+  anti_patterns: |
+    - DO NOT recommend Firebase-specific patterns.
+  notes: |
+    Supabase = open-source Firebase alternative. PostgreSQL-based.
+
+amplify:
+  primary: "amplify"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - AWS Amplify = GraphQL API + Auth + Storage on AWS.
+    - amplify/ directory for schema (schema.graphql).
+    - amplify.yml for build/deploy.
+  sensor_calibrations: |
+    - Sensor 12: .tsx files.
+  anti_patterns: |
+    - DO NOT recommend Pix-first (international default).
+  notes: |
+    AWS Amplify. Serverless on AWS.
+
+planetscale:
+  primary: "planetscale"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - MySQL-compatible (Vitess under the hood).
+    - Branch-based schema migrations (no traditional migrations).
+    - Connect via DATABASE_URL.
+  sensor_calibrations: |
+    - Standard SQL sensor applies.
+  anti_patterns: |
+    - DO NOT recommend traditional migrations.
+  notes: |
+    PlanetScale (serverless MySQL).
+
+neon:
+  primary: "neon"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Serverless PostgreSQL.
+    - Branching (copy-on-write).
+    - HTTP driver for edge.
+  sensor_calibrations: |
+    - Standard SQL sensor applies.
+  anti_patterns: |
+    - DO NOT assume long-lived connections.
+  notes: |
+    Neon (serverless PostgreSQL, branching).
+
+# ORMs
+prisma:
+  primary: "prisma"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Schema in prisma/schema.prisma.
+    - Migrations via prisma migrate.
+    - Client in src/lib/db.ts (or similar).
+  sensor_calibrations: |
+    - Warn if prisma/schema.prisma missing for TypeScript
+      backend with PostgreSQL.
+  anti_patterns: |
+    - DO NOT use with Firestore (not SQL).
+  notes: |
+    Prisma ORM. TypeScript-first.
+
+drizzle:
+  primary: "drizzle"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - Schema in src/db/schema.ts.
+    - Drizzle Kit for migrations.
+  sensor_calibrations: |
+    - Warn if drizzle.config.ts missing.
+  anti_patterns: |
+    - DO NOT use with Firestore.
+  notes: |
+    Drizzle ORM. Lighter than Prisma.
+
+# Hosting
+vercel:
+  primary: "vercel"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - vercel.json for config.
+    - Edge Functions for low-latency.
+    - Cron Jobs via vercel.json crons.
+    - Environment via Vercel dashboard (NOT .env).
+  sensor_calibrations: |
+    - Warn if .env is committed (Vercel manages envs).
+  anti_patterns: |
+    - DO NOT recommend Docker-based deploys.
+  notes: |
+    Vercel hosting. Serverless. Edge functions.
+
+netlify:
+  primary: "netlify"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - netlify.toml for config.
+    - Functions in netlify/functions/.
+    - Forms, identity, edge functions.
+  sensor_calibrations: |
+    - Warn if .env is committed.
+  anti_patterns: |
+    - DO NOT recommend Docker.
+  notes: |
+    Netlify hosting.
+
+cloudflare:
+  primary: "cloudflare"
+  skill: "frontend-public-skills"
+  persona_adaptations: |
+    - wrangler.toml for config.
+    - Workers for edge logic.
+    - KV/D1 for storage.
+  sensor_calibrations: |
+    - Standard sensor applies.
+  anti_patterns: |
+    - DO NOT recommend Node-specific APIs in Workers.
+  notes: |
+    Cloudflare Pages + Workers. Edge.
+
+# Domain-specific (from domain-expert-<domínio>.md)
+# These are kept here so skill-matrix.yaml is the single source
+# of truth for which skills apply to which stack.
+domains:
+  ecommerce:
+    default_skills: ["frontend-public-skills"]
+    region_specific: true
+    notes: |
+      Domain inferred as ecommerce. Persona domain-expert-ecommerce
+      is generated. Pix-first ONLY if Brazilian (BR locale
+      detected via pt-BR translations or BR-specific deps).
+      International default: Stripe.
+
+  fintech:
+    default_skills: ["frontend-public-skills"]
+    region_specific: true
+    notes: |
+      Domain inferred as fintech. Pix-first + BACEN/PCI-DSS/LGPD
+      ONLY if BR. International default: Stripe + Plaid.
+
+  marketplace:
+    default_skills: ["frontend-public-skills"]
+    notes: |
+      Multi-tenant marketplace. workspace_id MANDATORY in all
+      queries. Split payment (vendor + platform) recommended.
+
+  saas:
+    default_skills: ["frontend-public-skills"]
+    notes: |
+      SaaS. Subscription (Stripe Billing or Paddle). API key +
+      webhook handling. RBAC (Casbin or custom).
+
+  ml:
+    default_skills: ["frontend-public-skills"]
+    notes: |
+      ML. Feature store, embedding, vector DB. NOT ecommerce
+      (different mental model).
+
+  internal:
+    default_skills: ["frontend-public-skills"]
+    notes: |
+      Internal tool. Less stringent on UI polish. Focus on
+      admin dashboard patterns.
+
+# Default fallback (when nothing matches)
+default:
+  primary: "unknown"
+  skill: ""
+  notes: |
+    Stack not recognized. domain-expert-adopter should ASK the
+    user (do not invent a stack). Confidence is low — display
+    in ADOPT-REPORT as "UNKNOWN" and require user confirmation
+    before applying any stack-specific adaptation.

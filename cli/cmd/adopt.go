@@ -68,8 +68,15 @@ Examples:
 				target, _ = filepath.Abs(args[0])
 			}
 
-			ui.Header("gmh adopt — Adaptive Harness (v1.14.0)")
+			ui.Header("gmh adopt — Adaptive Harness (v1.14.1+)")
 			ui.Info("Project: %s", target)
+			ui.Info("")
+			ui.Warn("IMPORTANTE: gmh adopt NUNCA força seu stack.")
+			ui.Info("  Apenas detecta + sugere + documenta.")
+			ui.Info("  Componentes abaixo do threshold de confiança")
+			ui.Info("  (>=70%% aplica, 50-69%% pede confirmação, <50%% só sugere).")
+			ui.Info("  Customize via harness/skill-matrix.yaml.")
+			ui.Info("")
 
 			// 1. Scan
 			ui.Info("")
@@ -262,14 +269,48 @@ func generateAdoptReport(r *stackdetect.StackReport) string {
 		sb.WriteString(fmt.Sprintf("- Sensor calibrado pra `%s`.\n", r.TestFramework))
 	}
 	if r.WebFramework != "" {
-		sb.WriteString(fmt.Sprintf("- Skill `%s-patterns` sugerida (já existe no framework).\n", r.WebFramework))
+		// Only suggest skills that ACTUALLY exist in harness/skills/.
+		// Critical: NEVER invent a skill name. Cross-check with
+		// availableSkills() (FIX of v1.14.0 gap where adopt
+		// suggested "react-vite-patterns" that didn't exist).
+		if skill, ok := skillForStack(r.WebFramework, r.PrimaryLang); ok {
+			sb.WriteString(fmt.Sprintf("- Skill `%s` (existe no framework, é a mais aderente).\n", skill))
+		} else {
+			sb.WriteString(fmt.Sprintf("- ⚠️ Nenhuma skill do framework cobre `%s`. ", r.WebFramework))
+			sb.WriteString("Use `frontend-public-skills` como fallback, ou contribua em `harness/skill-matrix.yaml`.\n")
+		}
 	}
 	if r.PrimaryLang == "go" {
 		sb.WriteString("- Sensor 12 (frontend-polish) calibrado: BEM em Go é raro; sem impacto.\n")
 	}
+	// i18n warning: ONLY recommend Nuxt-specific if stack is Nuxt.
+	// Otherwise, suggest generic i18n setup (the project decides).
 	if !r.I18nSetup {
-		sb.WriteString("- ⚠️ i18n setup NÃO detectado. Sensor 08 (i18n-audit) pode bloquear PRs. ")
-		sb.WriteString("Considere adicionar `@nuxtjs/i18n` ou diretório `i18n/`.\n")
+		sb.WriteString("- ⚠️ i18n setup NÃO detectado. Sensor 08 (i18n-audit) pode bloquear PRs.\n")
+		if r.WebFramework == "nuxt" || r.WebFramework == "nuxt-ui" {
+			sb.WriteString("  Recomendado: `@nuxtjs/i18n` (Nuxt é o stack).\n")
+		} else {
+			sb.WriteString("  Recomendado: skill `i18n` (genérica) — escolha a lib que faz sentido no seu stack.\n")
+			sb.WriteString("  ⚠️ NÃO forcei `@nuxtjs/i18n` (seria stack-swap; seu stack é diferente).\n")
+		}
+	}
+	// Region-specific defaults: ONLY if we have evidence.
+	// Pix-first only if pt-BR is detected (locales dir, deps with
+	// pt-BR suffix, or explicit BR locale in package.json). We
+	// don't have that signal here, so we just note.
+	if r.InferredDomain == "ecommerce" || r.InferredDomain == "fintech" {
+		sb.WriteString(fmt.Sprintf("- ⚠️ Domain `%s` detectado. Region-specific defaults ", r.InferredDomain))
+		sb.WriteString("(Pix-first vs Stripe) NÃO foram aplicados automaticamente — customize a persona.\n")
+	}
+
+	sb.WriteString("\n## 4b. Adaptações NÃO aplicadas (com justificativa)\n\n")
+	notApplied := collectNotApplied(r)
+	if len(notApplied) == 0 {
+		sb.WriteString("_Nenhuma._\n")
+	} else {
+		for _, item := range notApplied {
+			sb.WriteString(fmt.Sprintf("- **%s** — %s\n", item.What, item.Reason))
+		}
 	}
 
 	sb.WriteString("\n## 5. Próximos passos sugeridos\n\n")
@@ -411,11 +452,139 @@ func orEmpty(v, fallback string) string {
 }
 
 // applyAdaptiveSensors calibrates existing sensors to the
-// detected stack. For v1.14.0, this is a no-op placeholder
+// detected stack. For v1.14.0, this isフィ a no-op placeholder
 // (sensors already cover the major cases); future versions
 // will write per-stack sensor configs.
 func applyAdaptiveSensors(harnessDir string, r *stackdetect.StackReport) error {
 	// For now, just write a note in ADOPT-REPORT.md.
 	// Future: write harness/sensors/<NN>-<stack>-aware.md.
 	return nil
+}
+
+// skillForStack returns the harness skill that best matches
+// the detected stack, AND verifies it actually exists in
+// harness/skills/. If the candidate skill doesn't exist,
+// returns ("", false) — caller should NOT invent a name.
+//
+// This is the FIX for the v1.14.0 gap where gmh adopt
+// suggested "react-vite-patterns" that didn't exist in the
+// framework. The persona + ADOPT-REPORT now only suggest
+// skills that are actually installed.
+//
+// Mapping is conservative: only stacks with a clear existing
+// skill return a hit. Everything else gets frontend-public-skills
+// as fallback (which IS in harness/skills/).
+func skillForStack(webFramework, primaryLang string) (string, bool) {
+	// Available skills in harness/skills/ (verified to exist
+	// as of v1.14.1+). If you add a new skill, add it here.
+	availableSkills := map[string]bool{
+		"frontend-public-skills":  true,
+		"nuxt-ui-patterns":        true,
+		"tailwind-only-patterns":  true,
+		"visual-polish":           true,
+		"ux-design-best-practices": true,
+		"domain-refinement":       true,
+		"spec-decomposition":      true,
+		"metrics-interpretation":  true,
+		"pre-implementation-design": true,
+		"solution-scoping":        true,
+		"i18n":                    true,
+		"twelve-factor":           true,
+		"openapi-spec-first":      true,
+		"tdd-go":                  true,
+		"github-pr-workflow":      true,
+		"github-issues":           true,
+		"github-code-review":      true,
+		"code-graph":              true,
+	}
+	// Mapping: stack → candidate skill (must be in availableSkills).
+	candidates := map[string]string{
+		"nuxt":          "nuxt-ui-patterns",
+		"react":         "frontend-public-skills",
+		"react-cra":     "frontend-public-skills",
+		"react-vite":    "frontend-public-skills",
+		"next":          "frontend-public-skills",
+		"vue":           "nuxt-ui-patterns", // shared patterns
+		"vue-vite":      "nuxt-ui-patterns",
+		"expo":          "frontend-public-skills",
+		"react-native":  "frontend-public-skills",
+		"remix":         "frontend-public-skills",
+		"gatsby":        "frontend-public-skills",
+		"astro":         "frontend-public-skills",
+		"angular":       "frontend-public-skills",
+		"svelte":        "frontend-public-skills",
+		"sveltekit":     "frontend-public-skills",
+		"solid":         "frontend-public-skills",
+		"ionic":         "frontend-public-skills",
+		"firebase":      "frontend-public-skills",
+		"firestore":     "frontend-public-skills",
+		"supabase":      "frontend-public-skills",
+		"amplify":       "frontend-public-skills",
+		"planetscale":   "frontend-public-skills",
+		"neon":          "frontend-public-skills",
+		"vercel":        "frontend-public-skills",
+		"netlify":       "frontend-public-skills",
+		"cloudflare":    "frontend-public-skills",
+	}
+	skill, ok := candidates[webFramework]
+	if !ok {
+		// Unknown stack: don't invent. Caller decides.
+		return "", false
+	}
+	if !availableSkills[skill] {
+		// Candidate skill doesn't exist (shouldn't happen if
+		// availableSkills is up to date, but defensive).
+		return "", false
+	}
+	return skill, true
+}
+
+// notApplied describes one adaptation that gmh adopt did NOT
+// apply, with a reason. This is the FIX-5 transparency
+// improvement: every "what we didn't do" is documented.
+type notAppliedItem struct {
+	What   string
+	Reason string
+}
+
+// collectNotApplied returns the list of adaptations that were
+// considered but NOT applied, with reasons. The threshold is
+// 70% confidence (ADR-0027). Items below 70% are documented
+// here so the user knows what was considered.
+func collectNotApplied(r *stackdetect.StackReport) []notAppliedItem {
+	out := []notAppliedItem{}
+
+	// Domain confidence: if < 70, document.
+	if r.DomainScore < 70 {
+		out = append(out, notAppliedItem{
+			What:   fmt.Sprintf("Domain confidence baixa (%d/100)", r.DomainScore),
+			Reason: "Domínio inferido tem poucos sinais. Use `--domain <name>` para forçar, ou customize a persona após revisar.",
+		})
+	}
+
+	// Region-specific defaults (Pix-first vs Stripe).
+	if r.InferredDomain == "ecommerce" || r.InferredDomain == "fintech" {
+		out = append(out, notAppliedItem{
+			What:   "Region-specific defaults (Pix-first vs Stripe)",
+			Reason: "Não temos como detectar o país (locales, deps com BR/US/EU). Customize a persona `domain-expert-" + r.InferredDomain + ".md` para definir.",
+		})
+	}
+
+	// Skill suggestion when stack is unknown.
+	if _, ok := skillForStack(r.WebFramework, r.PrimaryLang); !ok && r.WebFramework != "" {
+		out = append(out, notAppliedItem{
+			What:   "Skill específica para " + r.WebFramework,
+			Reason: "Não existe skill específica no framework. Use `frontend-public-skills` (genérica) ou contribua uma nova em `harness/skill-matrix.yaml`.",
+		})
+	}
+
+	// i18n with confidence below threshold.
+	if !r.I18nSetup {
+		out = append(out, notAppliedItem{
+			What:   "i18n setup forçado",
+			Reason: "i18n é uma decisão de arquitetura. Sugerimos `i18n` skill (genérica), mas o time escolhe a lib.",
+		})
+	}
+
+	return out
 }

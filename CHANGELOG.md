@@ -1,6 +1,140 @@
 # Changelog
 
 
+## [1.14.1] - 2026-07-20
+
+### Fixed - Stack support for non-Nuxt stacks + skill matrix (HOTFIX)
+
+**Context**: v1.14.0 release notes claimed "gmh adopt supports
+any stack", but in practice it had 4 critical gaps for projects
+not in the Mandaí v2 (Nuxt + PostgreSQL) template:
+
+1. **`WebFramework` only detected Nuxt/Next/SvelteKit/Vite** —
+   plain React (CRA, vite+react), React Native, Expo, Remix,
+   Gatsby, Astro, Angular, Svelte, Solid, Ionic were all
+   reported as "" or wrong.
+2. **`Database` only read docker-compose** — serverless BaaS
+   (Firebase, Firestore, Supabase, Amplify, PlanetScale, Neon,
+   Vercel KV/Postgres, Upstash, Convex, Fauna, MongoDB Atlas)
+   were invisible. `database: []` even with Firestore running.
+3. **Skills hardcoded in Go** — `gmh adopt` suggested
+   "react-vite-patterns" as a skill, but it did NOT exist in
+   `harness/skills/`. Personas would invent skill names.
+4. **No "NUNCA forcar" guarantee** — i18n warning recommended
+   `@nuxtjs/i18n` for non-Nuxt projects (a stack-swap
+   recommendation), and personas could apply "Pix-first" to
+   non-Brazilian projects.
+
+Pedido do Brenon (jul/2026, BRT): "como estamos garantindo que
+nosso harness ao ser utilizado em um projeto com react e
+firebase como database vai funcionar corretamente e nao forcar
+o projeto ou os agentes a mudar de historia e utilizar as
+skills erradas?"
+
+**Solucao (v1.14.1) - 5 fix-areas coordenadas**:
+
+### FIX-1: stackdetect.go estendido (4 → 14 stacks web)
+
+Adicionado suporte a: react, react-cra, react-vite, next,
+remix, gatsby, astro, vue, vue-vite, angular, svelte,
+sveltekit, solid, ionic, expo, react-native. Mobile e desktop
+separados (electron, tauri).
+
+**Database (0 → 14 backends)**: firebase, firestore,
+supabase, amplify, planetscale, neon, vercel-postgres,
+vercel-kv, upstash-redis, convex, fauna, mongodb-atlas, +
+toda docker-compose que ja existia (postgres, mysql, redis,
+mongo, etc).
+
+**ORMs detectados** (Prisma, Drizzle, TypeORM, Sequelize, Knex,
+Mikro-ORM) e **hosting** (Vercel, Netlify, Cloudflare, Amplify)
+via deps + config files (vercel.json, netlify.toml,
+wrangler.toml, amplify.yml, supabase/config.toml,
+firebase.json, firestore.rules).
+
+### FIX-2: harness/skill-matrix.yaml (NOVO, 12KB)
+
+Skill matrix **declarativo e editavel** (NUNCA hardcoded em Go).
+Editavel pelo time, versionado com o harness. Mapping
+stack → skills + persona adaptations + sensor calibrations
++ anti-patterns. Cobre:
+
+- **Web frameworks**: react, react-cra, react-vite, next,
+  vue, vue-vite, expo, react-native, remix, gatsby, astro,
+  angular, svelte, sveltekit, solid, ionic.
+- **Databases**: firebase, firestore, supabase, amplify,
+  planetscale, neon.
+- **ORMs**: prisma, drizzle.
+- **Hosting**: vercel, netlify, cloudflare.
+- **Domains**: ecommerce, fintech, marketplace, saas, ml,
+  internal (com region-specific flag: Pix-first só se BR).
+
+### FIX-3: invariantes 29-30 (NÃO-VIOLÁVEL + BLOQUEANTE)
+
+- **29**: `gmh adopt` NUNCA força stack. Sempre detecta +
+  pergunta + documenta. Confidence threshold: ≥70% aplica,
+  50-69% pede confirmação, <50% só sugere. Nunca inventa
+  skills (valida contra `harness/skills/`).
+- **30**: Skill matrix é a fonte da verdade (NUNCA hardcoded
+  em Go code).
+
+### FIX-4: domain-expert-adopter.md reescrito
+
+- **Principio fundamental** NOVO: "NUNCA substituir o
+  stack/conventions do projeto. Sempre APOIAR, nunca
+  SUBSTITUIR."
+- Workflow de confiança: ≥70 aplica, 50-69 pede confirmação,
+  <50 só sugere.
+- Sempre consulta `harness/skill-matrix.yaml` antes de
+  recomendar.
+- Sempre preserva customizações do usuário (não sobrescreve
+  personas customizadas).
+
+### FIX-5: gmh adopt output + ADOPT-REPORT melhorados
+
+- **Disclaimer** NOVO no início do output: "NUNCA força seu
+  stack. Apenas detecta + sugere + documenta."
+- **Seção "Adaptações NÃO aplicadas"** NOVA no ADOPT-REPORT:
+  lista TUDO que foi considerado mas não aplicado, com
+  justificativa (ex.: "Pix-first NÃO aplicado - sem
+  evidência de região BR").
+- **Skill suggestion cross-check**: gmh adopt agora
+  verifica se a skill sugerida EXISTE em `harness/skills/`
+  antes de recomendar. Se não existe, mostra warning ao
+  invés de inventar.
+- **i18n warning contextual**: `@nuxtjs/i18n` só é
+  recomendado se stack=Nuxt. Caso contrário, sugere
+  skill `i18n` genérica + nota "NÃO forcei X (seria
+  stack-swap)".
+- **Region-specific defaults** (Pix-first vs Stripe)
+  marcados explicitamente como "NÃO aplicados" - customize
+  a persona.
+
+### Validacao empirica
+
+- `gmh adopt` em projeto React+Vite+Firebase: detectou
+  typescript, react-vite, vitest, firebase corretamente.
+- ADOPT-REPORT agora mostra: "Skill `frontend-public-skills`
+  (existe no framework, é a mais aderente)" em vez de
+  inventar `react-vite-patterns`.
+- i18n warning para React NÃO recomenda `@nuxtjs/i18n`.
+- Region-specific defaults (Pix-first) listados em
+  "Adaptações NÃO aplicadas" com justificativa.
+
+### Compatibilidade
+
+- v1.14.1 é HOTFIX aditivo. Sem breaking changes.
+- gmh install (greenfield) continua funcionando.
+- Todos os subcommands (adopt, new, metrics, doctor) OK.
+
+### Metricas
+
+- 31 releases (v1.0.0 -> v1.14.1).
+- 29 ADRs (0026-0029 + 2 ADRs novos em 0029a/b, ou
+  este hotfix é FIX das ADRs 0026-0029, sem novas ADRs).
+- 30 invariants (28 + 29-30).
+- 17 skills + skill-matrix.yaml (declarativo).
+
 ## [1.14.0] - 2026-07-20
 
 ### Added - Adaptive Meta-Harness (BIG release, ADRs 0026-0029)

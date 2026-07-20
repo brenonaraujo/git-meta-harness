@@ -94,14 +94,60 @@ func Detect(root string) (*StackReport, error) {
 	pkgJSON := readPackageJSON(filepath.Join(root, "package.json"))
 	if pkgJSON != nil {
 		deps := mergeMaps(pkgJSON.Dependencies, pkgJSON.DevDependencies)
+		// Order matters: meta-frameworks (next/nuxt/sveltekit) win
+		// over plain react/vue. This is so a Next.js project is
+		// reported as "next" not "react", which is what the user
+		// actually uses day-to-day.
 		if _, ok := deps["nuxt"]; ok {
 			r.WebFramework = "nuxt"
 		} else if _, ok := deps["next"]; ok {
 			r.WebFramework = "next"
 		} else if _, ok := deps["@sveltejs/kit"]; ok {
 			r.WebFramework = "sveltekit"
-		} else if _, ok := deps["vite"]; ok {
-			r.WebFramework = "vite"
+		} else if _, ok := deps["astro"]; ok {
+			r.WebFramework = "astro"
+		} else if _, ok := deps["@remix-run/react"]; ok || strInDeps(deps, "remix") {
+			r.WebFramework = "remix"
+		} else if _, ok := deps["gatsby"]; ok {
+			r.WebFramework = "gatsby"
+		} else if _, ok := deps["react"]; ok {
+			// Plain React (no Next/Remix/Gatsby). Use vite or cra
+			// as the bundler signal.
+			if _, ok := deps["vite"]; ok {
+				r.WebFramework = "react-vite"
+			} else if _, ok := deps["react-scripts"]; ok {
+				r.WebFramework = "react-cra"
+			} else {
+				r.WebFramework = "react"
+			}
+		} else if _, ok := deps["vue"]; ok {
+			if _, ok := deps["vite"]; ok {
+				r.WebFramework = "vue-vite"
+			} else {
+				r.WebFramework = "vue"
+			}
+		} else if _, ok := deps["@angular/core"]; ok {
+			r.WebFramework = "angular"
+		} else if _, ok := deps["svelte"]; ok {
+			r.WebFramework = "svelte"
+		} else if _, ok := deps["solid-js"]; ok {
+			r.WebFramework = "solid"
+		}
+		// Mobile / desktop
+		if _, ok := deps["react-native"]; ok {
+			if _, ok := deps["expo"]; ok {
+				r.WebFramework = "expo"
+				r.Notes = append(r.Notes, "Mobile: Expo (React Native + tooling)")
+			} else {
+				r.WebFramework = "react-native"
+				r.Notes = append(r.Notes, "Mobile: React Native (bare)")
+			}
+		} else if _, ok := deps["@ionic/angular"]; ok || strInDeps(deps, "@ionic/react") {
+			r.WebFramework = "ionic"
+		} else if _, ok := deps["electron"]; ok {
+			r.Notes = append(r.Notes, "Desktop: Electron")
+		} else if _, ok := deps["tauri"]; ok || strInDeps(deps, "@tauri-apps/api") {
+			r.Notes = append(r.Notes, "Desktop: Tauri")
 		}
 		if _, ok := deps["vitest"]; ok {
 			r.TestFramework = "vitest"
@@ -183,6 +229,91 @@ func Detect(root string) (*StackReport, error) {
 				r.Database = append(r.Database, name)
 			}
 		}
+	}
+
+	// Serverless / managed BaaS (Firebase, Supabase, Amplify, etc.)
+	// These are detected via deps + config files, NOT via
+	// docker-compose (serverless = no containers to compose).
+	if pkgJSON != nil {
+		deps := mergeMaps(pkgJSON.Dependencies, pkgJSON.DevDependencies)
+		baasPatterns := map[string]string{
+			"firebase":                  "firebase",
+			"@firebase/app":             "firebase",
+			"firebase-admin":            "firebase-admin",
+			"@google-cloud/firestore":   "firestore",
+			"firebase-functions":        "firebase-functions",
+			"@supabase/supabase-js":     "supabase",
+			"@supabase/ssr":             "supabase",
+			"supabase":                  "supabase",
+			"aws-amplify":               "amplify",
+			"@aws-amplify/cli":          "amplify",
+			"@planetscale/database":     "planetscale",
+			"@neondatabase/serverless":  "neon",
+			"@vercel/postgres":          "vercel-postgres",
+			"@vercel/kv":                "vercel-kv",
+			"@upstash/redis":            "upstash-redis",
+			"convex":                    "convex",
+			"fauna-db":                  "fauna",
+			"mongodb-atlas":             "mongodb-atlas",
+			"@databases/pg":             "vercel-postgres",
+		}
+		for pattern, name := range baasPatterns {
+			if _, ok := deps[pattern]; ok {
+				r.Database = appendUnique(r.Database, name)
+			}
+		}
+		// ORMs / query builders (these are not "databases" per se
+		// but matter for the team-manager to know).
+		ormPatterns := map[string]string{
+			"prisma":         "prisma",
+			"@prisma/client": "prisma",
+			"drizzle-orm":    "drizzle",
+			"typeorm":        "typeorm",
+			"sequelize":      "sequelize",
+			"knex":           "knex",
+			"drizzle-kit":    "drizzle",
+			"@mikro-orm/core": "mikro-orm",
+		}
+		for pattern, name := range ormPatterns {
+			if _, ok := deps[pattern]; ok {
+				r.Notes = append(r.Notes, "ORM: "+name)
+			}
+		}
+		// Hosting / deployment
+		hostingPatterns := map[string]string{
+			"@vercel/next":   "vercel",
+			"@netlify/plugin": "netlify",
+			"wrangler":       "cloudflare",
+			"@sveltejs/adapter-vercel": "vercel",
+		}
+		for pattern, name := range hostingPatterns {
+			if _, ok := deps[pattern]; ok {
+				r.Notes = append(r.Notes, "Hosting: "+name)
+			}
+		}
+	}
+
+	// Firebase config files
+	if hasAny(r.DetectedFiles, "firebase.json", ".firebaserc", "firestore.rules", "firestore.indexes.json") {
+		r.Database = appendUnique(r.Database, "firebase")
+	}
+	// Supabase config
+	if hasAny(r.DetectedFiles, "supabase/config.toml") {
+		r.Database = appendUnique(r.Database, "supabase")
+	}
+	// Vercel / Netlify / Cloudflare config
+	if hasAny(r.DetectedFiles, "vercel.json", ".vercelignore") {
+		r.Notes = append(r.Notes, "Hosting: vercel")
+	}
+	if hasAny(r.DetectedFiles, "netlify.toml") {
+		r.Notes = append(r.Notes, "Hosting: netlify")
+	}
+	if hasAny(r.DetectedFiles, "wrangler.toml", "wrangler.jsonc") {
+		r.Notes = append(r.Notes, "Hosting: cloudflare")
+	}
+	// AWS Amplify
+	if hasAny(r.DetectedFiles, "amplify.yml", "amplify/") {
+		r.Notes = append(r.Notes, "Hosting: amplify")
 	}
 
 	// CI
@@ -321,6 +452,25 @@ func hasAny(list []string, targets ...string) bool {
 		}
 	}
 	return false
+}
+
+// strInDeps returns true if the given key is in the deps map.
+// Helper for cleaner code than `if _, ok := deps["foo"]; ok`.
+func strInDeps(deps map[string]string, key string) bool {
+	_, ok := deps[key]
+	return ok
+}
+
+// appendUnique appends s to list if not already present.
+// Used to avoid duplicates in Database (e.g., "firebase" from
+// deps + "firebase" from firebase.json should appear once).
+func appendUnique(list []string, s string) []string {
+	for _, x := range list {
+		if x == s {
+			return list
+		}
+	}
+	return append(list, s)
 }
 
 func mergeMaps(a, b map[string]string) map[string]string {
