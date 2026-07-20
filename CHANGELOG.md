@@ -2206,7 +2206,7 @@ multi-agent orchestration framework for greenfield → production software deliv
 - **KISS + DRY**: ≤ 25 linhas/função, ≤ 150 linhas/arquivo, sem comentários
   redundantes
 - **12-factor obrigatório** (auditado pelo sensor `07-twelve-factor-audit`)
-- **TDD com table-driven tests + testify** (backend) / Vitest (frontend)
+- **TDD (Test-Driven Development) com table-driven tests + testify** (backend) / Vitest (frontend)
 - **OpenAPI spec-first** (nunca `swag`)
 - **i18n obrigatório** em en, pt-BR, es
 - **Observability**: Prometheus + slog JSON

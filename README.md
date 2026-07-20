@@ -555,8 +555,10 @@ only tool tested with the framework so far).
 ## Key principles (extracted from `bootstrap.md`)
 
 1. **KISS, DRY, código limpo, ≤ 25/≤ 150.**
-2. **TDD com table-driven tests + testify** (backend) / Vitest
-   (frontend).
+2. **TDD (Test-Driven Development) com table-driven tests + testify**
+   (backend) / Vitest (frontend). TDD é a metodologia (red-green-refactor);
+   table-driven é o formato canônico (uma slice de cases cobrindo
+   happy path + edge cases).
 3. **OpenAPI spec-first** (never `swag`).
 4. **12-factor obrigatório** (auditado pelo sensor 07).
 5. **i18n first-class** (en, pt-BR, es).
