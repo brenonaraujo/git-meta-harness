@@ -5,9 +5,24 @@
 > into any agentic CLI (Claude Code, Copilot, Codex, OpenCode, Devin, Hermes
 > Agent, Cursor).
 >
-> **Version:** [1.0.0](./VERSION) · **License:** [MIT](./LICENSE) ·
-> **Status:** stable · **Validation and test case:** ✅
+> **Version:** [1.13.0](./VERSION) · **License:** [MIT](./LICENSE) ·
+> **Status:** stable · **27 releases** · **Validation and test case:** ✅
 > [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)
+
+---
+
+## What's new in the last 4 releases (jul/2026)
+
+| Version | Type | What it does |
+|---|---|---|
+| **v1.13.0** | FEATURE | **Feature flow enforcement** — `sensor 13 feature-flow` (BLOCKING) + canonical comment templates + builder reads-all-comments rule. Prevents the team-manager from skipping `domain-expert`/`solutions-architect` on `type/feature` issues. ADR-0025. |
+| **v1.12.2** | HOTFIX | **`hermes -p` flag order** — `agentic.Invocation()` now produces `hermes -p <profile> chat -q '<prompt>'` (the `-p` is a **global** flag, not a `chat` subcommand flag). ADR-0024. |
+| **v1.12.1** | HOTFIX | **Agent config preservation** — `gmh agents sync` no longer erases `model.default`, `model.provider`, `agent.reasoning_effort` from profile `config.yaml`. Fixed `struct round-trip erasure` bug. ADR-0023. |
+| **v1.12.0** | FEATURE | **Frontend public skills + cold-start polish** — registry workflow (`npx skills find`), `sensor 12 frontend-polish` (BLOCKING, 10 anti-pattern categories), 3 Nuxt UI templates (`landing/dashboard/auth-form`), Playwright screenshot scripts. ADR-0022. |
+
+See [`CHANGELOG.md`](./CHANGELOG.md) for the full history (27 versions).
+
+---
 
 ---
 
@@ -21,7 +36,7 @@ harnesses: the unit it delivers is not "one configured agent" but
 "one orchestrated team, with process, gates, and audit trail". The user
 pastes a spec into an agentic CLI; the `team-manager` decomposes the spec
 into routed issues, dispatches them to specialized personas, gates the
-work with 9 sensors + 18 invariants, and produces a PR ready for human
+work with 13 sensors + 24 invariants, and produces a PR ready for human
 validation. **The user does not configure anything.** Full vision:
 [`docs/CONCEPT.md`](./docs/CONCEPT.md). Comparison with SDD/SPDD:
 [`docs/COMPARISON.md`](./docs/COMPARISON.md). Origin story:
@@ -51,7 +66,7 @@ flowchart LR
     P["👥 7 personas<br/>(smart routing<br/>by type/*)"]
     CG["🔎 Code graph<br/>(optional)"]
     PR["📬 Pull Request"]
-    QA["🔍 QA (9 sensors)"]
+    QA["🔍 QA (13 sensors)"]
     HVAL["👤 Human validation<br/>(branch protection)"]
     REL["🏷️ Release<br/>(tagged)"]
 
@@ -88,7 +103,7 @@ in [`docs/HOWTO.md`](./docs/HOWTO.md)). The `team-manager`
 the user), decomposes it into sub-issues, and dispatches
 each sub-issue to the right persona chain via smart routing.
 The personas ship code, optionally aided by a **code graph**
-for large codebases. QA runs 9 sensors on the PR. The
+for large codebases. QA runs 13 sensors on the PR. The
 human validates (enforced by branch protection). The
 release is tagged. **Zero configuration by the human** —
 they only provide the spec and validate.
@@ -177,20 +192,30 @@ projects from a **functional spec** to a **production release**, with:
 - **7 personas** — team-manager, domain-expert (always specialized),
   solutions-architect, backend-engineer, frontend-engineer,
   quality-assurance, devops-engineer
-- **9 sensors** — automated checks for static analysis, vulnerability,
-  unit, contract, image scan, smoke, load, 12-factor, i18n
+- **13 sensors** (00-12) — automated checks for static analysis, vulnerability,
+  unit, contract, image scan, smoke, load, 12-factor, i18n, verify-after-build,
+  decomposition safety, scope discipline, frontend polish, **feature flow**
 - **5 stack files** — Go 1.26.5 + Gin + GORM + PostgreSQL backend;
   Nuxt 4.5 + Pinia frontend; Prometheus + slog observability; distroless
   Docker; KISS/DRY code style
-- **6 workflow docs** — issue-lifecycle, branching, PR, snapshot-deploy,
-  release, orchestration
-- **13 templates** — Dockerfile, docker-compose, CI workflow, .golangci.yml,
-  .env.example, issue templates, PR description, 3 locales
-- **7 skills** — github-pr-workflow, github-issues, github-code-review,
-  tdd-go, openapi-spec-first, twelve-factor, i18n
-- **18 invariants** in `AGENTS.md` §8 — non-negotiable contracts
-- **10 ADRs** in `contrib/design-decisions.md` — every architectural
+- **7 workflow docs** — issue-lifecycle, branching, PR, snapshot-deploy,
+  release, orchestration, loop-engineering
+- **16+ templates** — Dockerfile, docker-compose, CI workflow, .golangci.yml,
+  .env.example, issue templates, PR description, 3 locales, 3 Nuxt UI
+  templates (landing/dashboard/auth-form), 2 canonical comment templates
+  (domain-expert + solutions-architect)
+- **15 skills** — github-pr-workflow, github-issues, github-code-review,
+  tdd-go, openapi-spec-first, twelve-factor, i18n, code-graph, nuxt-ui-patterns,
+  ux-design-best-practices, domain-refinement, pre-implementation-design,
+  solution-scoping, frontend-public-skills, tailwind-only-patterns, visual-polish
+- **24 invariants** in `AGENTS.md` §8 — non-negotiable contracts
+- **25 ADRs** in `contrib/design-decisions.md` — every architectural
   decision documented
+- **9+ scripts** in `harness/scripts/` — smoke-test, check-stack-versions,
+  check-i18n, check-parallel-builders, check-scope-discipline,
+  check-frontend-polish, check-feature-flow, plus `bin/safe-commit-harness-sync.sh`
+  and `scripts/visual/` (Playwright + Python companions)
+- **gmh CLI** (v1.13.0) — single static Go binary (`gmh install/sync/update/doctor/agents`)
 
 It's designed to be **dropped into any greenfield project** and produce
 a consistent, auditable, CI-gated development loop with a real team
@@ -202,12 +227,17 @@ structure (not a "single agent does everything" anti-pattern).
 |-------------------------------------|------------------------------------------------|
 | One agent does everything → drift   | 7 personas with explicit roles & interactions  |
 | No domain knowledge → generic AI    | Specialized `domain-expert-<domain>` per project |
-| No tests, no CI gates               | 9 sensors, 12 invariants, smoke test pre-flight |
+| No tests, no CI gates               | 13 sensors, 24 invariants, smoke test pre-flight |
 | Stack drift (Go 1.22 vs 1.26)       | `versions.md` + `check-stack-versions.sh`     |
 | CI runs everything every time       | `dorny/paths-filter` → 5-10x faster PRs        |
 | Vendor lock-in (Claude Code only)   | Multi-tool via `AGENTS.md` (Claude/Copilot/Codex/OpenCode/Devin/Hermes/Cursor) |
-| No audit trail of decisions         | ADRs + 18 invariants + per-issue briefings     |
+| No audit trail of decisions         | ADRs + 24 invariants + per-issue briefings     |
 | No i18n → debt later                | i18n first-class (en, pt-BR, es)               |
+| Team-manager skips domain/architect | Sensor 13 `feature-flow` **BLOCKS** in-progress without refinement+DoD |
+| Builder receives only 1-paragraph desc | Builder reads ALL comments (refinement + DoD) before coding |
+| UI shipped with hex colors / BEM   | Sensor 12 `frontend-polish` BLOCKS (10 anti-patterns) |
+| Profile config silently wiped on sync | gmh agents sync preserves model/agent (struct round-trip fix) |
+| Team-manager invocations fail silently | agentic.Invocation validated live against `hermes --help` |
 
 ## Quickstart
 
@@ -306,7 +336,7 @@ Swarm, and local deployment.
 
 ## Architecture overview
 
-### The team (7 personas) and the 9 sensors
+### The team (7 personas) and the 13 sensors
 
 ```mermaid
 flowchart TB
@@ -317,11 +347,11 @@ flowchart TB
         SA["📐 solutions-architect<br/><i>DoD, 12-factor, ADRs</i>"]
         BE["⚙️ backend-engineer<br/><i>Go · tests · local pre-flight</i>"]
         FE["🎨 frontend-engineer<br/><i>Nuxt · tests · local pre-flight</i>"]
-        QA["🔍 quality-assurance<br/><i>runs the 9 sensors</i>"]
+        QA["🔍 quality-assurance<br/><i>runs the 13 sensors</i>"]
         DO["🚀 devops-engineer<br/><i>CI/CD · Docker · observability</i>"]
     end
 
-    subgraph SENSORS["9 sensors (automated gates)"]
+    subgraph SENSORS["13 sensors (automated gates, v1.13.0)"]
         S1["00 lint"]
         S2["01 vuln"]
         S3["02 unit"]
@@ -331,6 +361,11 @@ flowchart TB
         S7["06 load"]
         S8["07 12-factor"]
         S9["08 i18n"]
+        S10["09 verify"]
+        S11["10 decomposition"]
+        S12["11 scope"]
+        S13["12 polish"]
+        S14["13 feature-flow"]
     end
 
     TM --> PERSONAS
@@ -342,11 +377,11 @@ flowchart TB
     classDef sensor fill:#f3e8ff,stroke:#9333ea,color:#581c87
     class TM orchestrator
     class DE,SA,BE,FE,QA,DO persona
-    class S1,S2,S3,S4,S5,S6,S7,S8,S9 sensor
+    class S1,S2,S3,S4,S5,S6,S7,S8,S9,S10,S11,S12,S13,S14 sensor
 ```
 
 **Reading the diagram:** `team-manager` is the orchestrator. The
-7 personas do the work. The QA persona runs the 9 sensors as
+7 personas do the work. The QA persona runs the 13 sensors as
 automated gates. Smart routing (shown above in "The team"
 section) decides which personas run for which `type/*` issue.
 
@@ -354,7 +389,7 @@ section) decides which personas run for which `type/*` issue.
 
 ```mermaid
 flowchart LR
-    subgraph S["Sensors (00-08)"]
+    subgraph S["Sensors (00-13)"]
         S00["00<br/>lint"]
         S01["01<br/>vuln"]
         S02["02<br/>unit"]
@@ -364,6 +399,11 @@ flowchart LR
         S06["06<br/>load"]
         S07["07<br/>12-factor"]
         S08["08<br/>i18n"]
+        S09["09<br/>verify"]
+        S10["10<br/>decomp"]
+        S11["11<br/>scope"]
+        S12["12<br/>polish"]
+        S13["13<br/>flow"]
     end
 
     S00 -->|"fails → blocks merge"| MERGE["❌ blocks merge"]
@@ -375,11 +415,18 @@ flowchart LR
     S06 -->|"reports; blocks release"| MERGE
     S07 -->|"any factor missing<br/>→ blocks merge"| MERGE
     S08 -->|"i18n parity < 100%<br/>→ blocks merge"| MERGE
+    S09 -->|"builder reports verde<br/>but team-manager re-runs<br/>→ block if mismatch"| MERGE
+    S10 -->|"2+ builders in parallel<br/>without path-scope disjoint<br/>→ blocks"| MERGE
+    S11 -->|"non-blocking<br/>(recommends shorten)"| WARN["⚠ recommends"]
+    S12 -->|"hardcoded colors / BEM /<br/>emojis / a11y → blocks"| MERGE
+    S13 -->|"type/feature without<br/>refined+ready+DoD<br/>→ blocks in-progress"| MERGE
 
     classDef blocking fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef warn fill:#fef9c3,stroke:#ca8a04,color:#713f12
     classDef sensor fill:#f3e8ff,stroke:#9333ea,color:#581c87
     class MERGE blocking
-    class S00,S01,S02,S03,S04,S05,S06,S07,S08 sensor
+    class WARN warn
+    class S00,S01,S02,S03,S04,S05,S06,S07,S08,S09,S10,S11,S12,S13 sensor
 ```
 
 **Reading the diagram:** every sensor has a clear **fail action**.
@@ -474,15 +521,36 @@ The framework was first validated end-to-end in
 Select / Duoduo Maicai), built **with Hermes Agent** (the
 only tool tested with the framework so far).
 
-**Project profile:**
-- 4 issues, 5 commits, 1 PR (single-PR-per-feature).
-- Stack: Go 1.25 + Gin + GORM + PostgreSQL + Nuxt 4 + Pinia + i18n
-  (en/pt-BR/es).
-- 9 real defects detected by the smoke test in the first pilot
-  (Go version drift, `.golangci.yml` v1/v2 mix, distroless suffix,
-  Trivy supply-chain risk, etc.) — all fixed in this v1.0.0.
-- CI modular with `dorny/paths-filter`: PRs of typo/i18n-only run
-  in ~30s (vs ~8 min for the full pipeline).
+**Project profile (jul/2026):**
+- ~50 issues, ~10+ merged PRs, 4+ épicos concluídos
+  (F1 auth/role, F2+F3 workspaces/products, F4+F5 ciclos/pedidos,
+  F4+F5+ pix/payouts).
+- Stack: Go 1.26.5 + Gin + GORM + PostgreSQL + Nuxt 4 + UI v4 +
+  Pinia + i18n (en/pt-BR/es).
+- 27 releases do framework validadas em produção (v1.0.0 → v1.13.0).
+- **3 lições aplicadas** que viraram features do framework:
+  1. **v1.6.5** — `hermes profile <name> --prompt` é inválido
+     (corrigido pra `hermes chat -p <name> -q ...`, depois
+     v1.12.2 confirmou a forma correta: `hermes -p <name> chat -q ...`).
+  2. **v1.9.0** — Épico #12: 6 builders em paralelo causaram
+     conflito `UserRepository` redeclarado → **Decomposition
+     Safety** (path-scope + depends-on + sensor 10).
+  3. **v1.11.0** — Épico F4+F5: `domain-expert` e
+     `solutions-architect` viraram "blueprinter" (escreveram
+     SQL/func names) → **Scope Discipline** (PILARES vs
+     BLUEPRINTS + sensor 11 + skill `solution-scoping`).
+  4. **v1.12.0** — PR #23 Redesign Landing: `frontend-engineer`
+     entregou UI com hex hardcoded + BEM + emojis excessivos +
+     zero `npx skills` → **Frontend Public Skills** + sensor
+     12 (cold-start polish).
+  5. **v1.13.0** — Épico #48 F7+F8+F10: `team-manager` pulou
+     domain-expert + architect, builders sem contexto →
+     **Feature flow enforcement** (sensor 13 BLOQUEIA).
+- CI modular com `dorny/paths-filter`: PRs de typo/i18n-only
+  rodam em ~30s (vs ~8 min do pipeline full).
+- 6 personas especializadas: `team-manager`, `domain-expert-mandai`,
+  `backend-engineer`, `frontend-engineer`, `solutions-architect`,
+  `quality-assurance`, `devops-engineer`.
 
 ## Key principles (extracted from `bootstrap.md`)
 
@@ -511,30 +579,38 @@ only tool tested with the framework so far).
 ```
 git-meta-harness/
 ├── README.md                    # this file
-├── CHANGELOG.md                 # version history
+├── CHANGELOG.md                 # version history (27 releases)
 ├── LICENSE                      # MIT
 ├── CONTRIBUTING.md              # how to contribute
-├── VERSION                      # semver (1.0.0)
+├── VERSION                      # semver (1.13.0)
 ├── .github/
 │   ├── ISSUE_TEMPLATE/          # bug, feature, tech-debt
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── CODEOWNERS
+├── cli/                         # gmh CLI (Go static binary)
+│   ├── cmd/                     # install, sync, update, doctor, agents
+│   ├── internal/                # agentic, hermes, soul, skills, source
+│   └── installer/               # install.sh, install.ps1
+├── docs/                        # 9 docs (CONCEPT, HOWTO, LOOP, CLI, ...)
+├── templates/                   # CI workflow, .golangci.yml
+├── bin/                         # safe-commit-harness-sync.sh (v1.10.1+)
 └── harness/
-    ├── AGENTS.md                # multi-tool contract + 18 invariants
+    ├── AGENTS.md                # multi-tool contract + 24 invariants
     ├── CLAUDE.md                # Claude Code adapter
     ├── bootstrap.md             # 13 princípios canônicos
     ├── smoke-test.md            # spec do smoke test
     ├── personas/                # 7 personas + examples/
-    ├── sensors/                 # 9 sensors (00-08)
-    ├── workflow/                # 6 workflow docs (00-05)
+    ├── sensors/                 # 13 sensors (00-13)
+    ├── workflow/                # 7 workflow docs (00-06)
     ├── stack/                   # backend, frontend, observability,
     │                            #   docker, code-style, versions
-    ├── templates/               # 13 templates (Dockerfile, ci.yml, ...)
-    ├── skills/                  # 7 skills
-    ├── contrib/                 # design-decisions.md (ADRs)
+    ├── templates/               # 16+ templates (Dockerfile, ci.yml,
+    │                            #   locales, nuxt-ui/, comments/)
+    ├── skills/                  # 15 skills
+    ├── contrib/                 # design-decisions.md (25 ADRs)
     ├── examples/                # domain-expert-* + README
     ├── seed/                    # meta-harness-seed.md
-    └── scripts/                 # smoke-test.sh, check-stack-versions.sh
+    └── scripts/                 # 9+ scripts (smoke-test, check-*, visual/)
 ```
 
 ## Verification gates (pre-release)
@@ -552,15 +628,27 @@ Both must pass before any issue is processed. See
 
 ## Roadmap
 
-- **1.0.0** ✅ — First public release
-- **1.1.0** ✅ — Concept documentation
-- **1.2.0** ✅ — Mermaid diagrams
-- **1.3.0** ✅ — `docs/LOOP.md`
-- **1.4.0** ✅ — `docs/HOWTO.md` + `code-graph` skill
-- **1.5.0** ✅ — verify-after-build (sensor 09) + invariante 19
-- **1.6.0** ✅ — release pipeline (GHCR) + `gmh` CLI ← this version
-- **1.7.0** — Renovate/Dependabot config template (ADR candidate)
-- **2.0.0** — Multi-repo orchestration (workspace of meta-harnesses)
+- **v1.0.0** ✅ — First public release
+- **v1.1.0** ✅ — Concept documentation
+- **v1.2.0** ✅ — Mermaid diagrams
+- **v1.3.0** ✅ — `docs/LOOP.md`
+- **v1.4.0** ✅ — `docs/HOWTO.md` + `code-graph` skill
+- **v1.5.0** ✅ — verify-after-build (sensor 09) + invariante 19
+- **v1.6.0** ✅ — release pipeline (GHCR) + `gmh` CLI
+- **v1.7.0** ✅ — UI/UX skills (nuxt-ui-patterns, ux-design-best-practices) + design cercas
+- **v1.8.0** ✅ — skill `domain-refinement` + Cerca Técnica
+- **v1.9.0** ✅ — Decomposition Safety (path-scope + depends-on + sensor 10)
+- **v1.10.0** ✅ — Function limit 25→35 + skill `pre-implementation-design`
+- **v1.10.1** ✅ — HOTFIX: `bin/safe-commit-harness-sync.sh` (no `git add -A`)
+- **v1.10.2** ✅ — `gmh agents sync` writes `config.yaml` with `skills.external_dirs`
+- **v1.10.3** ✅ — HOTFIX: gmh agents sync copies skills to each profile (UI count)
+- **v1.11.0** ✅ — Scope Discipline (PILARES vs BLUEPRINTS) + sensor 11
+- **v1.12.0** ✅ — Frontend Public Skills + Cold-Start Polish (sensor 12)
+- **v1.12.1** ✅ — HOTFIX: `gmh agents sync` no longer erases `model`/`agent` config
+- **v1.12.2** ✅ — HOTFIX: Hermes `-p` flag is global, not `chat` subcommand
+- **v1.13.0** ✅ — Feature flow enforcement (sensor 13 + canonical comment templates)
+- **v1.14.0** 🔜 — Live tests for `claude`, `codex`, `opencode` (per ADR-0024)
+- **v2.0.0** 🔜 — Multi-repo orchestration (workspace of meta-harnesses)
 
 ## Contributing
 
