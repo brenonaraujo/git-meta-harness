@@ -462,7 +462,56 @@ quadrantChart
 
 - [`docs/ECOSYSTEM.md`](ECOSYSTEM.md) — full ecosystem
   map with diagrams, complements, and bridges.
-- [Stanford IRIS paper (arXiv:2603.28052)](https://arxiv.org/abs/2603.28052).
+- [Stanford IRIS paper (arXiv:2603.28052)](https://arxiv.org/abs/2603.28052 ([HTML](https://arxiv.org/html/2603.28052v1))).
 - [SuperagenticAI/metaharness](https://github.com/SuperagenticAI/metaharness).
 - [Towards AI article](https://pub.towardsai.net/what-is-a-meta-harness-in-ai-2af40e788c2e).
+
+---
+
+## 7. References (consolidated, v1.14.1+)
+
+> All external sources cited in this document and
+> `ECOSYSTEM.md`, in one place. Updated as the ecosystem
+> evolves.
+
+### 7.1 Papers and articles
+
+| Source | Type | Year | Notes |
+|---|---|---|---|
+| **[Meta-Harness: End-to-End Optimization of Model Harnesses](https://arxiv.org/abs/2603.28052)** ([HTML v1](https://arxiv.org/html/2603.28052v1)) | Academic paper (arXiv:2603.28052) | 2026 | Lee, Nair, Zhang, Lee, Khattab, Finn (Stanford IRIS Lab). The original "meta-harness" concept. LLM proposer+verifier optimizes the harness. |
+| **[What Is Meta-Harness for AI Agents and Why Now?](https://pub.towardsai.net/what-is-a-meta-harness-in-ai-2af40e788c2e)** | Industry article (Towards AI) | jul/2026 | Abhishek Pan. Governance + audit + control plane narrative. The "Payal" persona. |
+| **[yoonholee.com/meta-harness](https://yoonholee.com/meta-harness/)** | Author site (Stanford IRIS) | 2026 | Companion site to the paper. |
+| **[GitHub topic: llm-agents](https://github.com/topics/llm-agents)** | Topic index | — | Broader context for the meta-harness ecosystem. |
+| **[GitHub topic: harness-engineering](https://github.com/topics/harness-engineering)** | Topic index | — | 70+ repos tagged (subset includes Stanford IRIS, SuperagenticAI). |
+
+### 7.2 Repositories
+
+| Repo | Type | License | Notes |
+|---|---|---|---|
+| **[stanford-iris-lab/meta-harness](https://github.com/stanford-iris-lab/meta-harness)** | Research code (Python 98%) | MIT | Reference code for the paper. Workflow: `ONBOARDING.md` → `domain_spec.md`. 1.3k⭐ 127 forks. |
+| **[SuperagenticAI/metaharness](https://github.com/SuperagenticAI/metaharness)** | Production code (Python 100%) | Custom (proprietary) | v0.4.0 "Omnigent Backend" (jun/2026). 146⭐ 17 forks. |
+| **[brenonaraujo/git-meta-harness](https://github.com/brenonaraujo/git-meta-harness)** | Operational framework (Go CLI + Markdown) | MIT | This project. v1.14.1 (jul/2026). Validated in mandai-v2. |
+| **[brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)** | Validation + test case (Go + Nuxt 4) | (per repo) | Multi-tenant B2B2C marketplace. The "real project" the framework is tested against. 50+ issues, 4+ epics, 5 lessons applied as features. |
+
+### 7.3 Author / site
+
+- **Yoonho Lee** (Stanford IRIS Lab) — [yoonholee.com](https://yoonholee.com/) ·
+  [Stanford IRIS Lab](https://github.com/stanford-iris-lab).
+- **Abhishek Pan** (Towards AI) — [@ai.pm.withabhi](https://medium.com/@ai.pm.withabhi).
+- **Brenon Araujo** (this project) — [@brenonaraujo](https://github.com/brenonaraujo).
+- **Mandaí v2 team** — pilot users / validation and test case.
+
+### 7.4 Citation (BibTeX)
+
+```bibtex
+@misc{lee2026metaharnessendtoendoptimizationmodel,
+      title={Meta-Harness: End-to-End Optimization of Model Harnesses},
+      author={Yoonho Lee and Roshen Nair and Qizheng Zhang and Kangwook Lee and Omar Khattab and Chelsea Finn},
+      year={2026},
+      eprint={2603.28052},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2603.28052},
+}
+```
 

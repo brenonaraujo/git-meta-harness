@@ -7,6 +7,8 @@
 # skills that don't exist).
 #
 # v1.14.1+, FIX-2 of v1.14.0 gap (React + Firebase not supported).
+# v1.14.2: added references section (Stanford IRIS paper,
+#          SuperagenticAI repo, mandai-v2, etc).
 #
 # Format:
 #   stack_key: { ... }
@@ -16,6 +18,30 @@
 #     sensor_calibrations:  | notes
 #     anti_patterns:         | what NOT to recommend
 #     notes:                 | human-readable context
+
+# ============================================================================
+# References (sources consulted when building this matrix)
+# ============================================================================
+# - Stanford IRIS Lab paper (research):
+#     https://arxiv.org/abs/2603.28052
+#     https://arxiv.org/html/2603.28052v1  (HTML v1)
+#     Companion: https://yoonholee.com/meta-harness/
+#     Repo:      https://github.com/stanford-iris-lab/meta-harness
+# - SuperagenticAI (production code):
+#     https://github.com/SuperagenticAI/metaharness
+# - Towards AI article (concept):
+#     https://pub.towardsai.net/what-is-a-meta-harness-in-ai-2af40e788c2e
+# - Validation case (real pilot):
+#     https://github.com/brenonaraujo/mandai-v2
+# - This project (git-meta-harness):
+#     https://github.com/brenonaraujo/git-meta-harness
+# - Ecosystem map:
+#     docs/ECOSYSTEM.md (in this repo)
+#     docs/COMPARISON.md §6 + §7 (in this repo)
+# - ADRs (design decisions):
+#     harness/contrib/design-decisions.md ADR-0026 to ADR-0029
+# ============================================================================
+
 
 # Web frameworks — order matters: meta-frameworks win over plain
 react:

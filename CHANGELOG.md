@@ -1,6 +1,70 @@
 # Changelog
 
 
+## [1.14.2] - 2026-07-22
+
+### Fixed - CI pipeline + references (HOTFIX)
+
+**Context 1**: Pedido do Brenon (jul/2026, BRT): "as pipelines
+estao quebrados apos a ultima versao e nao gerou a release".
+v1.14.0 e v1.14.1 pushes nao geraram release no GitHub Actions.
+Causa raiz: `go vet ./...` falhou no build (linux/arm64) com:
+
+```
+cmd/adopt.go:389:7: fmt.Sprintf format %s reads arg #13, but
+call has 12 args
+```
+
+Erro de mismatch entre 13 placeholders `%s`/`%v` e 12 args
+passados em `generateDomainExpert()`. `go vet` strict mode
+bloqueia o build inteiro.
+
+**Solucao (v1.14.2) - FIX**:
+
+- Reescrito `generateDomainExpert()` em `cli/cmd/adopt.go`
+  com pre-compute de derived values (domainTitle,
+  domainPersona, etc) para manter `fmt.Sprintf` consistente.
+- Validado: `go vet ./...` passa, `go build ./...` passa,
+  `go test ./...` passa, `gofmt -l .` retorna vazio.
+
+**Context 2**: Pedido do Brenon (jul/2026, BRT): "precisamo
+melhorar nossa referencias adicionados os repos que mandamos
+e o paper https://arxiv.org/html/2603.28052v1".
+
+Adicionada secao "References (consolidated, v1.14.1+)" em
+`docs/COMPARISON.md` §7 com:
+
+- **Paper** (full HTML): [arXiv:2603.28052](https://arxiv.org/abs/2603.28052)
+  + [HTML v1](https://arxiv.org/html/2603.28052v1)
+- **Repos**: stanford-iris-lab/meta-harness, SuperagenticAI/metaharness,
+  brenonaraujo/git-meta-harness, brenonaraujo/mandai-v2
+- **Authors/sites**: Yoonho Lee (Stanford), Abhishek Pan (Towards AI),
+  Brenon Araujo (this project)
+- **BibTeX** citation block
+
+Mesma secao espelhada em `docs/ECOSYSTEM.md` §9 para
+conveniencia.
+
+Referencias tambem adicionadas em:
+- `harness/contrib/design-decisions.md` (ADR-0026) com
+  [HTML v1] link ao lado do [arXiv] link.
+- `harness/skill-matrix.yaml` header com bloco "References"
+  listando todos os 6 sources principais (paper, repos,
+  article, validation case, this project, ADRs).
+
+### Compatibilidade
+
+- v1.14.2 e HOTFIX aditivo. Sem breaking changes.
+- v1.14.1 ja tinha corrigido o gap React+Firebase; v1.14.2
+  so conserta o build + adiciona referencias.
+
+### Metricas
+
+- 32 releases (v1.0.0 -> v1.14.2).
+- 30 invariants (28 + 29-30).
+- 17 skills + skill-matrix.yaml.
+- 4 ADRs principais (0026-0029).
+
 ## [1.14.1] - 2026-07-20
 
 ### Fixed - Stack support for non-Nuxt stacks + skill matrix (HOTFIX)

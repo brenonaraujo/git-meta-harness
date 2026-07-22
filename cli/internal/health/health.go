@@ -65,7 +65,7 @@ type InvariantStats struct {
 // SensorStats reports on the 13 sensors in harness/sensors/.
 type SensorStats struct {
 	Total          int      `json:"total"`
-	Executable     int      `json:"executable"`     // have a corresponding .sh / .py script
+	Executable     int      `json:"executable"`      // have a corresponding .sh / .py script
 	BlockingActive int      `json:"blocking_active"` // declared as blocking in v1.13.0+
 	Names          []string `json:"names"`
 }
@@ -551,10 +551,10 @@ func max1(n int) int {
 
 // FlowComplianceResult is returned by FlowCompliance.
 type FlowComplianceResult struct {
-	Total       int      `json:"total"`        // type/feature issues counted
-	Compliant   int      `json:"compliant"`    // with refined+ready+both comments
-	Percent     int      `json:"percent"`      // 0-100
-	NonCompliant []int   `json:"non_compliant_issues,omitempty"` // issue numbers missing
+	Total        int   `json:"total"`                          // type/feature issues counted
+	Compliant    int   `json:"compliant"`                      // with refined+ready+both comments
+	Percent      int   `json:"percent"`                        // 0-100
+	NonCompliant []int `json:"non_compliant_issues,omitempty"` // issue numbers missing
 }
 
 // FlowCompliance calculates the % of `type/feature` issues
@@ -587,8 +587,8 @@ func FlowCompliance(cwd string) FlowComplianceResult {
 		Body string `json:"body"`
 	}
 	type ghIssue struct {
-		Number  int         `json:"number"`
-		Labels  []ghLabel   `json:"labels"`
+		Number   int         `json:"number"`
+		Labels   []ghLabel   `json:"labels"`
 		Comments []ghComment `json:"comments"`
 	}
 	var issues []ghIssue

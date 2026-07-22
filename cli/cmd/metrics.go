@@ -69,9 +69,9 @@ Examples:
 			// 3. Build the metrics output
 			if jsonOut {
 				out := map[string]interface{}{
-					"health":           rep,
-					"flow_compliance":  flow,
-					"timestamp":        "now",
+					"health":          rep,
+					"flow_compliance": flow,
+					"timestamp":       "now",
 				}
 				b, _ := json.MarshalIndent(out, "", "  ")
 				fmt.Println(string(b))
@@ -166,7 +166,7 @@ Examples:
 
 // Alert is one alert fired by gmh metrics.
 type Alert struct {
-	Level   string `json:"level"`   // "warn" | "critical"
+	Level   string `json:"level"` // "warn" | "critical"
 	Name    string `json:"name"`
 	Message string `json:"message"`
 }
@@ -231,7 +231,8 @@ func computeAlerts(rep *health.Report, flow health.FlowComplianceResult) []Alert
 // sendSlackAlert posts alerts to a Slack incoming webhook.
 //
 // Slack incoming webhooks accept JSON like:
-//   {"text": "...", "blocks": [...]}
+//
+//	{"text": "...", "blocks": [...]}
 //
 // We send a simple text block. v1.15.0 will add rich blocks.
 func sendSlackAlert(webhook string, alerts []Alert) error {

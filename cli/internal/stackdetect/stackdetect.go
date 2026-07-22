@@ -16,22 +16,22 @@ import (
 
 // StackReport is the result of a Detect() call.
 type StackReport struct {
-	Path           string            `json:"path"`
-	PrimaryLang    string            `json:"primary_lang"`     // "go" | "typescript" | "python" | "rust" | "java" | "unknown"
-	WebFramework   string            `json:"web_framework"`    // "nuxt" | "next" | "sveltekit" | "vite" | "" if N/A
-	TestFramework  string            `json:"test_framework"`   // "go test" | "vitest" | "jest" | "pytest" | "playwright" | ""
-	Database       []string          `json:"database"`         // ["postgresql", "redis", "mongodb"]
-	Linter         string            `json:"linter"`           // "golangci-lint" | "eslint" | "ruff" | ""
-	TypeChecker    string            `json:"type_checker"`     // "tsc" | "mypy" | "" if N/A
-	CI             string            `json:"ci"`               // "github-actions" | "" if N/A
-	I18nSetup      bool              `json:"i18n_setup"`       // true if @nuxtjs/i18n or i18n/ dir found
-	Docker         bool              `json:"docker"`           // true if Dockerfile present
-	DockerCompose  bool              `json:"docker_compose"`   // true if docker-compose.yml present
-	DetectedFiles  []string          `json:"detected_files"`   // files that triggered detections
-	InferredDomain string            `json:"inferred_domain"`  // "ecommerce" | "fintech" | "marketplace" | "saas" | "ml" | "internal" | "unknown"
-	DomainScore    int               `json:"domain_score"`     // 0-100 confidence
-	DomainSignals  []string          `json:"domain_signals"`   // signals that triggered the domain inference
-	Notes          []string          `json:"notes"`            // any caveats / warnings
+	Path           string   `json:"path"`
+	PrimaryLang    string   `json:"primary_lang"`    // "go" | "typescript" | "python" | "rust" | "java" | "unknown"
+	WebFramework   string   `json:"web_framework"`   // "nuxt" | "next" | "sveltekit" | "vite" | "" if N/A
+	TestFramework  string   `json:"test_framework"`  // "go test" | "vitest" | "jest" | "pytest" | "playwright" | ""
+	Database       []string `json:"database"`        // ["postgresql", "redis", "mongodb"]
+	Linter         string   `json:"linter"`          // "golangci-lint" | "eslint" | "ruff" | ""
+	TypeChecker    string   `json:"type_checker"`    // "tsc" | "mypy" | "" if N/A
+	CI             string   `json:"ci"`              // "github-actions" | "" if N/A
+	I18nSetup      bool     `json:"i18n_setup"`      // true if @nuxtjs/i18n or i18n/ dir found
+	Docker         bool     `json:"docker"`          // true if Dockerfile present
+	DockerCompose  bool     `json:"docker_compose"`  // true if docker-compose.yml present
+	DetectedFiles  []string `json:"detected_files"`  // files that triggered detections
+	InferredDomain string   `json:"inferred_domain"` // "ecommerce" | "fintech" | "marketplace" | "saas" | "ml" | "internal" | "unknown"
+	DomainScore    int      `json:"domain_score"`    // 0-100 confidence
+	DomainSignals  []string `json:"domain_signals"`  // signals that triggered the domain inference
+	Notes          []string `json:"notes"`           // any caveats / warnings
 }
 
 // Detect analyzes the project at `root` (which should be a
@@ -215,13 +215,13 @@ func Detect(root string) (*StackReport, error) {
 		}
 		compose := string(composeData)
 		dbPatterns := map[string]string{
-			"postgres":     "postgresql",
-			"mysql":        "mysql",
-			"mariadb":      "mariadb",
-			"mongo":        "mongodb",
-			"redis":        "redis",
-			"rabbitmq":     "rabbitmq",
-			"kafka":        "kafka",
+			"postgres":      "postgresql",
+			"mysql":         "mysql",
+			"mariadb":       "mariadb",
+			"mongo":         "mongodb",
+			"redis":         "redis",
+			"rabbitmq":      "rabbitmq",
+			"kafka":         "kafka",
 			"elasticsearch": "elasticsearch",
 		}
 		for pattern, name := range dbPatterns {
@@ -237,25 +237,25 @@ func Detect(root string) (*StackReport, error) {
 	if pkgJSON != nil {
 		deps := mergeMaps(pkgJSON.Dependencies, pkgJSON.DevDependencies)
 		baasPatterns := map[string]string{
-			"firebase":                  "firebase",
-			"@firebase/app":             "firebase",
-			"firebase-admin":            "firebase-admin",
-			"@google-cloud/firestore":   "firestore",
-			"firebase-functions":        "firebase-functions",
-			"@supabase/supabase-js":     "supabase",
-			"@supabase/ssr":             "supabase",
-			"supabase":                  "supabase",
-			"aws-amplify":               "amplify",
-			"@aws-amplify/cli":          "amplify",
-			"@planetscale/database":     "planetscale",
-			"@neondatabase/serverless":  "neon",
-			"@vercel/postgres":          "vercel-postgres",
-			"@vercel/kv":                "vercel-kv",
-			"@upstash/redis":            "upstash-redis",
-			"convex":                    "convex",
-			"fauna-db":                  "fauna",
-			"mongodb-atlas":             "mongodb-atlas",
-			"@databases/pg":             "vercel-postgres",
+			"firebase":                 "firebase",
+			"@firebase/app":            "firebase",
+			"firebase-admin":           "firebase-admin",
+			"@google-cloud/firestore":  "firestore",
+			"firebase-functions":       "firebase-functions",
+			"@supabase/supabase-js":    "supabase",
+			"@supabase/ssr":            "supabase",
+			"supabase":                 "supabase",
+			"aws-amplify":              "amplify",
+			"@aws-amplify/cli":         "amplify",
+			"@planetscale/database":    "planetscale",
+			"@neondatabase/serverless": "neon",
+			"@vercel/postgres":         "vercel-postgres",
+			"@vercel/kv":               "vercel-kv",
+			"@upstash/redis":           "upstash-redis",
+			"convex":                   "convex",
+			"fauna-db":                 "fauna",
+			"mongodb-atlas":            "mongodb-atlas",
+			"@databases/pg":            "vercel-postgres",
 		}
 		for pattern, name := range baasPatterns {
 			if _, ok := deps[pattern]; ok {
@@ -265,13 +265,13 @@ func Detect(root string) (*StackReport, error) {
 		// ORMs / query builders (these are not "databases" per se
 		// but matter for the team-manager to know).
 		ormPatterns := map[string]string{
-			"prisma":         "prisma",
-			"@prisma/client": "prisma",
-			"drizzle-orm":    "drizzle",
-			"typeorm":        "typeorm",
-			"sequelize":      "sequelize",
-			"knex":           "knex",
-			"drizzle-kit":    "drizzle",
+			"prisma":          "prisma",
+			"@prisma/client":  "prisma",
+			"drizzle-orm":     "drizzle",
+			"typeorm":         "typeorm",
+			"sequelize":       "sequelize",
+			"knex":            "knex",
+			"drizzle-kit":     "drizzle",
 			"@mikro-orm/core": "mikro-orm",
 		}
 		for pattern, name := range ormPatterns {
@@ -281,9 +281,9 @@ func Detect(root string) (*StackReport, error) {
 		}
 		// Hosting / deployment
 		hostingPatterns := map[string]string{
-			"@vercel/next":   "vercel",
-			"@netlify/plugin": "netlify",
-			"wrangler":       "cloudflare",
+			"@vercel/next":             "vercel",
+			"@netlify/plugin":          "netlify",
+			"wrangler":                 "cloudflare",
 			"@sveltejs/adapter-vercel": "vercel",
 		}
 		for pattern, name := range hostingPatterns {

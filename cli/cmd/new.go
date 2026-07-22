@@ -270,19 +270,19 @@ func analyzeSpec(spec, domainOverride string) specAnalysis {
 
 // Epic is one chapter/area of the spec.
 type Epic struct {
-	Title      string   `json:"title"`
-	Anchor     string   `json:"anchor"`
-	SubIssues  []SubIssue `json:"sub_issues"`
-	ACs        []string `json:"acs"`
-	EdgeCases  []string `json:"edge_cases"`
-	Priority   string   `json:"priority"` // p0, p1, p2, p3
-	Labels     []string `json:"labels"`
-	SpecRef    string   `json:"spec_ref"` // "spec.md#section"
+	Title     string     `json:"title"`
+	Anchor    string     `json:"anchor"`
+	SubIssues []SubIssue `json:"sub_issues"`
+	ACs       []string   `json:"acs"`
+	EdgeCases []string   `json:"edge_cases"`
+	Priority  string     `json:"priority"` // p0, p1, p2, p3
+	Labels    []string   `json:"labels"`
+	SpecRef   string     `json:"spec_ref"` // "spec.md#section"
 }
 
 // SubIssue is one deliverable testable.
 type SubIssue struct {
-	Number    string   `json:"number"`     // "F1.2"
+	Number    string   `json:"number"` // "F1.2"
 	Title     string   `json:"title"`
 	ACs       []string `json:"acs"`
 	EdgeCases []string `json:"edge_cases"`

@@ -253,8 +253,32 @@ No other implementation has this.
 - [`docs/COMPARISON.md`](COMPARISON.md) — single-agent vs
   SDD vs SPDD vs meta-harness, plus the 4-way comparison
   (this document's narrower sibling).
-- [Stanford IRIS paper (arXiv:2603.28052)](https://arxiv.org/abs/2603.28052).
+- [Stanford IRIS paper (arXiv:2603.28052)](https://arxiv.org/abs/2603.28052 ([HTML](https://arxiv.org/html/2603.28052v1))).
 - [SuperagenticAI/metaharness repo](https://github.com/SuperagenticAI/metaharness).
 - [Towards AI article](https://pub.towardsai.net/what-is-a-meta-harness-in-ai-2af40e788c2e).
+- [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2) — validation and test case (real pilot, jul/2026).
 - `harness/contrib/design-decisions.md` ADR-0026
   (ecosystem positioning) + ADR-0029 (metrics).
+
+## 9. References (consolidated)
+
+> Same as [`docs/COMPARISON.md` §7](COMPARISON.md#7-references-consolidated-v1141),
+> mirrored here for convenience.
+
+### 9.1 Paper
+
+- **[Meta-Harness: End-to-End Optimization of Model Harnesses](https://arxiv.org/abs/2603.28052)** ([HTML v1](https://arxiv.org/html/2603.28052v1)) — Lee, Nair, Zhang, Lee, Khattab, Finn (Stanford IRIS Lab, 2026). arXiv:2603.28052.
+  Companion site: [yoonholee.com/meta-harness](https://yoonholee.com/meta-harness/).
+
+### 9.2 Repositories
+
+| Repo | Stack | License | Stars | Validation |
+|---|---|---|---|---|
+| [stanford-iris-lab/meta-harness](https://github.com/stanford-iris-lab/meta-harness) | Python 98% | MIT | 1.3k⭐ 127 forks | Paper (research) |
+| [SuperagenticAI/metaharness](https://github.com/SuperagenticAI/metaharness) | Python 100% | Custom | 146⭐ 17 forks | v0.4.0 "Omnigent Backend" (jun/2026) |
+| [brenonaraujo/git-meta-harness](https://github.com/brenonaraujo/git-meta-harness) | Go CLI + Markdown | MIT | (this project) | v1.14.1 (jul/2026) |
+| [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2) | Go + Nuxt 4 | (per repo) | (validation case) | 50+ issues, 4+ epics, 5 lessons applied |
+
+### 9.3 Article
+
+- **[What Is Meta-Harness for AI Agents and Why Now?](https://pub.towardsai.net/what-is-a-meta-harness-in-ai-2af40e788c2e)** — Abhishek Pan, jul/2026, 12.84 min, 3.3k words. Paywalled (preview only).

@@ -350,14 +350,26 @@ func applyAdaptivePersonas(harnessDir string, r *stackdetect.StackReport) error 
 // generateDomainExpert returns the body of a
 // domain-expert-<domain>.md persona.
 func generateDomainExpert(domain string, r *stackdetect.StackReport) string {
-	return fmt.Sprintf(`# Persona — domain-expert-%s (v1.14.0+, gmh adopt)
+	// Pre-compute derived values to keep the Sprintf call clean
+	// (go vet strict on %s/arg count).
+	domainTitle := "domain-expert-" + domain
+	domainPersona := "domain-expert-" + domain
+	personaUser := domain
+	domainBehavior := domain
+	comportamento := "## Comportamento (" + domain + ")"
+	webFW := orEmpty(r.WebFramework, "(none)")
+	testFW := orEmpty(r.TestFramework, "(none)")
+	ci := orEmpty(r.CI, "(none)")
+	behaviorBody := domainSpecificBehavior(domain)
+
+	return fmt.Sprintf(`# Persona — %s (v1.14.1+, gmh adopt)
 
 > Persona especializada gerada automaticamente por 'gmh adopt'
 > baseado no stack detectado: %s + %s.
 > **Revise e customize** as seções Comportamento e Edge cases
 > antes de usar em produção.
 
-Você é o **domain-expert-%s** deste projeto. Sua função é
+Você é o **%s** deste projeto. Sua função é
 refinar issues type/feature (invariante 24, sensor 13) com:
 
 - **Persona (quem usa)**: %s.
@@ -366,7 +378,7 @@ refinar issues type/feature (invariante 24, sensor 13) com:
 - **ACs (mín 1)**: critérios de aceite testáveis.
 - **Edge cases (mín 1)**: casos de borda do domínio.
 
-## Comportamento (%s)
+%s
 
 %s
 
@@ -387,16 +399,17 @@ Stack detectado:
 - Test framework: %s
 - Database: %v
 - CI: %s
-`, domain, r.PrimaryLang, r.WebFramework,
-		domain,
-		domain,
-		domain,
-		domainSpecificBehavior(domain),
+`, domainTitle, r.PrimaryLang, r.WebFramework,
+		domainPersona,
+		personaUser,
+		domainBehavior,
+		comportamento,
+		behaviorBody,
 		r.PrimaryLang,
-		orEmpty(r.WebFramework, "(none)"),
-		orEmpty(r.TestFramework, "(none)"),
+		webFW,
+		testFW,
 		r.Database,
-		orEmpty(r.CI, "(none)"),
+		ci,
 	)
 }
 
@@ -478,53 +491,53 @@ func skillForStack(webFramework, primaryLang string) (string, bool) {
 	// Available skills in harness/skills/ (verified to exist
 	// as of v1.14.1+). If you add a new skill, add it here.
 	availableSkills := map[string]bool{
-		"frontend-public-skills":  true,
-		"nuxt-ui-patterns":        true,
-		"tailwind-only-patterns":  true,
-		"visual-polish":           true,
-		"ux-design-best-practices": true,
-		"domain-refinement":       true,
-		"spec-decomposition":      true,
-		"metrics-interpretation":  true,
+		"frontend-public-skills":    true,
+		"nuxt-ui-patterns":          true,
+		"tailwind-only-patterns":    true,
+		"visual-polish":             true,
+		"ux-design-best-practices":  true,
+		"domain-refinement":         true,
+		"spec-decomposition":        true,
+		"metrics-interpretation":    true,
 		"pre-implementation-design": true,
-		"solution-scoping":        true,
-		"i18n":                    true,
-		"twelve-factor":           true,
-		"openapi-spec-first":      true,
-		"tdd-go":                  true,
-		"github-pr-workflow":      true,
-		"github-issues":           true,
-		"github-code-review":      true,
-		"code-graph":              true,
+		"solution-scoping":          true,
+		"i18n":                      true,
+		"twelve-factor":             true,
+		"openapi-spec-first":        true,
+		"tdd-go":                    true,
+		"github-pr-workflow":        true,
+		"github-issues":             true,
+		"github-code-review":        true,
+		"code-graph":                true,
 	}
 	// Mapping: stack → candidate skill (must be in availableSkills).
 	candidates := map[string]string{
-		"nuxt":          "nuxt-ui-patterns",
-		"react":         "frontend-public-skills",
-		"react-cra":     "frontend-public-skills",
-		"react-vite":    "frontend-public-skills",
-		"next":          "frontend-public-skills",
-		"vue":           "nuxt-ui-patterns", // shared patterns
-		"vue-vite":      "nuxt-ui-patterns",
-		"expo":          "frontend-public-skills",
-		"react-native":  "frontend-public-skills",
-		"remix":         "frontend-public-skills",
-		"gatsby":        "frontend-public-skills",
-		"astro":         "frontend-public-skills",
-		"angular":       "frontend-public-skills",
-		"svelte":        "frontend-public-skills",
-		"sveltekit":     "frontend-public-skills",
-		"solid":         "frontend-public-skills",
-		"ionic":         "frontend-public-skills",
-		"firebase":      "frontend-public-skills",
-		"firestore":     "frontend-public-skills",
-		"supabase":      "frontend-public-skills",
-		"amplify":       "frontend-public-skills",
-		"planetscale":   "frontend-public-skills",
-		"neon":          "frontend-public-skills",
-		"vercel":        "frontend-public-skills",
-		"netlify":       "frontend-public-skills",
-		"cloudflare":    "frontend-public-skills",
+		"nuxt":         "nuxt-ui-patterns",
+		"react":        "frontend-public-skills",
+		"react-cra":    "frontend-public-skills",
+		"react-vite":   "frontend-public-skills",
+		"next":         "frontend-public-skills",
+		"vue":          "nuxt-ui-patterns", // shared patterns
+		"vue-vite":     "nuxt-ui-patterns",
+		"expo":         "frontend-public-skills",
+		"react-native": "frontend-public-skills",
+		"remix":        "frontend-public-skills",
+		"gatsby":       "frontend-public-skills",
+		"astro":        "frontend-public-skills",
+		"angular":      "frontend-public-skills",
+		"svelte":       "frontend-public-skills",
+		"sveltekit":    "frontend-public-skills",
+		"solid":        "frontend-public-skills",
+		"ionic":        "frontend-public-skills",
+		"firebase":     "frontend-public-skills",
+		"firestore":    "frontend-public-skills",
+		"supabase":     "frontend-public-skills",
+		"amplify":      "frontend-public-skills",
+		"planetscale":  "frontend-public-skills",
+		"neon":         "frontend-public-skills",
+		"vercel":       "frontend-public-skills",
+		"netlify":      "frontend-public-skills",
+		"cloudflare":   "frontend-public-skills",
 	}
 	skill, ok := candidates[webFramework]
 	if !ok {

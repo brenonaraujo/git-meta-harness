@@ -3438,7 +3438,7 @@ OK: All type/feature issues have refined + ready + DoD.
 
 **Data:** 2026-07-20. **Status:** accepted. **Versão alvo:** v1.14.0.
 **Trigger:** pesquisa externa (jul/2026) sobre 3 implementações de
-meta-harness — Stanford IRIS Lab (paper arXiv:2603.28052),
+meta-harness — Stanford IRIS Lab ([paper arXiv:2603.28052](https://arxiv.org/abs/2603.28052), [HTML](https://arxiv.org/html/2603.28052v1)),
 SuperagenticAI/metaharness (v0.4.0 "Omnigent Backend", jun/2026),
 e Towards AI (artigo "What Is Meta-Harness for AI Agents and Why
 Now?", jul/2026). Pedido do Brenon: "vamos aprimorar a nossa
@@ -3451,7 +3451,7 @@ Em jul/2026, três implementações paralelas de "meta-harness"
 apareceram no ecossistema:
 
 1. **Stanford IRIS Lab** (`stanford-iris-lab/meta-harness`,
-   arXiv:2603.28052, 1.3k⭐, 127 forks, Python 98%, MIT) —
+   [arXiv:2603.28052](https://arxiv.org/abs/2603.28052) ([HTML v1](https://arxiv.org/html/2603.28052v1)), 1.3k⭐, 127 forks, Python 98%, MIT) —
    paper acadêmico "End-to-End Optimization of Model Harnesses"
    via LLM proposer+verifier. Workflow: `ONBOARDING.md` →
    conversa com proposer → `domain_spec.md`. Foco em **otimizar
