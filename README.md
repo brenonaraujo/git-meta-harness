@@ -682,3 +682,55 @@ Built and validated with:
 - [Nuxt 4](https://nuxt.com/),
   [Go 1.26](https://go.dev/),
   [PostgreSQL 18](https://www.postgresql.org/) — the application stack
+
+## References (consolidated, v1.14.2+)
+
+> External sources cited in this project, in one place. The
+> paper below is the academic origin of the "meta-harness"
+> concept; the other repositories are sibling implementations
+> of the same idea.
+
+### Paper (academic origin of "meta-harness")
+
+- **[Meta-Harness: End-to-End Optimization of Model Harnesses](https://arxiv.org/abs/2603.28052)** — Lee, Nair, Zhang, Lee, Khattab, Finn (Stanford IRIS Lab, 2026). The paper that named and operationalized the "meta-harness" concept via LLM proposer+verifier. arXiv:2603.28052.
+  - **[HTML v1 (full text)](https://arxiv.org/html/2603.28052v1)** — recommended reading for the full architecture.
+  - Companion site: [yoonholee.com/meta-harness](https://yoonholee.com/meta-harness/).
+
+### Sibling implementations (complementary, not competitive)
+
+| Repo | Type | License | Notes |
+|---|---|---|---|
+| **[stanford-iris-lab/meta-harness](https://github.com/stanford-iris-lab/meta-harness)** | Research code (Python) | MIT | Reference code for the paper. 1.3k⭐ 127 forks. |
+| **[SuperagenticAI/metaharness](https://github.com/SuperagenticAI/metaharness)** | Production code (Python) | Custom | v0.4.0 "Omnigent Backend" (jun/2026). 146⭐ 17 forks. |
+| **[brenonaraujo/git-meta-harness](https://github.com/brenonaraujo/git-meta-harness)** | This project (Go CLI + Markdown) | MIT | Operational framework, multi-tool, GitHub-native. |
+
+### Article (concept, governance + audit)
+
+- **[What Is Meta-Harness for AI Agents and Why Now?](https://pub.towardsai.net/what-is-a-meta-harness-in-ai-2af40e788c2e)** — Abhishek Pan, jul/2026. The "governance + audit + control plane" narrative. Paywalled after preview.
+
+### Validation case
+
+- **[brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)** — the real pilot project. 50+ issues, 4+ epics, 5 lessons applied as framework features (Decomposition Safety v1.9.0, Scope Discipline v1.11.0, Frontend Polish v1.12.0, Feature Flow v1.13.0, Adaptive Harness v1.14.0).
+
+### See also
+
+- [`docs/COMPARISON.md`](./docs/COMPARISON.md) §6 + §7 — full 4-way comparison (us vs Stanford IRIS vs SuperagenticAI vs Towards AI) and consolidated references.
+- [`docs/ECOSYSTEM.md`](./docs/ECOSYSTEM.md) — ecosystem map with diagrams, complements, bridges.
+- [`harness/contrib/design-decisions.md`](./harness/contrib/design-decisions.md) ADR-0026 to ADR-0029 — design rationale.
+- [`harness/skill-matrix.yaml`](./harness/skill-matrix.yaml) — stack → skills mapping (declarative, editable).
+
+### Citation
+
+If you cite this work, please cite the original Stanford IRIS paper:
+
+```bibtex
+@misc{lee2026metaharnessendtoendoptimizationmodel,
+      title={Meta-Harness: End-to-End Optimization of Model Harnesses},
+      author={Yoonho Lee and Roshen Nair and Qizheng Zhang and Kangwook Lee and Omar Khattab and Chelsea Finn},
+      year={2026},
+      eprint={2603.28052},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2603.28052},
+}
+```
