@@ -1,0 +1,14 @@
+[
+  {
+    "issue": 42,
+    "author": "alice",
+    "body": "The acceptance criteria have a gap: the domain-expert persona is missing a skill for i18n.",
+    "created_at": "2026-08-26T12:00:00Z"
+  },
+  {
+    "issue": 42,
+    "author": "bob",
+    "body": "Looks good to me, ship it.",
+    "created_at": "2026-08-26T13:00:00Z"
+  }
+]

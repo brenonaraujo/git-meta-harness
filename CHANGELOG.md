@@ -1,6 +1,38 @@
 # Changelog
 
 
+## [1.15.0] - 2026-08-26
+
+### Added — dynamic domain-expert, harness memory, evolve loop
+
+**Context:** After the loop-engineering / Stanford Meta-Harness
+write-up: domain-expert profiles must be created from project
+context (not a generic persona), the generated harness must have
+durable memory, and personas/skills should improve on-demand from
+GitHub issue + comment history. Hermes remains the OS/tool
+harness; git-meta-harness emits the delivery context.
+
+**Shipped:**
+
+- `gmh personas create --domain X [--context] [--from-spec]` —
+  instantiates `domain-expert-<slug>.md` from the template.
+  Generic `domain-expert` remains forbidden (invariant 12).
+- `gmh memory write|show` — `harness/memory/snapshot.json`
+  records personas, skills, Hermes profiles.
+- `gmh evolve --from-dir DIR [--apply]` — Stanford-style outer
+  loop on the *governance* layer: filesystem of comment traces
+  + proposal.md + PROMPT.md for the Hermes team-manager.
+  v1 does **not** overwrite persona files; human validates.
+- Docs: `docs/EVOLVE.md`, `harness/workflow/08-persona-evolve.md`,
+  ADR-0030.
+
+### Compatibilidade
+
+- Additive. `gmh personas` was a stub; now it writes files.
+- No breaking CLI flags.
+
+---
+
 ## [1.14.2] - 2026-07-22
 
 ### Fixed - CI pipeline + references (HOTFIX)

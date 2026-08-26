@@ -385,3 +385,26 @@ the loop myself?" — and the answer depends on whether the
 framework's loop is **good enough for your case**. For
 greenfield software with a stack pinada, a multi-agent
 team, and 9 verifiers: yes, it is.
+
+---
+
+## 10. Persona evolve (v1.15.0) — verifier + memory
+
+From v1.15.0 the verifier layer and the durable memory
+also cover **personas and skills**, not only code.
+
+- **Verifier:** `gmh evolve` proposes patches from
+  GitHub issue+comment history; the stop condition is
+  still human "validado" — persona files do not
+  change until then (same bottleneck as §5, applied
+  to the delivery contract itself).
+- **Memory:** `harness/memory/snapshot.json` records
+  which personas / skills / Hermes profiles exist;
+  `harness/memory/traces/` is the filesystem of
+  issue-comment traces (Stanford analog on the
+  governance side).
+
+Hermes remains the runtime OS/tool harness; this
+repo remains the delivery harness that materializes
+project-specific context. Full write-up:
+[`docs/EVOLVE.md`](EVOLVE.md) (ADR-0030).
