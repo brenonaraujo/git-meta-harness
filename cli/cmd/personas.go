@@ -1,6 +1,16 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/brenonaraujo/git-meta-harness/cli/internal/personas"
+	"github.com/brenonaraujo/git-meta-harness/cli/internal/ui"
+)
 
 // PersonasCmd creates the `gmh personas` parent command.
 //
@@ -26,6 +36,8 @@ Subcommands:
 Examples:
   gmh personas list
   gmh personas create --domain banking
+  gmh personas create --domain banking --context "Pix + Open Banking"
+  gmh personas create --domain retail --from-spec ./SPEC.md
   gmh personas remove domain-expert-banking
   gmh personas available`,
 	}
@@ -43,7 +55,20 @@ func personasListCmd() *cobra.Command {
 		Short: "List installed personas (including domain-experts)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: list harness/personas/*.md
+			cwd := getCwd(cmd)
+			harnessDir := filepath.Join(cwd, "harness")
+			names, err := personas.List(harnessDir)
+			if err != nil {
+				return err
+			}
+			ui.Header("Installed personas")
+			if len(names) == 0 {
+				ui.Info("No personas found in %s", filepath.Join(harnessDir, "personas"))
+				return nil
+			}
+			for _, name := range names {
+				ui.Step("%s", name)
+			}
 			return nil
 		},
 	}
@@ -53,6 +78,8 @@ func personasCreateCmd() *cobra.Command {
 	var (
 		domain      string
 		fromGeneric bool
+		context     string
+		fromSpec    string
 	)
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -62,10 +89,36 @@ from the domain-expert.template.md.
 
 Examples:
   gmh personas create --domain banking
-  gmh personas create --domain retail --from-generic`,
+  gmh personas create --domain retail --from-generic
+  gmh personas create --domain banking --context "Pix + Open Banking"
+  gmh personas create --domain retail --from-spec ./SPEC.md`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: copy template to harness/personas/domain-expert-<domain>.md
+			cwd := getCwd(cmd)
+			harnessDir := filepath.Join(cwd, "harness")
+
+			projectContext := context
+			if fromSpec != "" {
+				data, err := os.ReadFile(fromSpec)
+				if err != nil {
+					return fmt.Errorf("read --from-spec %s: %w", fromSpec, err)
+				}
+				spec := string(data)
+				if projectContext != "" {
+					projectContext = projectContext + "\n" + spec
+				} else {
+					projectContext = spec
+				}
+			}
+			if fromGeneric {
+				ui.Warn("--from-generic is deprecated and ignored; create a specialized domain-expert instead")
+			}
+
+			path, err := personas.Create(harnessDir, domain, projectContext)
+			if err != nil {
+				return err
+			}
+			ui.OK("%s", path)
 			return nil
 		},
 	}
@@ -73,6 +126,10 @@ Examples:
 		"Domain name (e.g., banking, retail, healthcare). Required.")
 	cmd.Flags().BoolVar(&fromGeneric, "from-generic", false,
 		"Convert an existing generic domain-expert.md (deprecated path)")
+	cmd.Flags().StringVar(&context, "context", "",
+		"Project context appended to the new domain-expert persona")
+	cmd.Flags().StringVar(&fromSpec, "from-spec", "",
+		"Read a spec file and append its contents to --context")
 	_ = cmd.MarkFlagRequired("domain")
 
 	return cmd
@@ -84,7 +141,13 @@ func personasRemoveCmd() *cobra.Command {
 		Short: "Remove a domain-expert (use with care)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: remove harness/personas/<name>.md
+			cwd := getCwd(cmd)
+			harnessDir := filepath.Join(cwd, "harness")
+			name := strings.TrimSpace(args[0])
+			if err := personas.Remove(harnessDir, name); err != nil {
+				return err
+			}
+			ui.OK("Removed %s", name)
 			return nil
 		},
 	}

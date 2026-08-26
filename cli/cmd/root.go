@@ -52,8 +52,10 @@ func newRootCmd() *cobra.Command {
   update     Update to a specific version
   doctor     Health check the local project (--json for structured output)
   metrics    Harness health metrics dashboard (v1.14.0+)
+  personas   Create/list/remove domain-expert-<x> from project context (v1.15.0)
+  memory     Persist generated-harness snapshot (v1.15.0)
+  evolve     Propose persona/skill patches from issue traces (v1.15.0)
   skills     Install/list skills
-  personas   Install/list personas
   plugins    Install/list plugins
   agents     Manage agentic profiles
 
@@ -66,6 +68,9 @@ func newRootCmd() *cobra.Command {
   gmh doctor                     # Check project is healthy
   gmh doctor --json              # Health score as JSON
   gmh metrics                    # Dashboard
+  gmh personas create --domain clinicsy --from-spec SPEC.md
+  gmh memory write               # Snapshot personas/skills/profiles
+  gmh evolve --from-dir ./comments --apply
 
 ` + color.New(color.FgYellow).Sprint("Docs:") + `  https://github.com/brenonaraujo/git-meta-harness
 `,
@@ -101,6 +106,8 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(AgentsCmd())
 	rootCmd.AddCommand(SkillsCmd())
 	rootCmd.AddCommand(PersonasCmd())
+	rootCmd.AddCommand(MemoryCmd())
+	rootCmd.AddCommand(EvolveCmd())
 	rootCmd.AddCommand(PluginsCmd())
 	rootCmd.AddCommand(VersionCmd())
 

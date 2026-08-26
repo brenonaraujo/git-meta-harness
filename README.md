@@ -5,7 +5,7 @@
 > on demand from a functional specification into any agentic CLI
 > (Claude Code, Copilot, Codex, OpenCode, Devin, Hermes Agent, Cursor).
 >
-> **Version:** [1.14.0](./VERSION) · **License:** [MIT](./LICENSE) ·
+> **Version:** [1.15.0](./VERSION) · **License:** [MIT](./LICENSE) ·
 > **Status:** stable · **30 releases** · **Validation and test case:** ✅
 > [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)
 
@@ -15,10 +15,10 @@
 
 | Version | Type | What it does |
 |---|---|---|
+| **v1.15.0** | **FEATURE** | **Persona instantiate + evolve** — `gmh personas create --domain/--context/--from-spec` (dynamic domain-expert from project context), `gmh memory` (generated-harness snapshot), `gmh evolve` (Stanford-style traces over issue comments → persona/skill proposals). Hermes stays the OS/tool harness. ADR-0030. [`docs/EVOLVE.md`](./docs/EVOLVE.md). |
 | **v1.14.0** | **FEATURE** | **Adaptive Meta-Harness (BIG, 4 ADRs)** — `gmh adopt` (in-progress projects, detects stack + adapts), `gmh new --spec` (creates project + TODO from spec), `gmh doctor --json` (health score 0-100, 4 dimensions), `gmh metrics` (Prometheus dashboard + Slack alerts). 4 ADRs (0026-0029). `docs/ECOSYSTEM.md` maps 4 implementations (Stanford IRIS, SuperagenticAI, Towards AI, us). |
 | **v1.13.0** | FEATURE | **Feature flow enforcement** — `sensor 13 feature-flow` (BLOCKING) + canonical comment templates + builder reads-all-comments rule. Prevents the team-manager from skipping `domain-expert`/`solutions-architect` on `type/feature` issues. ADR-0025. |
 | **v1.12.2** | HOTFIX | **`hermes -p` flag order** — `agentic.Invocation()` now produces `hermes -p <profile> chat -q '<prompt>'` (the `-p` is a **global** flag, not a `chat` subcommand flag). ADR-0024. |
-| **v1.12.1** | HOTFIX | **Agent config preservation** — `gmh agents sync` no longer erases `model.default`, `model.provider`, `agent.reasoning_effort` from profile `config.yaml`. Fixed `struct round-trip erasure` bug. ADR-0023. |
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for the full history (30 versions).
 

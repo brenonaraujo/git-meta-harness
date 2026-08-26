@@ -4285,3 +4285,149 @@ block" em projeto Vue 2, e top violação vira
    New Relic — todos ingerem Prometheus exposition
    format. Custo zero de lock-in.
 
+---
+
+## ADR-0030 — Persona instantiate + evolve from issue traces (v1.15.0)
+
+**Data:** 2026-08-26
+**Status:** Aceito
+**Decisor(es):** Brenon Araujo
+**Contexto:** blog post + complementaridade com o paper
+Stanford IRIS (arXiv:2603.28052).
+
+### Contexto
+
+Duas peças externas se cruzam na v1.15.0:
+
+1. **Blog post (brenon.cloud)** — posiciona Hermes como
+   runtime OS/tool harness (terminal, fs, `gh`, browsers,
+   memória de sessão) e `git-meta-harness` como o
+   **delivery harness** que materializa personas, skills,
+   sensors e roteamento GitHub **por projeto**. A saída
+   é contexto (agents / skills / tools) daquele projeto,
+   não um segundo runtime.
+2. **Stanford IRIS Meta-Harness**
+   ([arXiv:2603.28052](https://arxiv.org/abs/2603.28052))
+   — research loop: filesystem de candidate
+   model-harnesses + traces; LLM proposer muta o harness
+   code; verifier contra um benchmark. Complementar, não
+   concorrente: eles **otimizam** harness; nós
+   **governamos** entrega.
+
+Estado pré-v1.15.0:
+
+- ADR-0003 já exige `domain-expert-<domínio>` (nunca
+  genérico), mas a CLI `gmh personas create` não
+  instanciava o perfil a partir do contexto do projeto
+  (`--context` / `--from-spec`).
+- Não havia memória gerada do harness
+  (`harness/memory/snapshot.json`) — quais personas,
+  skills e profiles Hermes existem **neste** projeto.
+- `docs/ECOSYSTEM.md` §5.1 tratava a ponte Stanford
+  como ideia de pesquisa (v2.0.0 / 2027): chamar o
+  proposer Python deles para gerar templates.
+
+O gap: sem instantiate-from-context, o invariante 12
+é teatro. Sem traces, o harness não aprende com o
+histórico de issues. Sem a fronteira Hermes vs gmh,
+o time pede ao CLI o que é tool, ou ao Hermes o que
+é contrato de entrega.
+
+### Decisão
+
+**1. Duas camadas, explícitas.** Hermes permanece o
+tool harness. `git-meta-harness` materializa o
+contrato de entrega. Não fundir as duas.
+
+**2. `gmh personas create --domain <x> --context "..."`
+/ `--from-spec spec.md`.** Profiles de domain-expert
+são criados do contexto do projeto na seed/adopt.
+Recusar domínio vazio, `generic` e `domain-expert`.
+Nunca instanciar um domain-expert genérico
+(reafirma ADR-0003).
+
+**3. `harness/memory/snapshot.json`.** Memória gerada
+do delivery harness (personas / skills / profiles
+existentes). Distinta da memória de sessão do Hermes.
+
+**4. Filesystem de traces + `gmh evolve`.** Analogia
+de governança ao paper Stanford: eles guardam
+candidate harnesses + traces; nós guardamos
+`harness/memory/traces/` de comentários de GitHub
+issues. `gmh evolve --from-dir` escreve `proposal.md`
++ `PROMPT.md` para o Hermes team-manager. Personas e
+skills melhoram on-demand a partir do histórico de
+issue+comment.
+
+**5. Não chamar o proposer Python do Stanford.** O
+CLI é determinístico. O proposer é o agente (Hermes
+team-manager, ou qualquer runtime agentic) rodando
+o `PROMPT.md`. LLM-as-optimizer de harness code
+continua opção de pesquisa (v2.0.0), não desta
+release.
+
+**6. Humano valida antes de persona files mudarem.**
+`--apply` grava só `harness/memory/traces/<utc>/`.
+Não sobrescreve `harness/personas/*.md`. Condição de
+parada = comentário humano (`validado` ou equivalente).
+
+### Alternativas consideradas
+
+- **A:** Chamar o proposer Python do Stanford IRIS
+  (`stanford-iris-lab/meta-harness`) como subprocesso
+  — reutiliza o paper ao pé da letra, mas acopla um
+  runtime Python, uma API de pesquisa, e trata o
+  harness **code** como o objeto a otimizar. Fora do
+  nosso lane (governança GitHub-native).
+- **B:** LLM-as-optimizer in-process no `gmh evolve`
+  (chamar o modelo de dentro da CLI) — apaga a
+  fronteira Hermes = tool harness. Unit tests
+  deixam de ser determinísticos.
+- **C (escolhida):** filesystem de traces + `gmh
+  evolve` determinístico que emite `proposal.md` +
+  `PROMPT.md`; Hermes (tool harness) corre o proposer;
+  humano valida antes de persona files mudarem.
+
+### Consequências
+
+- **+** Invariante 12 deixa de ser manual: o perfil
+  nasce do spec/contexto, não de um template genérico
+  copiado à mão.
+- **+** Memória do delivery harness é um artefato
+  (`snapshot.json`) auditável, sobrevivendo a sessões
+  Hermes.
+- **+** Auto-melhoria de personas/skills fica no mesmo
+  substrate de governança (issues + comments + traces
+  no git), não num optimizer externo.
+- **+** Complementaridade com Stanford fica honesta:
+  mesma *forma* (filesystem + traces + proposer),
+  objeto diferente (comentários de issue, não harness
+  code).
+- **−** `--apply` não fecha o loop sozinho; exige o
+  passo humano. Quem espera "evolve = patch automático"
+  vai achar a CLI incompleta — isso é intencional.
+- **−** Harvest de issues via `gh` (`--from-github`)
+  fica follow-up; v1.15.0 exige `--from-dir`.
+
+### Reversibilidade
+
+- Remover `gmh evolve` / `gmh memory` / o create
+  contextual não reverte ADR-0003 (o invariante
+  permanece).
+- Traces em `harness/memory/traces/` são artefatos;
+  apagar o diretório não altera personas.
+- Persona files só mudam após validação humana; um
+  evolve mal-proposto reverte-se **não aplicando** o
+  patch.
+- A ponte "chamar o proposer Python Stanford" continua
+  documentada em `docs/ECOSYSTEM.md` §5.1 como opção
+  v2.0.0, não como débito desta ADR.
+
+### Ver também
+
+- [`docs/EVOLVE.md`](../../docs/EVOLVE.md)
+- [`harness/workflow/08-persona-evolve.md`](../workflow/08-persona-evolve.md)
+- [`docs/LOOP.md`](../../docs/LOOP.md) §10
+- [`docs/ECOSYSTEM.md`](../../docs/ECOSYSTEM.md) §5.1
+- ADR-0003 — `domain-expert` sempre especializado
+

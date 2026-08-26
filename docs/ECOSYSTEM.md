@@ -136,6 +136,15 @@ auto-generate new `domain-expert-<novo-domínio>` templates.
 
 **Status**: research idea. Could ship in v2.0.0 (2027).
 
+**v1.15.0 note:** the Stanford bridge on the
+**governance** side shipped as `gmh evolve` — not
+LLM-as-optimizer of harness code; traces over GitHub
+issues/comments (`harness/memory/traces/`), with
+`proposal.md` + `PROMPT.md` for the Hermes
+team-manager and a human validate-before-edit gate.
+The Python proposer above is still not called. See
+[`docs/EVOLVE.md`](EVOLVE.md) and ADR-0030.
+
 ### 5.2 Bridge 2: SuperagenticAI as alternative agentic runtime
 
 **Idea**: let users choose **which agentic runtime** to
