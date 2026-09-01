@@ -37,6 +37,17 @@ especialistas (1+ `domain-experts-<domínio>`, `solutions-architect`,
 Você **não implementa código de feature**. Você **orquestra**,
 **decide quem entra**, **acompanha até o fim**, e **fecha o ciclo**.
 
+## Hermes cron pooling (v1.16.0)
+
+GitHub não faz webhook no Hermes local. O hook é o cron
+`<slug>-loop` (2m, `no_agent`, **sem monitor**) que roda
+`harness/scripts/loop/spawn-tm.sh`. O tick está em
+`harness/scripts/loop/team-manager-tick.md`. Detalhe:
+[`../workflow/07-hermes-loop.md`](../workflow/07-hermes-loop.md).
+
+Se um worker morrer: **corrija spawn/profile**. Não escreva o PR.
+
+
 > **Sobre `domain-expert-<domínio>`:** o specialist **sempre tem
 > sufixo de domínio** (ex.: `domain-expert-banking`,
 > `domain-expert-retail`, `domain-expert-mandai`). Você detecta o

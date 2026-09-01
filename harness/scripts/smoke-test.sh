@@ -51,6 +51,15 @@ for f in \
   harness/contrib/design-decisions.md \
   harness/smoke-test.md \
   harness/workflow/06-release-pipeline.md \
+  harness/workflow/07-hermes-loop.md \
+  harness/sensors/14-loop-liveness.md \
+  harness/scripts/loop/spawn-tm.sh \
+  harness/scripts/loop/team-manager-tick.md \
+  harness/scripts/check-loop.sh \
+  AGENT.md \
+  docs/SEED.md \
+  cli/cmd/seed.go \
+  cli/cmd/loop.go \
   docs/DEPLOY.md \
   docs/CLI.md \
   cli/go.mod \

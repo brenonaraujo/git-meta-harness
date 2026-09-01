@@ -1,12 +1,11 @@
 # Loop engineering — how git-meta-harness fits
 
 > **TL;DR** — `git-meta-harness` is a concrete, ship-now
-> implementation of **loop engineering** for the case of
-> greenfield software delivery. Where loop engineering says
-> "design the loop", the meta-harness says "this is the loop,
-> these are the 9 verifiers, these are the 7 personas, this is
-> the stack, plug the spec here". The user does not design
-> the loop; the user pastes the spec.
+> implementation of **loop engineering**. The user does not
+> design the loop; the user (or an agent) runs `gmh seed`.
+> Automations on Hermes are **cron pooling**, not GitHub
+> webhooks. See [`docs/SEED.md`](./SEED.md) and
+> [`harness/workflow/07-hermes-loop.md`](../harness/workflow/07-hermes-loop.md).
 
 ---
 
@@ -75,7 +74,7 @@ mapping is direct:
 
 | Loop engineering concept | git-meta-harness equivalent |
 |---|---|
-| **Automations** (scheduling) | GitHub Actions (cron, push, PR trigger) |
+| **Automations** (scheduling) | Hermes cron pooling (`<slug>-loop` 2m no_agent, **no monitor**; supervisor 5m). GitHub Actions remain CI, not the dispatcher. |
 | **Worktrees** (parallel work) | Branches `feature/<id>-<slug>` per issue; multiple builders in parallel |
 | **Skills** (project knowledge) | `harness/skills/*.md`, materialized per persona at seed time |
 | **Connectors** (tool integration) | GitHub Issues + PRs + Actions + Releases as substrate; agent-specific runtimes (Hermes, Claude Code, Codex, Copilot, Cursor) |

@@ -166,3 +166,81 @@ func TestWriteConfigIdempotent(t *testing.T) {
 		}
 	}
 }
+
+func TestProfileConfigured_SoulOnlyIsNotConfigured(t *testing.T) {
+	tmp := t.TempDir()
+	c, err := NewClient(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ProfileConfigured("team-manager") {
+		t.Fatal("missing profile must not be configured")
+	}
+	if err := c.WriteSoul("team-manager", "# soul\n"); err != nil {
+		t.Fatal(err)
+	}
+	if c.ProfileConfigured("team-manager") {
+		t.Fatal("SOUL.md alone is not a Hermes-created profile")
+	}
+	cfg := filepath.Join(tmp, "profiles", "team-manager", "config.yaml")
+	if err := os.WriteFile(cfg, []byte("skills: {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !c.ProfileConfigured("team-manager") {
+		t.Fatal("config.yaml means configured")
+	}
+}
+
+func TestCopyEnvFromHome_DoesNotOverwrite(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, ".env"), []byte("HOME_KEY=1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := NewClient(tmp)
+	if err := c.CopyEnvFromHome("tm"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(filepath.Join(tmp, "profiles", "tm", ".env"))
+	if string(got) != "HOME_KEY=1\n" {
+		t.Fatalf("got %q", got)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "profiles", "tm", ".env"), []byte("KEEP=1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, ".env"), []byte("HOME_KEY=2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.CopyEnvFromHome("tm"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = os.ReadFile(filepath.Join(tmp, "profiles", "tm", ".env"))
+	if string(got) != "KEEP=1\n" {
+		t.Fatalf("overwrote profile env: %q", got)
+	}
+}
+
+func TestWipeProfileLocalSkills(t *testing.T) {
+	tmp := t.TempDir()
+	c, _ := NewClient(tmp)
+	n, err := c.WipeProfileLocalSkills("missing")
+	if err != nil || n != 0 {
+		t.Fatalf("n=%d err=%v", n, err)
+	}
+	skillDir := filepath.Join(tmp, "profiles", "tm", "skills", "github-issues")
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	n, err = c.WipeProfileLocalSkills("tm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("n=%d", n)
+	}
+	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
+		t.Fatal("skill dir should be gone")
+	}
+}
