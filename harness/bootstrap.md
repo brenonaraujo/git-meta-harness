@@ -5,7 +5,7 @@
 > saber para entregar um projeto — **greenfield OR in-progress** — mora
 > aqui ou é referenciado daqui.
 >
-> **Versão:** 1.14.0
+> **Versão:** 1.16.0
 > **Status:** stable
 > **Owners:** time de plataforma
 > **Licença:** MIT
@@ -29,8 +29,9 @@ multi-tool** que:
   Hermes, …) a partir de uma única fonte (`harness/*`).
 - **Adapta-se a projetos em andamento** (v1.14.0+, `gmh adopt`):
   detecta stack existente e calibra o harness ao contexto real.
-- **Bootstrap a partir de spec** (v1.14.0+, `gmh new --spec`):
-  gera TODO list + scaffold a partir de uma spec funcional.
+- **Bootstrap a partir de spec** (v1.16.0+, `gmh seed`):
+  harness + personas + CI + issue 0 + Hermes cron loop.
+  `gmh new --spec` ainda gera só o TODO (esqueleto).
 - **Mede saúde continuamente** (v1.14.0+, `gmh metrics`):
   health score 0-100, flow compliance, alertas Slack/Prometheus.
 

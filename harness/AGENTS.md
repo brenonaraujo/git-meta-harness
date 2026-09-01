@@ -696,9 +696,10 @@ hermes skills install <path-para-harness/skills/<name>>
   apenas sugere).
 - **SEMPRE** gerar ADOPT-REPORT.md com seção "Adaptações NÃO
   aplicadas" listando o que **não** foi feito (e por quê).
-- **Bloqueante**: se `gmh adopt --json` mostra
-  `applied_calibrations_with_low_confidence > 0`, sensor 14
-  (v1.15.0) bloqueia.
+- **Bloqueante**: `gmh loop doctor` / sensor 14 (loop-liveness,
+  v1.16.0) deve passar antes de despachar builder. Adaptação
+  com baixa confiança continua em ADOPT-REPORT.md, não neste
+  sensor.
 
 ### 30. **Skill matrix é a fonte da verdade** (NOVA, v1.14.1+,
     não-violável)

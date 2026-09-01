@@ -1,11 +1,19 @@
 # Meta-Harness — Seed Prompt
 
-> **Este é o prompt inicial** que instancia o meta-harness em um novo
-> projeto. Cole-o no tool escolhido (Claude Code, Hermes, Codex, etc.)
-> **na raiz do projeto** (depois de copiar `harness/*` para lá).
+> **STOP (v1.16.0).** Do not paste this prompt and improvise personas.
+> From the git-meta-harness checkout run:
 >
-> **Versão:** 0.1.0
-> **Quem executa:** o **team-manager** (você, a partir de agora).
+> ```bash
+> make -C cli build
+> ./cli/bin/gmh seed <name> --describe "…" --github owner/repo --from harness
+> ./cli/bin/gmh loop doctor -C <name>
+> ```
+>
+> Playbook: [`docs/SEED.md`](../../docs/SEED.md) and [`AGENT.md`](../../AGENT.md).
+> This prompt is a **fallback** when `gmh` cannot run. Prefer the CLI.
+>
+> **Versão:** 1.16.0
+> **Quem executa:** o **team-manager** (orquestrador — não implementa).
 
 ---
 

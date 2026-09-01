@@ -1,0 +1,31 @@
+name: Contracts
+
+# Thin CI for non-Go/Nuxt projects (docs, Vue+Swarm landing zones).
+# Do NOT copy the harness Go/Nuxt + GHCR template here.
+# gmh seed --stack vue,swarm (or any non go+nuxt) selects this file.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required harness files
+        run: |
+          test -f docs/SPEC.md
+          test -f harness/PROJECT.md
+          test -f harness/bootstrap.md
+          test -f harness/loop.env
+          test -x harness/scripts/loop/spawn-tm.sh
+      - name: Loop liveness
+        run: bash harness/scripts/check-loop.sh
+      - name: No generic domain-expert
+        run: test ! -f harness/personas/domain-expert.md

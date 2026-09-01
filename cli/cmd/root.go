@@ -48,6 +48,8 @@ func newRootCmd() *cobra.Command {
   install    Install meta-harness into a project (greenfield)
   adopt      Adopt meta-harness into an existing project (adaptive, v1.14.0+)
   new        Create new project from spec (v1.14.0+)
+  seed       Materialize harness + personas + CI + issue 0 + Hermes loop (v1.16.0)
+  loop       Install / doctor the Hermes cron pooling loop (v1.16.0)
   sync       Sync the local project with the latest version
   update     Update to a specific version
   doctor     Health check the local project (--json for structured output)
@@ -64,6 +66,8 @@ func newRootCmd() *cobra.Command {
   gmh install --to v1.5.0        # Install specific version
   gmh adopt                      # Adopt into existing project (adaptive)
   gmh new my-app --spec spec.md  # Create project from spec
+  gmh seed my-app --describe "SaaS de agendamento" --github acme/my-app
+  gmh loop doctor                # Sensor 14: is the loop actually wired?
   gmh sync                       # Pull latest version into existing project
   gmh doctor                     # Check project is healthy
   gmh doctor --json              # Health score as JSON
@@ -99,6 +103,8 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(InstallCmd())
 	rootCmd.AddCommand(AdoptCmd())
 	rootCmd.AddCommand(NewCmd())
+	rootCmd.AddCommand(SeedCmd())
+	rootCmd.AddCommand(LoopCmd())
 	rootCmd.AddCommand(SyncCmd())
 	rootCmd.AddCommand(UpdateCmd())
 	rootCmd.AddCommand(DoctorCmd())

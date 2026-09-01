@@ -1,6 +1,38 @@
 # Changelog
 
 
+## [1.16.0] - 2026-08-31
+
+### Added — `gmh seed` + Hermes cron pooling (the loop actually installs)
+
+**Context:** home.cloud was seeded from the prompt. Personas were
+not created (`WriteSoul` before `hermes profile create --no-skills`).
+Pipes were the Go/Nuxt template on a landing zone. No GitHub
+webhook into Hermes, so the board froze in `triage`. Cron `monitor`
+on the TM job suppressed the agent. A dead worker became "the
+parent implements". ADR-0031.
+
+**Shipped:**
+
+- `gmh seed <name> --describe|--spec --github` — one-shot:
+  harness copy, `docs/SPEC.md`, specialized domain-expert, CI
+  (full vs contracts), loop scripts, Hermes `--no-skills`
+  profiles **before** SOUL, labels, issue 0, two cron jobs.
+- `gmh loop install|doctor|status` — sensor 14.
+- `AGENT.md` + `docs/SEED.md` — what an incoming agent runs.
+- `harness/workflow/07-hermes-loop.md` — pooling events → TM.
+- `harness/templates/.github-workflows-ci-contracts.yml`.
+- `gmh agents install` creates the profile **before** WriteSoul;
+  `gmh agents sync` **wipes** cloned profile skills (reverses
+  v1.10.3 copy that made `skill_view` ambiguous).
+
+### Compatibilidade
+
+- Additive CLI. `gmh new --spec` still emits a TODO skeleton.
+- Doctor accepts contracts CI without treating it as Go-template drift.
+
+---
+
 ## [1.15.0] - 2026-08-26
 
 ### Added — dynamic domain-expert, harness memory, evolve loop

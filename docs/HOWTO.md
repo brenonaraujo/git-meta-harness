@@ -1,10 +1,13 @@
 # HOWTO — start a project with the meta-harness
 
+> **v1.16.0:** the install command is **`gmh seed`**. Playbook for
+> agents: [`AGENT.md`](../AGENT.md) and [`docs/SEED.md`](./SEED.md).
+> Do not paste the seed prompt and improvise personas.
+
 > **TL;DR** — the meta-harness takes a **functional spec** as
-> its input. Where the spec lives depends on whether the
-> project is **greenfield** (no code yet) or **existing** (code
-> already there). The `team-manager` is the persona that
-> handles spec discovery automatically.
+> its input. `gmh seed <name> --describe "…"` writes that spec,
+> materializes personas + CI + issue 0, and installs the Hermes
+> cron loop. The `team-manager` then runs the board.
 
 ---
 

@@ -333,10 +333,16 @@ func runLocalChecks(cwd, harnessDir string, verbose bool) *doctorReport {
 	if fileExists(ciYml) {
 		data, _ := os.ReadFile(ciYml)
 		ciContent := string(data)
-		check("CI: no @latest actions", !contains(ciContent, "@latest"))
-		check("CI: no oasdiff/oasdiff:latest (tag invalid)", !contains(ciContent, "oasdiff/oasdiff:latest"))
-		check("CI: Trivy pinado (não @master)", !contains(ciContent, "aquasecurity/trivy-action@master"))
-		check("CI: dorny/paths-filter presente", contains(ciContent, "dorny/paths-filter"))
+		contracts := contains(ciContent, "name: Contracts") || contains(ciContent, "check-loop.sh")
+		if contracts {
+			check("CI: contracts workflow (non-Go/Nuxt)", true)
+			check("CI: no @latest actions", !contains(ciContent, "@latest"))
+		} else {
+			check("CI: no @latest actions", !contains(ciContent, "@latest"))
+			check("CI: no oasdiff/oasdiff:latest (tag invalid)", !contains(ciContent, "oasdiff/oasdiff:latest"))
+			check("CI: Trivy pinado (não @master)", !contains(ciContent, "aquasecurity/trivy-action@master"))
+			check("CI: dorny/paths-filter presente", contains(ciContent, "dorny/paths-filter"))
+		}
 	} else {
 		check("CI workflow present", false)
 	}
@@ -349,7 +355,13 @@ func runLocalChecks(cwd, harnessDir string, verbose bool) *doctorReport {
 	//   - format: <fmt> lines ignored
 	//   - output: <file> lines ignored
 	templateYml := filepath.Join(cwd, "harness", "templates", ".github-workflows-ci.yml")
-	if fileExists(ciYml) && fileExists(templateYml) {
+	ciIsContracts := false
+	if fileExists(ciYml) {
+		if b, err := os.ReadFile(ciYml); err == nil {
+			ciIsContracts = contains(string(b), "name: Contracts") || contains(string(b), "check-loop.sh")
+		}
+	}
+	if fileExists(ciYml) && fileExists(templateYml) && !ciIsContracts {
 		localCI, _ := os.ReadFile(ciYml)
 		tplCI, _ := os.ReadFile(templateYml)
 		// Normalize lines that commonly differ for legitimate reasons

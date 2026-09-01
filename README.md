@@ -1,20 +1,26 @@
 # git-meta-harness
 
+> **Agents:** read [`AGENT.md`](./AGENT.md) then [`docs/SEED.md`](./docs/SEED.md).
+> The command is `gmh seed`, not "paste the seed prompt and improvise".
+> PATH `gmh` may be stale — `make -C cli build` and use `./cli/bin/gmh`.
+
+
 > **Plug-and-play multi-agent orchestration framework for greenfield **and**
 > in-progress projects → production software delivery**, materializable
 > on demand from a functional specification into any agentic CLI
 > (Claude Code, Copilot, Codex, OpenCode, Devin, Hermes Agent, Cursor).
 >
-> **Version:** [1.15.0](./VERSION) · **License:** [MIT](./LICENSE) ·
-> **Status:** stable · **30 releases** · **Validation and test case:** ✅
+> **Version:** [1.16.0](./VERSION) · **License:** [MIT](./LICENSE) ·
+> **Status:** stable · **31 releases** · **Validation and test case:** ✅
 > [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)
 
 ---
 
-## What's new in the last 4 releases (jul/2026)
+## What's new in the last 4 releases (ago/2026)
 
 | Version | Type | What it does |
 |---|---|---|
+| **v1.16.0** | **FEATURE** | **`gmh seed` + Hermes cron pooling** — one command materializes harness, specialized personas (`--no-skills` first), CI (full vs contracts), issue 0, and two Hermes crons (TM heartbeat **without monitor** + supervisor). Sensor 14 `loop-liveness`. ADR-0031. [`AGENT.md`](./AGENT.md) [`docs/SEED.md`](./docs/SEED.md). |
 | **v1.15.0** | **FEATURE** | **Persona instantiate + evolve** — `gmh personas create --domain/--context/--from-spec` (dynamic domain-expert from project context), `gmh memory` (generated-harness snapshot), `gmh evolve` (Stanford-style traces over issue comments → persona/skill proposals). Hermes stays the OS/tool harness. ADR-0030. [`docs/EVOLVE.md`](./docs/EVOLVE.md). |
 | **v1.14.0** | **FEATURE** | **Adaptive Meta-Harness (BIG, 4 ADRs)** — `gmh adopt` (in-progress projects, detects stack + adapts), `gmh new --spec` (creates project + TODO from spec), `gmh doctor --json` (health score 0-100, 4 dimensions), `gmh metrics` (Prometheus dashboard + Slack alerts). 4 ADRs (0026-0029). `docs/ECOSYSTEM.md` maps 4 implementations (Stanford IRIS, SuperagenticAI, Towards AI, us). |
 | **v1.13.0** | FEATURE | **Feature flow enforcement** — `sensor 13 feature-flow` (BLOCKING) + canonical comment templates + builder reads-all-comments rule. Prevents the team-manager from skipping `domain-expert`/`solutions-architect` on `type/feature` issues. ADR-0025. |

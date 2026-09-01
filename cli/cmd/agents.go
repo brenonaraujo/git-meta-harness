@@ -329,40 +329,25 @@ Examples:
 				ui.Info("Skills: %d installed, %d updated, %d unchanged", skillsInstalled, skillsUpdated, skillsUnchanged)
 			}
 
-			// v1.10.3: copy harness skills into each profile's `skills/`
-			// directory so the Hermes desktop UI shows the right count.
-			// The UI counts only physical skills in profile's `skills/`
-			// (not external_dirs). 73+ Hermes global catalog skills
-			// remain in `~/.hermes/skills/` and are reachable at runtime
-			// via external_dirs.
-			if manifest != nil && !dryRun {
-				ui.Info("")
-				ui.Info("Profile skills (v1.10.3 — copy harness skills into each profile):")
-				profileSkillCopied := 0
-				profileSkillSkipped := 0
+			// v1.16.0: do NOT copy harness skills into profile/skills/.
+			// That made skill_view ambiguous (profile copy + external_dirs).
+			// Keep --no-skills profiles; wipe leftover clones.
+			if !dryRun {
+				wiped := 0
 				for _, p := range profiles {
 					if onlyProfile != "" && p.Name != onlyProfile {
 						continue
 					}
-					existing, _ := hermesClient.ListSkills()
-					_ = existing
-					for _, s := range manifest.Skills {
-						// Check if the profile's local skills/<s>/SKILL.md
-						// already has the same content
-						profileSkillPath := filepath.Join(hermesClient.Home, "profiles", p.Name, "skills", s.Name, "SKILL.md")
-						existingContent, _ := os.ReadFile(profileSkillPath)
-						if string(existingContent) == s.Content {
-							profileSkillSkipped++
-							continue
-						}
-						if err := hermesClient.WriteProfileSkill(p.Name, s.Name, s.Content); err != nil {
-							ui.Warn("  ⚠ %s → %s: %v", p.Name, s.Name, err)
-							continue
-						}
-						profileSkillCopied++
+					n, err := hermesClient.WipeProfileLocalSkills(p.Name)
+					if err != nil {
+						ui.Warn("  wipe %s skills: %v", p.Name, err)
+						continue
 					}
+					wiped += n
 				}
-				ui.OK("  %d profile-skill copies synced, %d already in sync", profileSkillCopied, profileSkillSkipped)
+				if wiped > 0 {
+					ui.OK("Wiped %d cloned profile-local skills (use ~/.hermes/skills via external_dirs)", wiped)
+				}
 			}
 
 			// Summary
@@ -583,26 +568,17 @@ func agentsInstallCmd() *cobra.Command {
 			}
 
 			ui.Info("Installing profile %q from %s", profileName, personaPath)
+			if err := ensureHermesProfile(hermesClient, profileName, ""); err != nil {
+				ui.Warn("  profile create: %v", err)
+			}
 			if err := hermesClient.WriteSoul(profileName, newSoul); err != nil {
 				return err
 			}
 			ui.OK("SOUL.md written at %s", hermesClient.Home+"/profiles/"+profileName+"/SOUL.md")
-
-			// v1.10.2: also create the profile in Hermes (if not yet)
-			// with --no-skills and write config.yaml with external_dirs.
-			// This way the profile sees the global skills catalog
-			// (~/.hermes/skills/) instead of receiving 73 bundled skills.
-			profilePath := filepath.Join(hermesClient.Home, "profiles", profileName)
-			if _, err := os.Stat(profilePath); os.IsNotExist(err) {
-				ui.Info("Creating Hermes profile (--no-skills)...")
-				// Best-effort: try `hermes profile create`. If hermes
-				// CLI is not on PATH, fall back to manual creation.
-				if err := runHermesProfileCreate(profileName); err != nil {
-					ui.Warn("  could not run `hermes profile create`: %v", err)
-					ui.Warn("  (you can run it manually: hermes profile create %s --no-skills)", profileName)
-				}
-			} else {
-				ui.Info("Profile directory already exists; skipping create.")
+			if n, err := hermesClient.WipeProfileLocalSkills(profileName); err != nil {
+				ui.Warn("  wipe profile skills: %v", err)
+			} else if n > 0 {
+				ui.OK("  wiped %d cloned profile skills (skill_view stays unambiguous)", n)
 			}
 
 			// Write config.yaml with skills.external_dirs
@@ -626,12 +602,32 @@ func agentsInstallCmd() *cobra.Command {
 
 // helpers
 
-// runHermesProfileCreate runs `hermes profile create <name> --no-skills`
-// to bootstrap a profile without bundling the 73 default skills.
-// Best-effort: returns nil if hermes is not on PATH or fails (we'll
-// warn the user to run it manually).
-func runHermesProfileCreate(name string) error {
-	cmd := exec.Command("hermes", "profile", "create", name, "--no-skills")
+// ensureHermesProfile creates the profile with --no-skills BEFORE any
+// WriteSoul. Order is load-bearing (home.cloud 2026-08-31).
+func ensureHermesProfile(client *hermes.Client, name, description string) error {
+	if client.ProfileConfigured(name) {
+		_, _ = client.WipeProfileLocalSkills(name)
+		return client.CopyEnvFromHome(name)
+	}
+	if err := runHermesProfileCreate(name, description); err != nil {
+		ui.Warn("  could not run `hermes profile create`: %v", err)
+		ui.Warn("  (you can run it manually: hermes profile create %s --no-skills)", name)
+	}
+	if err := client.CopyEnvFromHome(name); err != nil {
+		ui.Warn("  copy .env: %v", err)
+	}
+	_, _ = client.WipeProfileLocalSkills(name)
+	return nil
+}
+
+// runHermesProfileCreate runs `hermes profile create <name> --no-skills`.
+// Never combine with --clone-from (Hermes rejects the pair).
+func runHermesProfileCreate(name, description string) error {
+	args := []string{"profile", "create", name, "--no-skills"}
+	if description != "" {
+		args = append(args, "--description", description)
+	}
+	cmd := exec.Command("hermes", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

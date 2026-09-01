@@ -97,12 +97,68 @@ func (c *Client) ReadSoul(profileName string) (string, error) {
 }
 
 // WriteSoul writes the SOUL.md for a profile, creating the dir if needed.
+// Callers that talk to the Hermes CLI MUST run `hermes profile create
+// --no-skills` BEFORE WriteSoul: this function MkdirAll's the profile
+// dir, which makes a later `profile create` think the profile exists
+// and skip --no-skills (home.cloud, 2026-08-31).
 func (c *Client) WriteSoul(profileName, content string) error {
 	dir := filepath.Join(c.Home, "profiles", profileName)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, "SOUL.md"), []byte(content), 0o644)
+}
+
+// ProfileConfigured is true when Hermes itself created the profile
+// (config.yaml exists). A dir that only has SOUL.md is a WriteSoul
+// leftover, not a real --no-skills profile.
+func (c *Client) ProfileConfigured(profileName string) bool {
+	_, err := os.Stat(filepath.Join(c.Home, "profiles", profileName, "config.yaml"))
+	return err == nil
+}
+
+// CopyEnvFromHome copies ~/.hermes/.env into the profile if the
+// profile has no .env yet. --clone-from cannot combine with
+// --no-skills; this is the substitute.
+func (c *Client) CopyEnvFromHome(profileName string) error {
+	src := filepath.Join(c.Home, ".env")
+	dst := filepath.Join(c.Home, "profiles", profileName, ".env")
+	if _, err := os.Stat(dst); err == nil {
+		return nil
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0o600)
+}
+
+// WipeProfileLocalSkills removes ~/.hermes/profiles/<name>/skills/*
+// so skill_view is not ambiguous with skills.external_dirs
+// (home.cloud, 2026-08-31). Returns the number of entries removed.
+func (c *Client) WipeProfileLocalSkills(profileName string) (int, error) {
+	dir := filepath.Join(c.Home, "profiles", profileName, "skills")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	n := 0
+	for _, e := range entries {
+		if err := os.RemoveAll(filepath.Join(dir, e.Name())); err != nil {
+			return n, err
+		}
+		n++
+	}
+	return n, nil
 }
 
 // Skill represents an installed skill.

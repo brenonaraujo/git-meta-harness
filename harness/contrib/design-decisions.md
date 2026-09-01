@@ -4431,3 +4431,87 @@ parada = comentário humano (`validado` ou equivalente).
 - [`docs/ECOSYSTEM.md`](../../docs/ECOSYSTEM.md) §5.1
 - ADR-0003 — `domain-expert` sempre especializado
 
+---
+
+## ADR-0031 — `gmh seed` + Hermes cron pooling (v1.16.0)
+
+**Data:** 2026-08-31
+**Status:** Aceito
+**Decisor(es):** Brenon Araujo
+**Contexto:** home.cloud seed via prompt; personas e pipes não materializaram.
+
+### Contexto
+
+O seed era um prompt para o host agent "virar team-manager". No
+home.cloud isso falhou de forma sistemática:
+
+1. `gmh agents install` escrevia `SOUL.md` (cria o dir) **antes**
+   de `hermes profile create --no-skills` — o create era skipped.
+2. CI Go/Nuxt + GHCR foi o default mesmo em landing zone.
+3. Sem webhook GitHub→Hermes, o board ficou em `triage`. Cron
+   `monitor` no TM job: snapshot igual = agente nunca acordava.
+4. Worker morto pelo parent tracker (SIGINT/SIGKILL) virou
+   "então o orquestrador implementa".
+5. `gmh agents sync` copiava skills para
+   `~/.hermes/profiles/<p>/skills/` enquanto `external_dirs`
+   apontava para o catálogo global — `skill_view` ambíguo.
+
+O harness **descrevia** o loop. Não **instalava** o loop.
+
+### Decisão
+
+**1. `gmh seed` é o install.** Um comando copia harness, escreve
+spec, cria `domain-expert-<domínio>`, escolhe CI full vs
+contracts, escreve scripts de loop, materializa profiles
+(`create --no-skills` ANTES de SOUL, copia `.env`, wipe
+profile skills), cria labels + issue 0, instala dois crons.
+
+**2. Hermes cron pooling é o hook.** Sem webhook.
+`<slug>-loop` 2m `no_agent` **sem monitor**;
+`<slug>-orchestrator` 5m supervisor (`bot-chat:default`,
+nunca `[SILENT]`). Spawn com `nohup`, nunca
+`terminal(background=true)` do parent.
+
+**3. Sensor 14 `loop-liveness`.** `gmh loop doctor` /
+`harness/scripts/check-loop.sh` é o Definition of Ready do
+loop. Vermelho = não despachar builder.
+
+**4. team-manager não implementa.** Worker morto = bug de
+spawn. Tick `idle` = uma linha, sem comentário GitHub.
+
+**5. CI contracts** para stack ≠ Go+Nuxt. Doctor não trata
+contracts CI como drift do template Go.
+
+**6. Agente que encontra este repo lê `AGENT.md` + `docs/SEED.md`.**
+Não cola o seed prompt.
+
+### Alternativas consideradas
+
+- **A: webhook GitHub App → localhost** — não existe no setup
+  Hermes-only; tunnel público é fora da política de snapshot.
+- **B (escolhida): cron pooling no Hermes** — já é o primitive
+  durável; home.cloud provou o padrão.
+- **C: kanban dispatcher** — útil depois; o board canônico
+  continua GitHub Issues.
+
+### Consequências
+
+- **+** Um agente consegue seedar um SaaS a partir de uma frase.
+- **+** O loop é verificável (sensor 14), não teatral.
+- **−** Cron depende do gateway (`hermes gateway install --start-now`).
+- **−** `gmh new --spec` continua existindo (TODO only); seed é
+  o caminho preferido.
+
+### Reversibilidade
+
+- Remover `gmh seed` / `gmh loop` não apaga harness/.
+- Crons se removem com `hermes cron remove`.
+- Profiles `--no-skills` continuam válidos sem o loop.
+
+### Ver também
+
+- [`AGENT.md`](../../AGENT.md)
+- [`docs/SEED.md`](../../docs/SEED.md)
+- [`harness/workflow/07-hermes-loop.md`](../workflow/07-hermes-loop.md)
+- [`harness/sensors/14-loop-liveness.md`](../sensors/14-loop-liveness.md)
+

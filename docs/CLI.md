@@ -1,9 +1,10 @@
 # gmh — git-meta-harness CLI
 
-> **O QUÊ:** documentação completa da CLI `gmh` (v1.6.0+).
-> **Single static binary**, escrita em Go, distribuída via
-> GitHub Releases. Não precisa de Python, Node, nem Docker
-> instalado para usar.
+> **O QUÊ:** documentação da CLI `gmh` (v1.16.0+).
+> **Single static binary**, escrita em Go.
+>
+> **Comece aqui:** `gmh seed` (v1.16.0) — harness + personas +
+> CI + issue 0 + Hermes cron loop. Ver [`docs/SEED.md`](./SEED.md).
 >
 > **POR QUÊ:** o `gmh` é a porta de entrada para adotar o
 > meta-harness. Sem ele, o usuário precisa clonar o repo
@@ -230,9 +231,24 @@ não é estável ainda. Ver [ADR-0016](../harness/contrib/design-decisions.md).
 
 ```bash
 $ gmh version
-gmh 1.6.0
-  commit: abc1234
-  built: 2026-07-18T18:00:00Z
+gmh 1.16.0
+```
+
+### 2.9. `gmh seed` (v1.16.0)
+
+Materializa o projeto de ponta a ponta. Ver [`SEED.md`](./SEED.md).
+
+```bash
+gmh seed booking-saas --describe "SaaS de agendamento online" --github acme/booking-saas
+gmh seed booking-saas --spec SPEC.md --from ./harness --no-cron
+```
+
+### 2.10. `gmh loop` (v1.16.0)
+
+```bash
+gmh loop install          # scripts + hermes cron (no monitor)
+gmh loop doctor           # sensor 14
+gmh loop status
 ```
 
 ---
