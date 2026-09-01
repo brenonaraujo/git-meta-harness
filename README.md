@@ -11,7 +11,7 @@
 > (Claude Code, Copilot, Codex, OpenCode, Devin, Hermes Agent, Cursor).
 >
 > **Version:** [1.16.0](./VERSION) · **License:** [MIT](./LICENSE) ·
-> **Status:** stable · **30 releases** · **Validation and test case:** ✅
+> **Status:** stable · **31 releases** · **Validation and test case:** ✅
 > [brenonaraujo/mandai-v2](https://github.com/brenonaraujo/mandai-v2)
 
 ---

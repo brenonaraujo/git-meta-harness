@@ -111,6 +111,9 @@ func Apply(opts Options) (ApplyResult, error) {
 		return ApplyResult{}, fmt.Errorf("harness source not found: pass --from <git-meta-harness/harness> or run from the framework repo")
 	}
 	dst := plan.TargetDir
+	if abs, err := filepath.Abs(dst); err == nil {
+		dst = abs
+	}
 	if err := os.MkdirAll(dst, 0o755); err != nil {
 		return ApplyResult{}, err
 	}
@@ -199,6 +202,13 @@ func Apply(opts Options) (ApplyResult, error) {
 	track(issue0)
 
 	plan.TargetDir = dst
+	plan.CronJobs = loop.CronCommands(loop.Config{
+		ProjectRoot: dst,
+		ProjectSlug: plan.Slug,
+		ProjectName: cfg.ProjectName,
+		GitHubRepo:  opts.GitHubRepo,
+		Domain:      plan.Domain,
+	})
 	plan.CIKind = loop.CIKind(opts.Stack)
 	return ApplyResult{PlanResult: plan, Files: files}, nil
 }

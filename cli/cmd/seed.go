@@ -30,6 +30,7 @@ func SeedCmd() *cobra.Command {
 		skipCron   bool
 		skipLoop   bool
 		jsonOut    bool
+		inDir      string
 	)
 
 	cmd := &cobra.Command{
@@ -56,15 +57,33 @@ Examples:
 				name = args[0]
 			}
 			cwd := getCwd(cmd)
+			if cwd == "" || cwd == "." {
+				cwd, _ = os.Getwd()
+			}
+			cwd, err := filepath.Abs(cwd)
+			if err != nil {
+				return err
+			}
 			target := cwd
-			if name != "" {
-				if filepath.IsAbs(name) {
-					target = name
-				} else {
-					target = filepath.Join(cwd, name)
-				}
+			if inDir != "" {
+				target = inDir
+			} else if name != "" {
+				target = name
+			}
+			if !filepath.IsAbs(target) {
+				target = filepath.Join(cwd, target)
+			}
+			target, err = filepath.Abs(target)
+			if err != nil {
+				return err
+			}
+			if from != "" && !filepath.IsAbs(from) {
+				from = filepath.Join(cwd, from)
 			}
 			harnessSrc := seed.FindHarnessSrc(from, cwd)
+			if githubRepo == "" {
+				skipGitHub = true
+			}
 			opts := seed.Options{
 				Name:       name,
 				Describe:   describe,
@@ -105,6 +124,8 @@ Examples:
 					ui.Warn("github: %v", err)
 					ui.Info("issue 0 body is at %s", filepath.Join(res.TargetDir, ".github", "ISSUE_0.md"))
 				}
+			} else if githubRepo == "" {
+				ui.Info("skipped GitHub labels/issue 0 (pass --github owner/repo)")
 			}
 
 			if !skipCron && !skipLoop {
@@ -149,7 +170,7 @@ Examples:
 	cmd.Flags().BoolVar(&skipCron, "no-cron", false, "Do not install Hermes cron jobs")
 	cmd.Flags().BoolVar(&skipLoop, "no-loop", false, "Alias of --no-cron")
 	cmd.Flags().BoolVar(&jsonOut, "json", false, "Print a JSON summary line")
-	cmd.Flags().String("in", "", "Unused; pass the directory as [name] or -C")
+	cmd.Flags().StringVar(&inDir, "in", "", "Project directory (in-place seed; default: [name] or cwd)")
 	return cmd
 }
 

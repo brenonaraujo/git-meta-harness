@@ -339,10 +339,10 @@ func WriteProjectFiles(cfg Config, spec string) error {
 		return err
 	}
 	files := map[string]string{
-		filepath.Join(dir, "spawn-tm.sh"):            spawnTMScript,
-		filepath.Join(dir, "spawn-persona.sh"):       spawnPersonaScript,
-		filepath.Join(dir, "team-manager-tick.md"):   tickMarkdown,
-		filepath.Join(dir, "orchestrator-verify.md"): orchMarkdown,
+		filepath.Join(dir, "spawn-tm.sh"):                          spawnTMScript,
+		filepath.Join(dir, "spawn-persona.sh"):                     spawnPersonaScript,
+		filepath.Join(dir, "team-manager-tick.md"):                 tickMarkdown,
+		filepath.Join(dir, "orchestrator-verify.md"):               orchMarkdown,
 		filepath.Join(root, "harness", "scripts", "check-loop.sh"): checkLoopScript,
 	}
 	for path, body := range files {

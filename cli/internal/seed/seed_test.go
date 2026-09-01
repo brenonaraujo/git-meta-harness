@@ -76,15 +76,15 @@ func TestApply_WritesSpecLoopAndContractsCI(t *testing.T) {
 
 	dst := t.TempDir()
 	res, err := Apply(Options{
-		Name:        "booking-saas",
-		Describe:    "SaaS de agendamento online",
-		Domain:      "saas",
-		TargetDir:   dst,
-		HarnessSrc:  src,
-		Stack:       "vue,swarm",
-		SkipAgents:  true,
-		SkipGitHub:  true,
-		SkipCron:    true,
+		Name:       "booking-saas",
+		Describe:   "SaaS de agendamento online",
+		Domain:     "saas",
+		TargetDir:  dst,
+		HarnessSrc: src,
+		Stack:      "vue,swarm",
+		SkipAgents: true,
+		SkipGitHub: true,
+		SkipCron:   true,
 	})
 	if err != nil {
 		t.Fatal(err)

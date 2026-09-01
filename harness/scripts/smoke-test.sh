@@ -67,7 +67,8 @@ for f in \
   cli/installer/install.sh \
   cli/installer/install.ps1 \
   templates/.github-workflows-release.yml \
-  .github/workflows/cli-release.yml; do
+  .github/workflows/cli-release.yml \
+  .github/workflows/cli-test.yml; do
   if [ -f "$f" ]; then
     echo "  ✅ $f"
     PASSES=$((PASSES+1))
